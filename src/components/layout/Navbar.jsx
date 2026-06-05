@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   FiHeart,
@@ -21,17 +21,36 @@ export default function Navbar() {
   const [store, setStore] = useState(null);
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuClosing, setMenuClosing] = useState(false);
-  const [searchMounted, setSearchMounted] = useState(false);
-  const [searchClosing, setSearchClosing] = useState(false);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [navbarVisible, setNavbarVisible] = useState(true);
+
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(getAccessToken()));
   const [basketCount, setBasketCount] = useState(0);
+
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     loadStoreInfo();
     checkAuth();
+  }, []);
+
+  useEffect(() => {
+    function handleScroll() {
+      const currentY = window.scrollY;
+
+      if (currentY < 20) {
+        setNavbarVisible(true);
+      } else if (currentY > lastScrollY.current && currentY > 90) {
+        setNavbarVisible(false);
+      } else if (currentY < lastScrollY.current) {
+        setNavbarVisible(true);
+      }
+
+      lastScrollY.current = currentY;
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
@@ -57,18 +76,6 @@ export default function Navbar() {
       window.removeEventListener("nemesis_auth_changed", onAuthChanged);
     };
   }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchMounted && !searchClosing && query.trim().length >= 2) {
-        searchProducts();
-      } else {
-        setResults([]);
-      }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [query, searchMounted, searchClosing]);
 
   function checkAuth() {
     setIsLoggedIn(Boolean(getAccessToken()));
@@ -104,26 +111,6 @@ export default function Navbar() {
     }
   }
 
-  async function searchProducts() {
-    try {
-      setSearchLoading(true);
-
-      const res = await apiFetch(
-        `/api/Products?search=${encodeURIComponent(query.trim())}`
-      );
-
-      const data = res?.data || res;
-      const list =
-        data?.items || data?.products || (Array.isArray(data) ? data : []);
-
-      setResults(Array.isArray(list) ? list.slice(0, 7) : []);
-    } catch {
-      setResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }
-
   function openMenu() {
     setMenuClosing(false);
     setMenuMounted(true);
@@ -136,22 +123,6 @@ export default function Navbar() {
       setMenuMounted(false);
       setMenuClosing(false);
     }, 280);
-  }
-
-  function openSearch() {
-    setSearchClosing(false);
-    setSearchMounted(true);
-  }
-
-  function closeSearch() {
-    setSearchClosing(true);
-
-    setTimeout(() => {
-      setSearchMounted(false);
-      setSearchClosing(false);
-      setQuery("");
-      setResults([]);
-    }, 320);
   }
 
   function goLogin() {
@@ -201,34 +172,6 @@ export default function Navbar() {
     <>
       <style>
         {`
-          @keyframes searchOpen {
-            from {
-              opacity: 0;
-              transform: translateX(42px) scaleX(0.72);
-              transform-origin: right center;
-            }
-
-            to {
-              opacity: 1;
-              transform: translateX(0) scaleX(1);
-              transform-origin: right center;
-            }
-          }
-
-          @keyframes searchClose {
-            from {
-              opacity: 1;
-              transform: translateX(0) scaleX(1);
-              transform-origin: right center;
-            }
-
-            to {
-              opacity: 0;
-              transform: translateX(42px) scaleX(0.72);
-              transform-origin: right center;
-            }
-          }
-
           @keyframes menuOpen {
             from {
               opacity: 0;
@@ -275,7 +218,13 @@ export default function Navbar() {
         `}
       </style>
 
-      <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/92 backdrop-blur-xl">
+      <header
+        className={`sticky top-0 z-40 border-b border-zinc-100 bg-white/92 backdrop-blur-xl transition-all duration-500 ${
+          navbarVisible
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-full opacity-0"
+        }`}
+      >
         <div className="mx-auto flex h-[62px] max-w-[1180px] items-center justify-between px-4 md:h-[72px] md:px-6">
           <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
             <button
@@ -316,14 +265,17 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-2.5">
-            <button
-              type="button"
-              onClick={openSearch}
-              className="grid h-9 w-9 place-items-center rounded-full text-[18px] text-zinc-800 transition hover:bg-zinc-50 active:scale-95 md:h-10 md:w-10 md:text-[17px]"
+            <NavLink
+              to="/search"
+              className={({ isActive }) =>
+                `grid h-9 w-9 place-items-center rounded-full text-[18px] transition hover:bg-zinc-50 active:scale-95 md:h-10 md:w-10 md:text-[17px] ${
+                  isActive ? "bg-[#244989]/8 text-[#244989]" : "text-zinc-800"
+                }`
+              }
               aria-label="Search"
             >
               <FiSearch />
-            </button>
+            </NavLink>
 
             {authIcons.map((item) => (
               <NavLink
@@ -454,92 +406,6 @@ export default function Navbar() {
               </div>
             </div>
           </aside>
-        </div>
-      )}
-
-      {searchMounted && (
-        <div
-          className={`fixed inset-x-0 top-0 z-[60] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.10)] ${
-            searchClosing
-              ? "animate-[searchClose_0.32s_ease_both]"
-              : "animate-[searchOpen_0.42s_cubic-bezier(0.22,1,0.36,1)_both]"
-          }`}
-        >
-          <div className="mx-auto max-w-[1180px] px-4 py-3 md:px-6">
-            <div className="overflow-hidden rounded-[18px] border border-zinc-100 bg-white">
-              <div className="flex h-12 items-center gap-3 px-4">
-                <FiSearch className="text-[18px] text-zinc-500" />
-
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={text.searchPlaceholder}
-                  className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-zinc-400"
-                />
-
-                <button
-                  type="button"
-                  onClick={closeSearch}
-                  className="grid h-8 w-8 place-items-center rounded-full bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  <FiX />
-                </button>
-              </div>
-
-              <div className="max-h-[420px] overflow-y-auto border-t border-zinc-100 px-4 py-4">
-                <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">
-                  {text.searchResults}
-                </p>
-
-                {query.trim().length < 2 && (
-                  <p className="text-sm text-zinc-500">{text.searchEmpty}</p>
-                )}
-
-                {query.trim().length >= 2 &&
-                  !searchLoading &&
-                  results.length === 0 && (
-                    <p className="text-sm text-zinc-500">
-                      {text.searchNotFound}
-                    </p>
-                  )}
-
-                {searchLoading && (
-                  <p className="text-sm text-zinc-500">{text.loading}...</p>
-                )}
-
-                <div className="space-y-2">
-                  {results.map((item) => (
-                    <NavLink
-                      key={item.id}
-                      to={`/products/${item.id}`}
-                      onClick={closeSearch}
-                      className="flex items-center gap-3 rounded-[14px] p-2 transition hover:bg-zinc-50"
-                    >
-                      <div className="h-11 w-11 overflow-hidden rounded-[12px] bg-zinc-100">
-                        {item.mainImageUrl || item.imageUrl ? (
-                          <img
-                            src={item.mainImageUrl || item.imageUrl}
-                            alt={item.name || item.productName}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : null}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-zinc-950">
-                          {item.name || item.productName}
-                        </p>
-                        <p className="text-xs font-semibold text-zinc-500">
-                          {item.price ? `${item.price} ₼` : ""}
-                        </p>
-                      </div>
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </>
