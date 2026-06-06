@@ -33,16 +33,26 @@ export default function Navbar() {
     checkAuth();
   }, []);
 
+  function updateNavbarVisibility(value) {
+    setNavbarVisible(value);
+
+    window.dispatchEvent(
+      new CustomEvent("nemesis_nav_visibility", {
+        detail: { visible: value },
+      })
+    );
+  }
+
   useEffect(() => {
     function handleScroll() {
       const currentY = window.scrollY;
 
       if (currentY < 20) {
-        setNavbarVisible(true);
+        updateNavbarVisibility(true);
       } else if (currentY > lastScrollY.current && currentY > 90) {
-        setNavbarVisible(false);
+        updateNavbarVisibility(false);
       } else if (currentY < lastScrollY.current) {
-        setNavbarVisible(true);
+        updateNavbarVisibility(true);
       }
 
       lastScrollY.current = currentY;

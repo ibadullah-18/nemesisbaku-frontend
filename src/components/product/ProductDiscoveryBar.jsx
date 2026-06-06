@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FiChevronDown,
   FiChevronUp,
@@ -19,6 +20,8 @@ const emptyFilters = {
   maxPrice: "",
   isDiscounted: false,
 };
+
+const FILTER_SIZE = window.innerWidth < 768 ? 46 : 54;
 
 function normalizeProducts(res) {
   const data = res?.data || res;
@@ -63,13 +66,26 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   const { text } = useLanguage();
 
   const filterButtonRef = useRef(null);
-  const pointerStart = useRef({ x: 0, y: 0 });
-  const dragOffset = useRef({ x: 0, y: 0 });
-  const hasMoved = useRef(false);
+  const openedAtRef = useRef(0);
 
-  const [brandOpen, setBrandOpen] = useState(false);
+  const dragData = useRef({
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0,
+    moved: false,
+  });
+
+  const [navVisible, setNavVisible] = useState(true);
+
+  const [brandMounted, setBrandMounted] = useState(false);
+  const [brandClosing, setBrandClosing] = useState(false);
+
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterClosing, setFilterClosing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -81,13 +97,41 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   const [filters, setFilters] = useState(emptyFilters);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
 
-  const [filterPos, setFilterPos] = useState({
-    x: window.innerWidth - 76,
-    y: 138,
-  });
+  const [filterPos, setFilterPos] = useState(() => ({
+    x: window.innerWidth - (window.innerWidth < 768 ? 58 : 63),
+    y: 90,
+  }));
 
   useEffect(() => {
+    setPortalReady(true);
     loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    function handleNavVisibility(e) {
+      setNavVisible(Boolean(e.detail?.visible));
+    }
+
+    window.addEventListener("nemesis_nav_visibility", handleNavVisibility);
+
+    return () => {
+      window.removeEventListener("nemesis_nav_visibility", handleNavVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    function keepInsideScreen() {
+      setFilterPos((prev) => ({
+        x: Math.min(Math.max(prev.x, 12), window.innerWidth - FILTER_SIZE - 12),
+        y: Math.min(
+          Math.max(prev.y, 82),
+          window.innerHeight - FILTER_SIZE - 14
+        ),
+      }));
+    }
+
+    window.addEventListener("resize", keepInsideScreen);
+    return () => window.removeEventListener("resize", keepInsideScreen);
   }, []);
 
   async function loadInitialData() {
@@ -122,6 +166,25 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
     }
   }
 
+  function openBrands() {
+    setBrandClosing(false);
+    setBrandMounted(true);
+  }
+
+  function closeBrands() {
+    setBrandClosing(true);
+
+    setTimeout(() => {
+      setBrandMounted(false);
+      setBrandClosing(false);
+    }, 340);
+  }
+
+  function toggleBrands() {
+    if (brandMounted) closeBrands();
+    else openBrands();
+  }
+
   function selectBrand(brandId) {
     const next = {
       ...filters,
@@ -131,126 +194,408 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
     setFilters(next);
     setDraftFilters(next);
     loadProducts(next);
+    closeBrands();
   }
 
   function openFilter() {
+    openedAtRef.current = Date.now();
     setDraftFilters(filters);
     setFilterClosing(false);
     setFilterOpen(true);
   }
 
   function closeFilter() {
+    const justOpened = Date.now() - openedAtRef.current < 450;
+    if (justOpened) return;
+
     setFilterClosing(true);
 
     setTimeout(() => {
       setFilterOpen(false);
       setFilterClosing(false);
-    }, 260);
+    }, 300);
+  }
+
+  function forceCloseFilter() {
+    setFilterClosing(true);
+
+    setTimeout(() => {
+      setFilterOpen(false);
+      setFilterClosing(false);
+    }, 300);
   }
 
   function applyFilter() {
     setFilters(draftFilters);
     loadProducts(draftFilters);
-    closeFilter();
+    forceCloseFilter();
   }
 
   function resetFilter() {
     setFilters(emptyFilters);
     setDraftFilters(emptyFilters);
     loadProducts(emptyFilters);
-    closeFilter();
+    forceCloseFilter();
   }
 
-  function handlePointerDown(e) {
-    const rect = filterButtonRef.current.getBoundingClientRect();
-
-    hasMoved.current = false;
-
-    pointerStart.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-
-    dragOffset.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-
-    filterButtonRef.current.setPointerCapture(e.pointerId);
-  }
-
-  function handlePointerMove(e) {
-    if (!filterButtonRef.current?.hasPointerCapture(e.pointerId)) return;
-
-    const moveX = Math.abs(e.clientX - pointerStart.current.x);
-    const moveY = Math.abs(e.clientY - pointerStart.current.y);
-
-    if (moveX > 4 || moveY > 4) {
-      hasMoved.current = true;
-    }
-
-    if (!hasMoved.current) return;
+  function handleFilterPointerDown(e) {
+    if (filterOpen) return;
 
     e.preventDefault();
+    e.stopPropagation();
 
-    const size = 54;
+    const button = filterButtonRef.current;
+    if (!button) return;
+
+    dragData.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startLeft: filterPos.x,
+      startTop: filterPos.y,
+      moved: false,
+    };
+
+    setIsDragging(true);
+
+    try {
+      button.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  }
+
+  function handleFilterPointerMove(e) {
+    const data = dragData.current;
+    if (data.pointerId !== e.pointerId) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const diffX = e.clientX - data.startX;
+    const diffY = e.clientY - data.startY;
+    const distance = Math.sqrt(diffX * diffX + diffY * diffY);
+
+    if (distance < 8 && !data.moved) return;
+
+    data.moved = true;
 
     const nextX = Math.min(
-      Math.max(e.clientX - dragOffset.current.x, 12),
-      window.innerWidth - size - 12
+      Math.max(data.startLeft + diffX, 12),
+      window.innerWidth - FILTER_SIZE - 12
     );
 
     const nextY = Math.min(
-      Math.max(e.clientY - dragOffset.current.y, 82),
-      window.innerHeight - size - 14
+      Math.max(data.startTop + diffY, 82),
+      window.innerHeight - FILTER_SIZE - 14
     );
 
-    setFilterPos({
-      x: nextX,
-      y: nextY,
-    });
+    setFilterPos({ x: nextX, y: nextY });
   }
 
-  function handlePointerUp(e) {
-    if (filterButtonRef.current?.hasPointerCapture(e.pointerId)) {
-      filterButtonRef.current.releasePointerCapture(e.pointerId);
+  function handleFilterPointerUp(e) {
+    const data = dragData.current;
+    if (data.pointerId !== e.pointerId) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      filterButtonRef.current?.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
     }
 
-    if (!hasMoved.current) {
-      openFilter();
+    setIsDragging(false);
+
+    const shouldOpen = !data.moved;
+
+    dragData.current = {
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      startLeft: 0,
+      startTop: 0,
+      moved: false,
+    };
+
+    if (shouldOpen) {
+      setTimeout(() => {
+        openFilter();
+      }, 80);
     }
+  }
+
+  function handleFilterPointerCancel(e) {
+    const data = dragData.current;
+    if (data.pointerId !== e.pointerId) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      filterButtonRef.current?.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+
+    setIsDragging(false);
+
+    dragData.current = {
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      startLeft: 0,
+      startTop: 0,
+      moved: false,
+    };
   }
 
   const activeBrandName =
     brands.find((x) => x.id === filters.brandId)?.name || text.allBrands;
 
+  const filterPortal =
+    portalReady &&
+    createPortal(
+      <>
+        <button
+          ref={filterButtonRef}
+          type="button"
+          onPointerDown={handleFilterPointerDown}
+          onPointerMove={handleFilterPointerMove}
+          onPointerUp={handleFilterPointerUp}
+          onPointerCancel={handleFilterPointerCancel}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDragStart={(e) => e.preventDefault()}
+          style={{
+            position: "fixed",
+            left: `${filterPos.x}px`,
+            top: `${filterPos.y}px`,
+            touchAction: "none",
+            WebkitUserSelect: "none",
+            userSelect: "none",
+          }}
+          className={`z-[70] grid h-[46px] w-[46px] place-items-center rounded-full border border-zinc-100 bg-white text-[21px] text-zinc-950 shadow-[0_12px_30px_rgba(0,0,0,0.14)] transition-all duration-300 md:h-[54px] md:w-[54px] md:text-[25px] md:shadow-[0_14px_38px_rgba(0,0,0,0.16)] ${
+            filterOpen
+              ? "scale-[1.14] bg-[#244989] text-white shadow-[0_18px_48px_rgba(36,73,137,0.28)]"
+              : ""
+          } ${isDragging ? "cursor-grabbing scale-105" : "cursor-grab"}`}
+          aria-label="Filter"
+        >
+          <FiSliders className="pointer-events-none" />
+        </button>
+
+        {filterOpen && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-5">
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeFilter();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              className={`absolute inset-0 bg-black/20 backdrop-blur-[2px] ${
+                filterClosing
+                  ? "animate-[fadeOut_0.28s_ease_both]"
+                  : "animate-[fadeIn_0.28s_ease_both]"
+              }`}
+            />
+
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative z-[91] max-h-[calc(100vh-40px)] w-full max-w-[430px] overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] ${
+                filterClosing
+                  ? "animate-[filterClose_0.30s_ease_both]"
+                  : "animate-[filterOpen_0.42s_cubic-bezier(0.22,1,0.36,1)_both]"
+              }`}
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-[26px] font-extrabold tracking-[-0.035em] text-zinc-950">
+                    {text.filters}
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">
+                    {text.filterDescription}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={forceCloseFilter}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-50 text-[20px] text-zinc-800"
+                >
+                  <FiX />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <FilterSelect
+                  label={text.category}
+                  value={draftFilters.categoryId}
+                  items={categories}
+                  onChange={(value) =>
+                    setDraftFilters((prev) => ({ ...prev, categoryId: value }))
+                  }
+                />
+
+                <FilterSelect
+                  label={text.size}
+                  value={draftFilters.sizeId}
+                  items={sizes}
+                  onChange={(value) =>
+                    setDraftFilters((prev) => ({ ...prev, sizeId: value }))
+                  }
+                />
+
+                <FilterSelect
+                  label={text.color}
+                  value={draftFilters.colorId}
+                  items={colors}
+                  onChange={(value) =>
+                    setDraftFilters((prev) => ({ ...prev, colorId: value }))
+                  }
+                />
+
+                <div>
+                  <p className="mb-2 text-sm font-bold text-zinc-800">
+                    {text.price}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      value={draftFilters.minPrice}
+                      onChange={(e) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          minPrice: e.target.value.replace(/[^\d.]/g, ""),
+                        }))
+                      }
+                      placeholder={text.minPrice}
+                      inputMode="decimal"
+                      className="h-12 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
+                    />
+
+                    <input
+                      value={draftFilters.maxPrice}
+                      onChange={(e) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          maxPrice: e.target.value.replace(/[^\d.]/g, ""),
+                        }))
+                      }
+                      placeholder={text.maxPrice}
+                      inputMode="decimal"
+                      className="h-12 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraftFilters((prev) => ({
+                      ...prev,
+                      isDiscounted: !prev.isDiscounted,
+                    }))
+                  }
+                  className={`flex h-12 w-full items-center justify-between rounded-[16px] border px-4 text-sm font-bold transition ${
+                    draftFilters.isDiscounted
+                      ? "border-[#244989] bg-[#244989]/8 text-[#244989]"
+                      : "border-zinc-100 bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  {text.discounted}
+                  {draftFilters.isDiscounted && <FiCheck />}
+                </button>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={resetFilter}
+                  className="h-[52px] rounded-[16px] border border-zinc-100 bg-zinc-50 text-sm font-extrabold text-zinc-800 transition hover:bg-zinc-100"
+                >
+                  {text.resetFilter}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={applyFilter}
+                  className="h-[52px] rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98]"
+                >
+                  {text.applyFilter}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>,
+      document.body
+    );
+
   return (
     <>
       <style>
         {`
-          @keyframes brandPanelOpen {
-            from {
+          @keyframes brandBubbleOpen {
+            0% {
               opacity: 0;
-              transform: translateY(-14px);
-              max-height: 0;
+              transform: translateY(-18px) scale(0.94);
+              filter: blur(4px);
             }
 
-            to {
+            60% {
               opacity: 1;
-              transform: translateY(0);
-              max-height: 178px;
+              transform: translateY(4px) scale(1.015);
+              filter: blur(0);
+            }
+
+            100% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+              filter: blur(0);
+            }
+          }
+
+          @keyframes brandBubbleClose {
+            0% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+              filter: blur(0);
+            }
+
+            100% {
+              opacity: 0;
+              transform: translateY(-18px) scale(0.94);
+              filter: blur(4px);
             }
           }
 
           @keyframes filterOpen {
-            from {
+            0% {
               opacity: 0;
-              transform: translateY(-14px) scale(0.97);
+              transform: translateY(-18px) scale(0.94);
+              filter: blur(5px);
             }
 
-            to {
+            65% {
+              opacity: 1;
+              transform: translateY(5px) scale(1.015);
+              filter: blur(0);
+            }
+
+            100% {
               opacity: 1;
               transform: translateY(0) scale(1);
+              filter: blur(0);
             }
           }
 
@@ -258,11 +603,13 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
             from {
               opacity: 1;
               transform: translateY(0) scale(1);
+              filter: blur(0);
             }
 
             to {
               opacity: 0;
-              transform: translateY(-14px) scale(0.97);
+              transform: translateY(-18px) scale(0.94);
+              filter: blur(5px);
             }
           }
 
@@ -290,19 +637,30 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
       {loading && <AppLoader text={text.loading} />}
 
-      <section className="sticky top-[62px] z-30 border-b border-zinc-100 bg-white/95 backdrop-blur-xl transition-all duration-300 md:top-[72px]">
-        <div className="mx-auto max-w-[1180px] px-4 py-3 md:px-6">
+      <section
+        style={{
+          top: navVisible ? (window.innerWidth >= 768 ? 72 : 62) : 0,
+        }}
+        className="sticky z-30 border-b border-zinc-100 bg-white/95 backdrop-blur-xl transition-all duration-500"
+      >
+        <div className="relative mx-auto max-w-[1180px] px-4 py-3 md:px-6">
           <button
             type="button"
-            onClick={() => setBrandOpen((prev) => !prev)}
-            className="mx-auto flex items-center gap-2 rounded-full bg-white px-4 py-2 text-zinc-950 transition duration-300 hover:bg-zinc-50 active:scale-[0.98]"
+            onClick={toggleBrands}
+            className={`mx-auto flex items-center gap-2 rounded-full bg-white px-4 py-2 text-zinc-950 transition duration-300 hover:bg-zinc-50 active:scale-[0.98] ${
+              brandMounted ? "shadow-[0_10px_30px_rgba(0,0,0,0.06)]" : ""
+            }`}
           >
             <span className="text-[15px] font-bold tracking-[0.08em]">
               {text.brands}
             </span>
 
-            <span className="text-[18px]">
-              {brandOpen ? <FiChevronUp /> : <FiChevronDown />}
+            <span
+              className={`text-[18px] transition-transform duration-300 ${
+                brandMounted ? "rotate-180" : "rotate-0"
+              }`}
+            >
+              {brandMounted ? <FiChevronUp /> : <FiChevronDown />}
             </span>
           </button>
 
@@ -310,9 +668,15 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
             {activeBrandName}
           </p>
 
-          {brandOpen && (
-            <div className="animate-[brandPanelOpen_0.38s_cubic-bezier(0.22,1,0.36,1)_both] overflow-hidden">
-              <div className="mt-4 flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {brandMounted && (
+            <div
+              className={`absolute left-4 right-4 top-[72px] z-40 rounded-[28px] border border-zinc-100 bg-white/96 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.10)] backdrop-blur-xl md:left-6 md:right-6 ${
+                brandClosing
+                  ? "animate-[brandBubbleClose_0.34s_ease_both]"
+                  : "animate-[brandBubbleOpen_0.46s_cubic-bezier(0.22,1,0.36,1)_both]"
+              }`}
+            >
+              <div className="flex gap-4 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <BrandButton
                   active={!filters.brandId}
                   name={text.allBrands}
@@ -339,163 +703,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
         </div>
       </section>
 
-      <button
-        ref={filterButtonRef}
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        style={{
-          left: `${filterPos.x}px`,
-          top: `${filterPos.y}px`,
-          touchAction: "none",
-          userSelect: "none",
-        }}
-        className="fixed z-40 grid h-[54px] w-[54px] cursor-grab place-items-center rounded-full border border-zinc-100 bg-white text-[25px] text-zinc-950 shadow-[0_14px_38px_rgba(0,0,0,0.16)] transition duration-200 active:cursor-grabbing active:scale-95"
-        aria-label="Filter"
-      >
-        <FiSliders />
-      </button>
-
-      {filterOpen && (
-        <div className="fixed inset-0 z-[80]">
-          <button
-            type="button"
-            onClick={closeFilter}
-            className={`absolute inset-0 bg-black/20 backdrop-blur-[2px] ${
-              filterClosing
-                ? "animate-[fadeOut_0.24s_ease_both]"
-                : "animate-[fadeIn_0.24s_ease_both]"
-            }`}
-          />
-
-          <div
-            className={`absolute left-1/2 top-[92px] max-h-[calc(100vh-112px)] w-[calc(100%-28px)] max-w-[430px] -translate-x-1/2 overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] ${
-              filterClosing
-                ? "animate-[filterClose_0.26s_ease_both]"
-                : "animate-[filterOpen_0.36s_cubic-bezier(0.22,1,0.36,1)_both]"
-            }`}
-          >
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-[26px] font-extrabold tracking-[-0.035em] text-zinc-950">
-                  {text.filters}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-zinc-500">
-                  {text.filterDescription}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeFilter}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-50 text-[20px] text-zinc-800"
-              >
-                <FiX />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <FilterSelect
-                label={text.category}
-                value={draftFilters.categoryId}
-                items={categories}
-                onChange={(value) =>
-                  setDraftFilters((prev) => ({ ...prev, categoryId: value }))
-                }
-              />
-
-              <FilterSelect
-                label={text.size}
-                value={draftFilters.sizeId}
-                items={sizes}
-                onChange={(value) =>
-                  setDraftFilters((prev) => ({ ...prev, sizeId: value }))
-                }
-              />
-
-              <FilterSelect
-                label={text.color}
-                value={draftFilters.colorId}
-                items={colors}
-                onChange={(value) =>
-                  setDraftFilters((prev) => ({ ...prev, colorId: value }))
-                }
-              />
-
-              <div>
-                <p className="mb-2 text-sm font-bold text-zinc-800">
-                  {text.price}
-                </p>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    value={draftFilters.minPrice}
-                    onChange={(e) =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        minPrice: e.target.value.replace(/[^\d.]/g, ""),
-                      }))
-                    }
-                    placeholder={text.minPrice}
-                    inputMode="decimal"
-                    className="h-12 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
-                  />
-
-                  <input
-                    value={draftFilters.maxPrice}
-                    onChange={(e) =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        maxPrice: e.target.value.replace(/[^\d.]/g, ""),
-                      }))
-                    }
-                    placeholder={text.maxPrice}
-                    inputMode="decimal"
-                    className="h-12 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    isDiscounted: !prev.isDiscounted,
-                  }))
-                }
-                className={`flex h-12 w-full items-center justify-between rounded-[16px] border px-4 text-sm font-bold transition ${
-                  draftFilters.isDiscounted
-                    ? "border-[#244989] bg-[#244989]/8 text-[#244989]"
-                    : "border-zinc-100 bg-zinc-50 text-zinc-700"
-                }`}
-              >
-                {text.discounted}
-                {draftFilters.isDiscounted && <FiCheck />}
-              </button>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={resetFilter}
-                className="h-13 rounded-[16px] border border-zinc-100 bg-zinc-50 text-sm font-extrabold text-zinc-800 transition hover:bg-zinc-100"
-              >
-                {text.resetFilter}
-              </button>
-
-              <button
-                type="button"
-                onClick={applyFilter}
-                className="h-13 rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98]"
-              >
-                {text.applyFilter}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {filterPortal}
     </>
   );
 }
@@ -508,7 +716,7 @@ function BrandButton({ active, name, image, onClick }) {
       className="group flex shrink-0 flex-col items-center gap-2"
     >
       <span
-        className={`grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full border transition duration-300 ${
+        className={`grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full border transition duration-300 group-active:scale-95 ${
           active
             ? "border-[#244989] bg-[#244989]/8 shadow-[0_10px_25px_rgba(36,73,137,0.14)]"
             : "border-zinc-100 bg-white shadow-[0_8px_22px_rgba(0,0,0,0.05)]"

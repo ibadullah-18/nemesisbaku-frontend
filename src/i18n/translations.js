@@ -41,6 +41,23 @@ export const translations = {
     applyFilter: "Təsdiq et",
     resetFilter: "Sıfırla",
     close: "Bağla",
+
+    brands: "Brendlər",
+    allBrands: "Hamısı",
+    category: "Kateqoriya",
+
+    discover: "Kəşf et",
+    featuredProducts: "Seçilmiş məhsullar",
+    featuredProductsDesc: "NemesisBaku tərəfindən önə çıxarılan modellər.",
+    newProducts: "Yeni məhsullar",
+    newProductsDesc: "Kolleksiyaya yeni əlavə olunan premium modellər.",
+    discountProducts: "Endirimli məhsullar",
+    discountProductsDesc: "Xüsusi qiymətlərlə seçilmiş məhsullar.",
+    allProducts: "Bütün məhsullar",
+    allProductsDesc: "NemesisBaku kolleksiyasındakı bütün seçimlər.",
+    loadMore: "Daha çox göstər",
+    aboutTitle: "NEMESIS BAKU – ADDIMLARINIZDA PREMİUM STİL",
+    aboutDesc: "Premium sneaker kolleksiyaları və minimalist seçim təcrübəsi.",
   },
 
   ru: {
@@ -85,6 +102,23 @@ export const translations = {
     applyFilter: "Применить",
     resetFilter: "Сбросить",
     close: "Закрыть",
+
+    brands: "Бренды",
+    allBrands: "Все",
+    category: "Категория",
+
+    discover: "Смотреть",
+    featuredProducts: "Избранные товары",
+    featuredProductsDesc: "Модели, выбранные NemesisBaku.",
+    newProducts: "Новые товары",
+    newProductsDesc: "Новые премиальные модели в коллекции.",
+    discountProducts: "Товары со скидкой",
+    discountProductsDesc: "Подборка товаров по специальным ценам.",
+    allProducts: "Все товары",
+    allProductsDesc: "Все позиции коллекции NemesisBaku.",
+    loadMore: "Показать ещё",
+    aboutTitle: "NEMESIS BAKU – ПРЕМИАЛЬНЫЙ СТИЛЬ В КАЖДОМ ШАГЕ",
+    aboutDesc: "Премиальные sneaker-коллекции и минималистичный опыт выбора.",
   },
 
   en: {
@@ -129,5 +163,22 @@ export const translations = {
     applyFilter: "Apply",
     resetFilter: "Reset",
     close: "Close",
+
+    brands: "Brands",
+    allBrands: "All",
+    category: "Category",
+
+    discover: "Discover",
+    featuredProducts: "Featured products",
+    featuredProductsDesc: "Models highlighted by NemesisBaku.",
+    newProducts: "New products",
+    newProductsDesc: "Premium models newly added to the collection.",
+    discountProducts: "Discount products",
+    discountProductsDesc: "Selected products with special prices.",
+    allProducts: "All products",
+    allProductsDesc: "All choices from the NemesisBaku collection.",
+    loadMore: "Load more",
+    aboutTitle: "NEMESIS BAKU – PREMIUM STYLE IN EVERY STEP",
+    aboutDesc: "Premium sneaker collections and a minimalist shopping experience.",
   },
 };
