@@ -3,6 +3,13 @@ import Navbar from "../components/layout/Navbar";
 import LoginPage from "../pages/auth/LoginPage";
 import SearchPage from "../components/common/SearchOverlay";
 import HomePage from "../pages/home/HomePage";
+import SuperAdminLogin from "../pages/admin/SuperAdminLogin";
+import AdminLayout from "../components/admin/AdminLayout";
+import AdminProtectedRoute from "../components/admin/AdminProtectedRoute";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminProducts from "../pages/admin/AdminProducts";
+import AdminAddProduct from "../pages/admin/AdminAddProduct";
+import AdminEditProduct from "../pages/admin/AdminEditProduct";
 
 function PageShell({ children }) {
   return (
@@ -117,6 +124,29 @@ export default function AppRoutes() {
       />
 
       <Route path="*" element={<Navigate to="/" />} />
+
+      {/* Admin Routes */ }
+
+      <Route path="/SuperAdmin" element={<SuperAdminLogin />} />
+
+      <Route
+        path="/SuperAdmin"
+        element={
+          <AdminProtectedRoute>
+            <AdminLayout />
+          </AdminProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="products" element={<AdminProducts />} />
+        <Route path="add-product" element={<AdminAddProduct />} />  
+        <Route path="products/:id" element={<AdminEditProduct />} />
+      </Route>
+
+
+
+
     </Routes>
+    
   );
 }
