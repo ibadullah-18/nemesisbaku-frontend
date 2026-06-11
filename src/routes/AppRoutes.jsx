@@ -10,6 +10,12 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminProducts from "../pages/admin/AdminProducts";
 import AdminAddProduct from "../pages/admin/AdminAddProduct";
 import AdminEditProduct from "../pages/admin/AdminEditProduct";
+import AdminCampaigns from "../pages/admin/AdminCampaigns";
+import AdminOrders from "../pages/admin/AdminOrders"; 
+import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
+import AdminCategories from "../pages/admin/AdminCategories";
+import AdminBrands from "../pages/admin/AdminBrands";
+import ProfilePage from "../pages/profile/ProfilePage";
 
 function PageShell({ children }) {
   return (
@@ -109,10 +115,10 @@ export default function AppRoutes() {
         path="/profile"
         element={
           <Layout>
-            <ProfileTemp />
+            <ProfilePage />
           </Layout>
         }
-      />
+        />
 
       <Route
         path="/login"
@@ -141,6 +147,11 @@ export default function AppRoutes() {
         <Route path="products" element={<AdminProducts />} />
         <Route path="add-product" element={<AdminAddProduct />} />  
         <Route path="products/:id" element={<AdminEditProduct />} />
+        <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="audit-logs" element={<AdminAuditLogs />} />
+        <Route path="categories" element={<AdminCategories />} />
+        <Route path="brands" element={<AdminBrands />} />
       </Route>
 
 

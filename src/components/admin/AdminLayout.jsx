@@ -12,6 +12,7 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import { clearAdminAuth } from "../../api/admin/adminAuth";
+import { FiShield } from "react-icons/fi";
 
 const links = [
   { to: "/SuperAdmin/dashboard", label: "Dashboard", icon: <FiGrid /> },
@@ -22,6 +23,7 @@ const links = [
   { to: "/SuperAdmin/categories", label: "Kateqoriyalar", icon: <FiTag /> },
   { to: "/SuperAdmin/campaigns", label: "Kampaniyalar", icon: <FiImage /> },
   { to: "/SuperAdmin/users", label: "İstifadəçilər", icon: <FiUsers /> },
+  { to: "/SuperAdmin/audit-logs",label: "Audit Loglar",icon: <FiShield />,},
   { to: "/SuperAdmin/store", label: "Mağaza ayarları", icon: <FiSettings /> },
 ];
 

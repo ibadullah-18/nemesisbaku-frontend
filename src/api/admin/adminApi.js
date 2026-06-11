@@ -141,10 +141,39 @@ export const adminCategoriesApi = {
 export const adminBrandsApi = {
   list: () => adminFetch("/api/AdminBrands"),
 
-  create: (body) =>
-    adminFetch("/api/AdminBrands", {
+  create: ({ name, image }) => {
+    const formData = new FormData();
+
+    formData.append("Name", name);
+
+    if (image) {
+      formData.append("Image", image);
+    }
+
+    return adminFetch("/api/AdminBrands", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: formData,
+    });
+  },
+
+  update: (id, { name, image }) => {
+    const formData = new FormData();
+
+    formData.append("Name", name);
+
+    if (image) {
+      formData.append("Image", image);
+    }
+
+    return adminFetch(`/api/AdminBrands/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
+  },
+
+  delete: (id) =>
+    adminFetch(`/api/AdminBrands/${id}`, {
+      method: "DELETE",
     }),
 };
 
@@ -187,3 +216,68 @@ export const adminOrdersApi = {
       body: JSON.stringify(body),
     }),
 };
+
+export const adminCampaignsApi = {
+  list: () => adminFetch("/api/AdminCampaigns"),
+
+  create: (body) => {
+    const formData = new FormData();
+
+    formData.append("Title", body.title);
+    formData.append("Description", body.description || "");
+    formData.append("RedirectUrl", body.redirectUrl || "/");
+    formData.append("StartDate", body.startDate);
+    formData.append("EndDate", body.endDate);
+    formData.append("IsActive", body.isActive);
+
+    if (body.file) {
+      formData.append("File", body.file);
+    }
+
+    return adminFetch("/api/AdminCampaigns", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  update: (id, body) => {
+    const formData = new FormData();
+
+    formData.append("Title", body.title);
+    formData.append("Description", body.description || "");
+    formData.append("RedirectUrl", body.redirectUrl || "/");
+    formData.append("StartDate", body.startDate);
+    formData.append("EndDate", body.endDate);
+    formData.append("IsActive", body.isActive);
+
+    if (body.file) {
+      formData.append("File", body.file);
+    }
+
+    return adminFetch(`/api/AdminCampaigns/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
+  },
+
+  delete: (id) =>
+    adminFetch(`/api/AdminCampaigns/${id}`, {
+      method: "DELETE",
+    }),
+};
+
+export const adminAuditLogsApi = {
+  list: ({ page = 1, pageSize = 20, search = "" } = {}) => {
+    const params = new URLSearchParams();
+
+    params.append("page", page);
+    params.append("pageSize", pageSize);
+
+    if (search) {
+      params.append("search", search);
+    }
+
+    return adminFetch(`/api/AdminAuditLogs?${params.toString()}`);
+  },
+};
+

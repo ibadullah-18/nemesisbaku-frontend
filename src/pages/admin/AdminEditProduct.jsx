@@ -19,7 +19,7 @@ import {
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 
-const defaultSizeValues = Array.from({ length: 11 }, (_, i) => String(i + 34));
+const defaultSizeValues = Array.from({ length: 9 }, (_, i) => String(i + 34));
 
 const defaultColors = [
   { name: "Qara", hexCode: "#000000" },
@@ -28,7 +28,13 @@ const defaultColors = [
   { name: "Qırmızı", hexCode: "#DC2626" },
   { name: "Mavi", hexCode: "#2563EB" },
   { name: "Yaşıl", hexCode: "#16A34A" },
+  { name: "Sarı", hexCode: "#FACC15" },
+  { name: "Narıncı", hexCode: "#F97316" },
+  { name: "Bənövşəyi", hexCode: "#7C3AED" },
+  { name: "Çəhrayı", hexCode: "#EC4899" },
+  { name: "Qəhvəyi", hexCode: "#92400E" },
   { name: "Bej", hexCode: "#D6C3A5" },
+  { name: "Krem", hexCode: "#F5EBDD" },
 ];
 
 function unwrapData(res) {
@@ -148,7 +154,9 @@ export default function AdminEditProduct() {
       .map((x) => String(x.value || x.size || x.name || ""))
       .filter(Boolean);
 
-    return [...new Set([...defaultSizeValues, ...apiSizes])];
+    return [...new Set([...defaultSizeValues, ...apiSizes])].sort(
+      (a, b) => Number(a) - Number(b)
+    );
   }, [sizes]);
 
   const colorOptions = useMemo(() => {
@@ -213,7 +221,13 @@ export default function AdminEditProduct() {
         price: product.price ?? "",
         discountPrice: product.discountPrice ?? "",
         isDiscounted: Boolean(product.isDiscounted),
+        discountBadgeText:
+          product.discountBadgeText || product.discountText || "Endirimli məhsullar",
         isFeatured: Boolean(product.isFeatured),
+        featuredBadgeText:
+          product.featuredBadgeText || product.featuredText || "Önə çıxan məhsullar",
+        isNew: Boolean(product.isNew),
+        newBadgeText: product.newBadgeText || product.newText || "Yeni məhsullar",
         isActive: product.isActive ?? true,
         categoryId,
         brandId,
@@ -244,7 +258,11 @@ export default function AdminEditProduct() {
       price: Number(form.price),
       discountPrice: form.discountPrice ? Number(form.discountPrice) : null,
       isDiscounted: form.isDiscounted,
+      discountBadgeText: form.isDiscounted ? form.discountBadgeText.trim() : "",
       isFeatured: form.isFeatured,
+      featuredBadgeText: form.isFeatured ? form.featuredBadgeText.trim() : "",
+      isNew: form.isNew,
+      newBadgeText: form.isNew ? form.newBadgeText.trim() : "",
       isActive: form.isActive,
       categoryId: form.categoryId,
       brandId: form.brandId,
@@ -398,6 +416,22 @@ export default function AdminEditProduct() {
     );
   }
 
+  function updateVariantColor(index, colorName) {
+    const selected = colorOptions.find((c) => c.name === colorName);
+
+    setVariants((prev) =>
+      prev.map((variant, i) =>
+        i === index
+          ? {
+              ...variant,
+              colorName,
+              colorHex: selected?.hexCode || variant.colorHex || "#000000",
+            }
+          : variant
+      )
+    );
+  }
+
   function addVariantRow() {
     setVariants((prev) => [
       ...prev,
@@ -509,10 +543,40 @@ export default function AdminEditProduct() {
               />
             </label>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
               <Toggle label="Endirimli" checked={form.isDiscounted} onClick={() => updateForm("isDiscounted", !form.isDiscounted)} />
-              <Toggle label="Featured" checked={form.isFeatured} onClick={() => updateForm("isFeatured", !form.isFeatured)} />
+              <Toggle label="Önə çıxan" checked={form.isFeatured} onClick={() => updateForm("isFeatured", !form.isFeatured)} />
+              <Toggle label="Yeni məhsul" checked={form.isNew} onClick={() => updateForm("isNew", !form.isNew)} />
               <Toggle label="Aktivdir" checked={form.isActive} onClick={() => updateForm("isActive", !form.isActive)} />
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              {form.isDiscounted && (
+                <AdminInput
+                  label="Endirim bölmə yazısı"
+                  placeholder="Qurban endirimi məhsulları"
+                  value={form.discountBadgeText}
+                  onChange={(v) => updateForm("discountBadgeText", v)}
+                />
+              )}
+
+              {form.isFeatured && (
+                <AdminInput
+                  label="Önə çıxan bölmə yazısı"
+                  placeholder="Premium seçimlər"
+                  value={form.featuredBadgeText}
+                  onChange={(v) => updateForm("featuredBadgeText", v)}
+                />
+              )}
+
+              {form.isNew && (
+                <AdminInput
+                  label="Yeni məhsul bölmə yazısı"
+                  placeholder="Yeni kolleksiya"
+                  value={form.newBadgeText}
+                  onChange={(v) => updateForm("newBadgeText", v)}
+                />
+              )}
             </div>
           </div>
 
@@ -622,56 +686,21 @@ export default function AdminEditProduct() {
                 </div>
 
                 <div className="grid gap-3">
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-bold text-zinc-800">
-                      Razmer
-                    </span>
-                    <input
-                      list="edit-size-options"
-                      value={variant.sizeValue}
-                      onChange={(e) => updateVariant(index, "sizeValue", e.target.value)}
-                      placeholder="42 və ya 45"
-                      className="h-13 w-full rounded-[16px] border border-zinc-100 bg-white px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
-                    />
-                  </label>
+                  <NativeSelect
+                    label="Razmer"
+                    value={variant.sizeValue}
+                    onChange={(v) => updateVariant(index, "sizeValue", v)}
+                    items={sizeOptions.map((size) => ({ id: size, name: size }))}
+                    placeholder="Razmer seç"
+                  />
 
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-bold text-zinc-800">
-                      Rəng adı
-                    </span>
-                    <input
-                      list="edit-color-options"
-                      value={variant.colorName}
-                      onChange={(e) => {
-                        const selected = colorOptions.find(
-                          (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
-                        );
-
-                        updateVariant(index, "colorName", e.target.value);
-
-                        if (selected) {
-                          updateVariant(index, "colorHex", selected.hexCode);
-                        }
-                      }}
-                      placeholder="Qara və ya Bej"
-                      className="h-13 w-full rounded-[16px] border border-zinc-100 bg-white px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
-                    />
-                  </label>
-
-                  <div className="flex h-13 items-center gap-3 rounded-[16px] border border-zinc-100 bg-white px-4">
-                    <input
-                      type="color"
-                      value={variant.colorHex || "#000000"}
-                      onChange={(e) => updateVariant(index, "colorHex", e.target.value)}
-                      className="h-8 w-10 border-0 bg-transparent p-0"
-                    />
-                    <input
-                      value={variant.colorHex || ""}
-                      onChange={(e) => updateVariant(index, "colorHex", e.target.value)}
-                      placeholder="#000000"
-                      className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
-                    />
-                  </div>
+                  <NativeSelect
+                    label="Rəng"
+                    value={variant.colorName}
+                    onChange={(v) => updateVariantColor(index, v)}
+                    items={colorOptions.map((color) => ({ id: color.name, name: color.name }))}
+                    placeholder="Rəng seç"
+                  />
 
                   <AdminInput
                     label="Stok"
@@ -693,17 +722,6 @@ export default function AdminEditProduct() {
         </section>
       </div>
 
-      <datalist id="edit-size-options">
-        {sizeOptions.map((size) => (
-          <option key={size} value={size} />
-        ))}
-      </datalist>
-
-      <datalist id="edit-color-options">
-        {colorOptions.map((color) => (
-          <option key={color.name} value={color.name} />
-        ))}
-      </datalist>
     </div>
   );
 }
@@ -724,6 +742,10 @@ function AdminInput({ label, placeholder, value, onChange, type = "text" }) {
 }
 
 function AdminSelect({ label, placeholder, value, onChange, items }) {
+  return <NativeSelect label={label} placeholder={placeholder} value={value} onChange={onChange} items={items} />;
+}
+
+function NativeSelect({ label, placeholder, value, onChange, items }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-bold text-zinc-800">{label}</span>
