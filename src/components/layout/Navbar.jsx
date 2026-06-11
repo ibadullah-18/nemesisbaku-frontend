@@ -256,7 +256,7 @@ export default function Navbar() {
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center text-lg font-semibold">
-                    N
+                    n
                   </div>
                 )}
               </div>

@@ -16,6 +16,7 @@ import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 import AdminCategories from "../pages/admin/AdminCategories";
 import AdminBrands from "../pages/admin/AdminBrands";
 import ProfilePage from "../pages/profile/ProfilePage";
+import ProductDetailsPage from "../pages/product/ProductDetailsPage";
 
 function PageShell({ children }) {
   return (
@@ -125,6 +126,15 @@ export default function AppRoutes() {
         element={
           <Layout>
             <LoginPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/products/:id"
+        element={
+          <Layout>
+            <ProductDetailsPage />
           </Layout>
         }
       />

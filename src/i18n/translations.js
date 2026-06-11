@@ -94,6 +94,19 @@ export const translations = {
     passwordsNotSame: "Yeni şifrələr eyni deyil.",
     passwordChanged: "Şifrə yeniləndi.",
     passwordChangeError: "Şifrə yenilənmədi.",
+
+    productLoadError: "Məhsul məlumatı yüklənmədi.",
+    productNotFound: "Məhsul tapılmadı.",
+    quantity: "Say",
+    onlyLeft: "Yalnız {count} ədəd qaldı",
+    addToBasket: "Səbətə əlavə et",
+    askWhatsapp: "WhatsApp ilə soruş",
+    selectSizeError: "Razmer seçilməlidir.",
+    basketAddError: "Səbətə əlavə olunmadı.",
+    whatsappError: "WhatsApp keçidi açılmadı.",
+    selectedForYou: "Sizin üçün seçilmişlər",
+    swipe: "Sürüşdür",
+    more: "Daha çox",
   },
 
   ru: {
@@ -191,6 +204,19 @@ export const translations = {
     passwordsNotSame: "Новые пароли не совпадают.",
     passwordChanged: "Пароль обновлён.",
     passwordChangeError: "Не удалось обновить пароль.",
+
+    productLoadError: "Не удалось загрузить товар.",
+    productNotFound: "Товар не найден.",
+    quantity: "Количество",
+    onlyLeft: "Осталось только {count} шт.",
+    addToBasket: "Добавить в корзину",
+    askWhatsapp: "Спросить в WhatsApp",
+    selectSizeError: "Выберите размер.",
+    basketAddError: "Не удалось добавить в корзину.",
+    whatsappError: "Не удалось открыть WhatsApp.",
+    selectedForYou: "Подобрано для вас",
+    swipe: "Прокрутите",
+    more: "Ещё",
   },
 
   en: {
@@ -288,5 +314,18 @@ export const translations = {
     passwordsNotSame: "New passwords do not match.",
     passwordChanged: "Password updated.",
     passwordChangeError: "Password could not be updated.",
+
+    productLoadError: "Product information could not be loaded.",
+    productNotFound: "Product not found.",
+    quantity: "Quantity",
+    onlyLeft: "Only {count} left",
+    addToBasket: "Add to basket",
+    askWhatsapp: "Ask on WhatsApp",
+    selectSizeError: "Please select a size.",
+    basketAddError: "Could not add to basket.",
+    whatsappError: "Could not open WhatsApp.",
+    selectedForYou: "Selected for you",
+    swipe: "Swipe",
+    more: "More",
   },
 };
