@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { FiHeart, FiShoppingBag } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
+import { favoritesApi } from "../../api/favoritesApi";
 
 const RESET_IMAGE_DELAY = 5000;
 const HIDE_SIZES_DELAY = 2600;
@@ -50,6 +51,7 @@ export default function ProductCard({ product }) {
   const [favorite, setFavorite] = useState(Boolean(product?.isFavorite));
   const [actionLoading, setActionLoading] = useState(false);
 
+  const productId = product?.id;
   const mergedProduct = detailProduct || product;
 
   const images = useMemo(() => {
@@ -96,14 +98,45 @@ export default function ProductCard({ product }) {
     };
   }, []);
 
+  useEffect(() => {
+    async function checkFavoriteStatus() {
+      if (!productId || !getAccessToken()) {
+        setFavorite(Boolean(product?.isFavorite));
+        return;
+      }
+
+      try {
+        const res = await favoritesApi.check(productId);
+        const result = res?.data?.data ?? res?.data ?? res;
+
+        setFavorite(Boolean(result));
+      } catch {
+        setFavorite(Boolean(product?.isFavorite));
+      }
+    }
+
+    checkFavoriteStatus();
+
+    function syncFavorite(e) {
+      if (e.detail?.productId !== productId) return;
+      setFavorite(Boolean(e.detail?.isFavorite));
+    }
+
+    window.addEventListener("favorite_changed", syncFavorite);
+
+    return () => {
+      window.removeEventListener("favorite_changed", syncFavorite);
+    };
+  }, [productId, product?.isFavorite]);
+
   async function loadDetailOnce() {
-    if (detailLoadedRef.current || detailLoading || !product?.id) return;
+    if (detailLoadedRef.current || detailLoading || !productId) return;
 
     try {
       detailLoadedRef.current = true;
       setDetailLoading(true);
 
-      const res = await apiFetch(`/api/Products/${product.id}`);
+      const res = await apiFetch(`/api/Products/${productId}`);
       setDetailProduct(unwrapData(res));
     } catch {
       detailLoadedRef.current = false;
@@ -231,10 +264,10 @@ export default function ProductCard({ product }) {
   }
 
   function handleCardClick(e) {
-    if (!didSwipe) return;
-
-    e.preventDefault();
-    e.stopPropagation();
+    if (!productId || didSwipe) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     window.setTimeout(() => setDidSwipe(false), 80);
   }
@@ -243,6 +276,8 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
 
+    if (!productId) return;
+
     if (!getAccessToken()) {
       navigate("/login");
       return;
@@ -250,10 +285,27 @@ export default function ProductCard({ product }) {
 
     try {
       setActionLoading(true);
-      await apiFetch(`/api/Favorites/${product.id}`, { method: "POST" });
-      setFavorite((prev) => !prev);
-    } catch {
-      setFavorite((prev) => !prev);
+
+      const nextFavorite = !favorite;
+
+      if (favorite) {
+        await favoritesApi.remove(productId);
+      } else {
+        await favoritesApi.add(productId);
+      }
+
+      setFavorite(nextFavorite);
+
+      window.dispatchEvent(
+        new CustomEvent("favorite_changed", {
+          detail: {
+            productId,
+            isFavorite: nextFavorite,
+          },
+        })
+      );
+
+      window.dispatchEvent(new Event("nemesis_auth_changed"));
     } finally {
       setActionLoading(false);
     }
@@ -263,12 +315,19 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
 
+    if (!productId) return;
+
     if (!getAccessToken()) {
       navigate("/login");
       return;
     }
 
-    const firstVariant = mergedProduct?.variants?.[0];
+    await loadDetailOnce();
+
+    const variants = detailProduct?.variants || mergedProduct?.variants || [];
+    const firstVariant = variants.find((x) => Number(x.stockCount ?? x.stock ?? 0) > 0) || variants[0];
+
+    if (!firstVariant?.id) return;
 
     try {
       setActionLoading(true);
@@ -276,8 +335,8 @@ export default function ProductCard({ product }) {
       await apiFetch("/api/Basket", {
         method: "POST",
         body: JSON.stringify({
-          productId: product.id,
-          variantId: firstVariant?.id || null,
+          productId,
+          productVariantId: firstVariant.id,
           quantity: 1,
         }),
       });
@@ -290,7 +349,7 @@ export default function ProductCard({ product }) {
 
   return (
     <NavLink
-      to={`/products/${product.id}`}
+      to={productId ? `/products/${productId}` : "#"}
       onClick={handleCardClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -316,10 +375,18 @@ export default function ProductCard({ product }) {
         <button
           type="button"
           onClick={handleFavorite}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           disabled={actionLoading}
           className="absolute right-3 top-3 z-30 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-[18px] text-zinc-950 shadow-sm backdrop-blur transition active:scale-90"
         >
-          {favorite ? <FaHeart className="text-[#244989]" /> : <FiHeart />}
+          {favorite ? <FaHeart className="text-red-500" /> : <FiHeart />}
         </button>
 
         <div className="h-full w-full overflow-hidden">
@@ -398,6 +465,14 @@ export default function ProductCard({ product }) {
           <button
             type="button"
             onClick={handleBasket}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             disabled={actionLoading}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-zinc-50 text-[17px] text-zinc-900 transition hover:bg-zinc-100 active:scale-90"
           >

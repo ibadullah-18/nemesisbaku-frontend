@@ -107,6 +107,15 @@ export const translations = {
     selectedForYou: "Sizin üçün seçilmişlər",
     swipe: "Sürüşdür",
     more: "Daha çox",
+    addedToBasket: "Səbətə əlavə olundu",
+
+    favorites: "Favorilər",
+    favoritesDesc: "Bəyəndiyiniz məhsulları burada saxlayın və istədiyiniz vaxt davam edin.",
+    favoritesLoadError: "Favorilər yüklənmədi.",
+    favoritesEmptyTitle: "Favori məhsul yoxdur",
+    favoritesEmptyDesc: "Bəyəndiyiniz məhsullarda ürək ikonuna basın, onlar burada görünəcək.",
+    total: "Cəmi",
+    refresh: "Yenilə",
   },
 
   ru: {
@@ -217,6 +226,15 @@ export const translations = {
     selectedForYou: "Подобрано для вас",
     swipe: "Прокрутите",
     more: "Ещё",
+    addedToBasket: "Добавлено в корзину",
+
+    favorites: "Избранное",
+    favoritesDesc: "Сохраняйте понравившиеся товары и возвращайтесь к ним в любое время.",
+    favoritesLoadError: "Не удалось загрузить избранное.",
+    favoritesEmptyTitle: "Нет избранных товаров",
+    favoritesEmptyDesc: "Нажмите на сердечко у товара, и он появится здесь.",
+    total: "Всего",
+    refresh: "Обновить",
   },
 
   en: {
@@ -327,5 +345,13 @@ export const translations = {
     selectedForYou: "Selected for you",
     swipe: "Swipe",
     more: "More",
+    addedToBasket: "Added to basket",
+    favorites: "Favorites",
+    favoritesDesc: "Save the products you like and come back to them anytime.",
+    favoritesLoadError: "Favorites could not be loaded.",
+    favoritesEmptyTitle: "No favorite products",
+    favoritesEmptyDesc: "Tap the heart icon on products you like, and they will appear here.",
+    total: "Total",
+    refresh: "Refresh", 
   },
 };

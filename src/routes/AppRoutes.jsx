@@ -17,6 +17,7 @@ import AdminCategories from "../pages/admin/AdminCategories";
 import AdminBrands from "../pages/admin/AdminBrands";
 import ProfilePage from "../pages/profile/ProfilePage";
 import ProductDetailsPage from "../pages/product/ProductDetailsPage";
+import FavoritesPage from "../pages/favorites/FavoritesPage";
 
 function PageShell({ children }) {
   return (
@@ -98,7 +99,7 @@ export default function AppRoutes() {
         path="/favorites"
         element={
           <Layout>
-            <FavoritesTemp />
+            <FavoritesPage />
           </Layout>
         }
       />
