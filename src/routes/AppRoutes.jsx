@@ -18,6 +18,7 @@ import AdminBrands from "../pages/admin/AdminBrands";
 import ProfilePage from "../pages/profile/ProfilePage";
 import ProductDetailsPage from "../pages/product/ProductDetailsPage";
 import FavoritesPage from "../pages/favorites/FavoritesPage";
+import BasketPage from "../pages/basket/BasketPage";
 
 function PageShell({ children }) {
   return (
@@ -108,7 +109,7 @@ export default function AppRoutes() {
         path="/basket"
         element={
           <Layout>
-            <BasketTemp />
+            <BasketPage />
           </Layout>
         }
       />
