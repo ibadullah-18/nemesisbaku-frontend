@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiCalendar,
-  FiCheck,
-  FiEdit3,
-  FiLock,
+  FiChevronRight,
+  FiHome,
   FiLogOut,
   FiMail,
+  FiMapPin,
+  FiPackage,
   FiPhone,
-  FiSave,
+  FiSettings,
   FiShield,
   FiUser,
 } from "react-icons/fi";
@@ -20,82 +20,41 @@ function unwrap(res) {
   return res?.data?.data || res?.data || res;
 }
 
-const emptyPhoneForm = {
-  newPhoneNumber: "",
-  code: "",
-};
-
-const emptyPasswordForm = {
-  phoneNumber: "",
-  code: "",
-  newPassword: "",
-  confirmNewPassword: "",
-};
+function formatDate(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("az-AZ");
+}
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
 
   const [profile, setProfile] = useState(null);
-
-  const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    dateOfBirth: "",
-    loyaltyCardCode: "",
-  });
-
-  const [phoneForm, setPhoneForm] = useState(emptyPhoneForm);
-  const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
-
+  const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [addressError, setAddressError] = useState(false);
 
   useEffect(() => {
-    loadProfile();
+    loadPage();
   }, []);
 
-  async function loadProfile() {
+  async function loadPage() {
     try {
       setLoading(true);
-      setError("");
 
-      const res = await profileApi.get();
-      const data = unwrap(res);
+      const profileRes = await profileApi.get();
+      setProfile(unwrap(profileRes));
 
-      setProfile(data);
-
-      setForm({
-        fullName: data?.fullName || "",
-        email: data?.email || "",
-        dateOfBirth: data?.dateOfBirth ? data.dateOfBirth.slice(0, 10) : "",
-        loyaltyCardCode: data?.loyaltyCardCode || "",
-      });
-
-      setPasswordForm((prev) => ({
-        ...prev,
-        phoneNumber: data?.phoneNumber || "",
-      }));
-    } catch (err) {
-      setError(err.message || text.profileLoadError);
+      try {
+        const addressRes = await profileApi.addresses();
+        const addressData = unwrap(addressRes);
+        setAddresses(Array.isArray(addressData) ? addressData : []);
+      } catch {
+        setAddressError(true);
+      }
     } finally {
       setLoading(false);
     }
-  }
-
-  function updateForm(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function updatePhoneForm(key, value) {
-    setPhoneForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function updatePasswordForm(key, value) {
-    setPasswordForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function logout() {
@@ -109,313 +68,239 @@ export default function ProfilePage() {
     navigate("/login");
   }
 
-  async function saveProfile(e) {
-    e.preventDefault();
-
-    try {
-      setSaving(true);
-      setMessage("");
-      setError("");
-
-      await profileApi.update({
-        fullName: form.fullName,
-        email: form.email,
-        dateOfBirth: form.dateOfBirth
-          ? new Date(form.dateOfBirth).toISOString()
-          : null,
-        loyaltyCardCode: form.loyaltyCardCode || null,
-      });
-
-      setMessage(text.profileSaved);
-      await loadProfile();
-    } catch (err) {
-      setError(err.message || text.profileSaveError);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function sendPhoneOtp() {
-    if (!phoneForm.newPhoneNumber.trim()) {
-      setError(text.newPhoneRequired);
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setMessage("");
-      setError("");
-
-      await profileApi.sendChangePhoneOtp(phoneForm.newPhoneNumber.trim());
-      setMessage(text.otpSent);
-    } catch (err) {
-      setError(err.message || text.otpSendError);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function verifyPhone() {
-    if (!phoneForm.newPhoneNumber.trim() || !phoneForm.code.trim()) {
-      setError(text.phoneAndOtpRequired);
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setMessage("");
-      setError("");
-
-      await profileApi.verifyChangePhone(
-        phoneForm.newPhoneNumber.trim(),
-        phoneForm.code.trim()
-      );
-
-      setMessage(text.phoneChanged);
-      setPhoneForm(emptyPhoneForm);
-      await loadProfile();
-    } catch (err) {
-      setError(err.message || text.phoneVerifyError);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function resetPassword(e) {
-    e.preventDefault();
-
-    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
-      setError(text.passwordsNotSame);
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setMessage("");
-      setError("");
-
-      await profileApi.resetPasswordWithOtp({
-        phoneNumber: passwordForm.phoneNumber,
-        code: passwordForm.code,
-        newPassword: passwordForm.newPassword,
-        confirmNewPassword: passwordForm.confirmNewPassword,
-      });
-
-      setMessage(text.passwordChanged);
-
-      setPasswordForm({
-        phoneNumber: profile?.phoneNumber || "",
-        code: "",
-        newPassword: "",
-        confirmNewPassword: "",
-      });
-    } catch (err) {
-      setError(err.message || text.passwordChangeError);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading) return <AppLoader text={text.profileOpening} />;
+
+  const defaultAddress =
+    addresses.find((x) => x.isDefault) || addresses[0] || null;
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      {saving && <AppLoader text={text.saving} />}
-
       <div className="mx-auto max-w-[1180px]">
-        <div className="mb-7 text-center">
-          <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-zinc-400">
-            NemesisBaku
-          </p>
-
-          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em] text-zinc-950 md:text-[46px]">
-            {text.profile}
-          </h1>
-
-          <p className="mt-2 text-sm font-medium text-zinc-500">
-            {text.profileDesc}
-          </p>
-        </div>
-
-        {message && (
-          <div className="mb-5 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-            {message}
+        <section className="relative animate-[profileUp_.42s_cubic-bezier(.22,1,.36,1)_both] overflow-hidden rounded-[22px] bg-[#111] shadow-[0_22px_70px_rgba(0,0,0,0.12)]">
+          <div className="absolute inset-0 opacity-80">
+            <div className="absolute -left-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-20 right-0 h-64 w-64 rounded-full bg-[#d8c8aa]/20 blur-3xl" />
+            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
           </div>
-        )}
 
-        {error && (
-          <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-            {error}
-          </div>
-        )}
-
-        <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
-          <aside className="rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
-            <div className="flex flex-col items-center text-center">
-              <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-[18px] bg-zinc-100">
-                {profile?.profileImageUrl ? (
-                  <img
-                    src={profile.profileImageUrl}
-                    alt={profile.fullName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <FiUser className="text-[42px] text-zinc-400" />
-                )}
-              </div>
-
-              <h2 className="mt-4 text-xl font-extrabold tracking-[-0.03em] text-zinc-950">
-                {profile?.fullName}
-              </h2>
-
-              <p className="mt-1 text-sm font-bold text-zinc-400">
-                {profile?.phoneNumber}
+          <div className="relative p-5 md:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-white/45">
+                NemesisBaku
               </p>
 
               <button
                 type="button"
-                onClick={logout}
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-extrabold text-white transition hover:opacity-90 active:scale-[0.98]"
+                onClick={() => navigate("/profile/settings")}
+                className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium text-white/80 backdrop-blur transition hover:bg-white/15 active:scale-[0.98]"
               >
-                <FiLogOut />
-                {text.logout}
+                {text.profileSettings}
               </button>
             </div>
 
-            <div className="mt-6 space-y-3">
-              <InfoRow icon={<FiMail />} label={text.email} value={profile?.email || text.none} />
-              <InfoRow icon={<FiCalendar />} label={text.dateOfBirth} value={profile?.dateOfBirth ? profile.dateOfBirth.slice(0, 10) : text.none} />
-              <InfoRow icon={<FiShield />} label={text.loyaltyCard} value={profile?.loyaltyCardCode || text.none} />
-            </div>
-          </aside>
-
-          <section className="space-y-5">
-            <form
-              onSubmit={saveProfile}
-              className="rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6"
-            >
-              <SectionTitle
-                icon={<FiEdit3 />}
-                title={text.personalInfo}
-                desc={text.personalInfoDesc}
-              />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <Input icon={<FiUser />} label={text.fullName} value={form.fullName} onChange={(v) => updateForm("fullName", v)} placeholder={text.fullName} />
-                <Input icon={<FiMail />} label={text.email} value={form.email} onChange={(v) => updateForm("email", v)} placeholder="email@example.com" />
-                <Input icon={<FiCalendar />} label={text.dateOfBirth} type="date" value={form.dateOfBirth} onChange={(v) => updateForm("dateOfBirth", v)} />
-                <Input icon={<FiShield />} label={text.loyaltyCardCode} value={form.loyaltyCardCode} onChange={(v) => updateForm("loyaltyCardCode", v)} placeholder={text.loyaltyCardCode} />
-              </div>
-
-              <button
-                disabled={saving}
-                className="mt-5 inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-[#244989] px-6 text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
-              >
-                <FiSave />
-                {text.save}
-              </button>
-            </form>
-
-            <div className="grid gap-5 xl:grid-cols-2">
-              <div className="rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-                <SectionTitle
-                  icon={<FiPhone />}
-                  title={text.changePhone}
-                  desc={text.changePhoneDesc}
-                />
-
-                <div className="space-y-4">
-                  <Input icon={<FiPhone />} label={text.newPhone} value={phoneForm.newPhoneNumber} onChange={(v) => updatePhoneForm("newPhoneNumber", v)} placeholder="994501234567" />
-                  <Input icon={<FiCheck />} label={text.otpCode} value={phoneForm.code} onChange={(v) => updatePhoneForm("code", v)} placeholder="123456" />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={sendPhoneOtp} disabled={saving} className="h-12 rounded-[14px] bg-zinc-100 text-sm font-extrabold text-zinc-950 transition active:scale-[0.98] disabled:opacity-60">
-                      {text.sendCode}
-                    </button>
-
-                    <button type="button" onClick={verifyPhone} disabled={saving} className="h-12 rounded-[14px] bg-[#244989] text-sm font-extrabold text-white transition active:scale-[0.98] disabled:opacity-60">
-                      {text.confirm}
-                    </button>
+            <div className="mt-8 grid gap-6 md:grid-cols-[auto_1fr] md:items-end">
+              <div className="relative mx-auto md:mx-0">
+                <div className="h-[132px] w-[132px] overflow-hidden rounded-[30px] bg-white/10 p-1 ring-1 ring-white/15">
+                  <div className="h-full w-full overflow-hidden rounded-[26px] bg-zinc-900">
+                    {profile?.profileImageUrl ? (
+                      <img
+                        src={profile.profileImageUrl}
+                        alt={profile.fullName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center">
+                        <FiUser className="text-[48px] text-white/40" />
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                <div className="absolute -bottom-2 -right-2 rounded-full bg-white px-3 py-1 text-[11px] font-medium text-zinc-950 shadow-lg">
+                  Profile
+                </div>
               </div>
 
-              <form
-                onSubmit={resetPassword}
-                className="rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6"
-              >
-                <SectionTitle
-                  icon={<FiLock />}
-                  title={text.changePassword}
-                  desc={text.changePasswordDesc}
-                />
+              <div className="text-center md:text-left">
+                <h1 className="mx-auto max-w-[620px] text-[30px] font-medium leading-[1.05] tracking-[-0.05em] text-white md:mx-0 md:text-[50px]">
+                  {profile?.fullName || text.profile}
+                </h1>
 
-                <div className="space-y-4">
-                  <Input icon={<FiPhone />} label={text.phoneNumber} value={passwordForm.phoneNumber} onChange={(v) => updatePasswordForm("phoneNumber", v)} placeholder="994501234567" />
-                  <Input icon={<FiCheck />} label={text.otpCode} value={passwordForm.code} onChange={(v) => updatePasswordForm("code", v)} placeholder="123456" />
-                  <Input icon={<FiLock />} label={text.newPassword} type="password" value={passwordForm.newPassword} onChange={(v) => updatePasswordForm("newPassword", v)} placeholder={text.newPassword} />
-                  <Input icon={<FiLock />} label={text.confirmNewPassword} type="password" value={passwordForm.confirmNewPassword} onChange={(v) => updatePasswordForm("confirmNewPassword", v)} placeholder={text.confirmNewPassword} />
+                <div className="mt-4 flex flex-wrap justify-center gap-2 md:justify-start">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white/75 backdrop-blur">
+                    <FiPhone />
+                    {profile?.phoneNumber || text.none}
+                  </span>
 
-                  <button disabled={saving} className="h-12 w-full rounded-[14px] bg-[#244989] text-sm font-extrabold text-white transition active:scale-[0.98] disabled:opacity-60">
-                    {text.updatePassword}
-                  </button>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white/75 backdrop-blur">
+                    <FiMail />
+                    {profile?.email || text.none}
+                  </span>
                 </div>
-              </form>
+              </div>
             </div>
-          </section>
-        </div>
+          </div>
+
+          <div className="relative grid border-t border-white/10 bg-white/[0.04] md:grid-cols-3">
+            <ProfileMiniStat
+              label={text.email}
+              value={profile?.email || text.none}
+            />
+
+            <ProfileMiniStat
+              label={text.loyaltyCard}
+              value={profile?.loyaltyCardCode || text.none}
+            />
+
+            <ProfileMiniStat
+              label={text.dateOfBirth}
+              value={formatDate(profile?.dateOfBirth)}
+            />
+          </div>
+        </section>
+
+        <section className="mt-5 grid gap-3 md:grid-cols-2">
+          <ActionCard
+            icon={<FiPackage />}
+            title={text.myOrders}
+            desc={text.myOrdersDesc}
+            onClick={() => navigate("/orders")}
+          />
+
+          <ActionCard
+            icon={<FiMapPin />}
+            title={text.myAddresses}
+            desc={
+              defaultAddress
+                ? defaultAddress.addressText
+                : addressError
+                ? text.addressesUnavailable
+                : text.addressesEmptyShort
+            }
+            onClick={() => navigate("/profile/settings/addresses")}
+          />
+
+          <ActionCard
+            icon={<FiSettings />}
+            title={text.profileSettings}
+            desc={text.profileSettingsDesc}
+            onClick={() => navigate("/profile/settings")}
+          />
+
+          <button
+            type="button"
+            onClick={logout}
+            className="group flex items-center justify-between rounded-[18px] bg-white px-5 py-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-[15px] bg-red-50 text-xl text-red-500">
+                <FiLogOut />
+              </div>
+
+              <div>
+                <h2 className="text-base font-medium text-zinc-950">
+                  {text.logout}
+                </h2>
+                <p className="mt-1 text-sm text-zinc-400">
+                  {text.logoutDesc}
+                </p>
+              </div>
+            </div>
+
+            <FiChevronRight className="text-xl text-zinc-300 transition group-hover:translate-x-1 group-hover:text-red-500" />
+          </button>
+        </section>
+
+        <section className="mt-5 animate-[profileUp_.5s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950">
+              <FiHome />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-medium text-zinc-950">
+                {text.defaultAddress}
+              </h2>
+
+              {defaultAddress ? (
+                <>
+                  <p className="mt-1 text-sm leading-6 text-zinc-500">
+                    {defaultAddress.addressText}
+                  </p>
+
+                  <p className="mt-2 text-xs font-medium text-zinc-400">
+                    {[
+                      defaultAddress.buildingNumber,
+                      defaultAddress.floor,
+                      defaultAddress.apartment,
+                    ]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-sm leading-6 text-zinc-500">
+                  {addressError
+                    ? text.addressesUnavailable
+                    : text.addressesEmptyDesc}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate("/profile/settings/addresses")}
+              className="rounded-[12px] bg-zinc-950 px-4 py-2 text-xs font-medium text-white transition active:scale-[0.98]"
+            >
+              {defaultAddress ? text.edit : text.add}
+            </button>
+          </div>
+        </section>
       </div>
+
+      <style>{`
+        @keyframes profileUp {
+          from { opacity: 0; transform: translateY(18px) scale(.985); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </main>
   );
 }
 
-function SectionTitle({ icon, title, desc }) {
+function ProfileMiniStat({ label, value }) {
   return (
-    <div className="mb-5 flex items-center gap-3">
-      <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-zinc-50 text-zinc-950">
-        {icon}
-      </div>
-      <div>
-        <h2 className="text-xl font-extrabold tracking-[-0.03em] text-zinc-950">
-          {title}
-        </h2>
-        <p className="text-sm font-medium text-zinc-500">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ icon, label, value }) {
-  return (
-    <div className="flex items-center gap-3 rounded-[14px] bg-zinc-50 px-4 py-3">
-      <div className="text-zinc-500">{icon}</div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-zinc-400">
-          {label}
-        </p>
-        <p className="truncate text-sm font-bold text-zinc-950">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function Input({ label, value, onChange, placeholder, type = "text", icon }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold text-zinc-800">
+    <div className="border-t border-white/10 px-5 py-4 md:border-l md:border-t-0 first:md:border-l-0">
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/35">
         {label}
-      </span>
+      </p>
 
-      <div className="flex h-12 items-center gap-3 rounded-[14px] border border-zinc-100 bg-zinc-50 px-4 transition focus-within:border-zinc-400">
-        <span className="text-zinc-400">{icon}</span>
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold text-zinc-950 outline-none placeholder:text-zinc-400"
-        />
+      <p className="mt-1 truncate text-sm font-medium text-white/85">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ActionCard({ icon, title, desc, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center justify-between rounded-[18px] bg-white px-5 py-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] active:scale-[0.98]"
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950">
+          {icon}
+        </div>
+
+        <div className="min-w-0">
+          <h2 className="text-base font-medium text-zinc-950">{title}</h2>
+          <p className="mt-1 line-clamp-1 text-sm text-zinc-400">{desc}</p>
+        </div>
       </div>
-    </label>
+
+      <FiChevronRight className="text-xl text-zinc-300 transition group-hover:translate-x-1 group-hover:text-zinc-950" />
+    </button>
   );
 }

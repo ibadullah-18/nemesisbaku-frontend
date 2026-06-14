@@ -101,15 +101,6 @@ export default function FavoritesPage() {
 
         <div className="mb-5 flex items-center justify-between gap-3">
 
-          <button
-            type="button"
-            onClick={() => loadFavorites(true)}
-            disabled={refreshing}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-5 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
-          >
-            <FiRefreshCw className={refreshing ? "animate-spin" : ""} />
-            {text.refresh}
-          </button>
         </div>
 
         {error && (

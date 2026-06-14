@@ -1,5 +1,6 @@
 import { LanguageProvider } from "./i18n/LanguageContext";
 import AppRoutes from "./routes/AppRoutes";
+import "leaflet/dist/leaflet.css";
 
 export default function App() {
   return (

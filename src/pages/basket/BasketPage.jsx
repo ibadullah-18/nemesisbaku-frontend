@@ -404,9 +404,6 @@ export default function BasketPage() {
             {text.basket}
           </h1>
 
-          <p className="mx-auto mt-2 max-w-[520px] text-sm font-normal leading-6 text-zinc-500">
-            {text.basketDesc}
-          </p>
         </div>
 
         {error && (

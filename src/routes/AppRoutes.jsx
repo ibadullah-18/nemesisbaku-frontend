@@ -19,6 +19,15 @@ import ProfilePage from "../pages/profile/ProfilePage";
 import ProductDetailsPage from "../pages/product/ProductDetailsPage";
 import FavoritesPage from "../pages/favorites/FavoritesPage";
 import BasketPage from "../pages/basket/BasketPage";
+import MyOrdersPage from "../pages/orders/MyOrdersPage";
+import OrderDetailsPage from "../pages/orders/OrderDetailsPage";
+import AddressesPage from "../pages/profile/AddressesPage";
+import ProfileSettingsPage from "../pages/profile/ProfileSettingsPage";
+import CheckoutPage from "../pages/checkout/CheckoutPage";
+import OrderSuccessPage from "../pages/checkout/OrderSuccessPage";
+import OrderFailedPage from "../pages/checkout/OrderFailedPage";
+import AccountSettingsPage from "../pages/profile/AccountSettingsPage";
+import SecuritySettingsPage from "../pages/profile/SecuritySettingsPage";
 
 function PageShell({ children }) {
   return (
@@ -141,6 +150,43 @@ export default function AppRoutes() {
         }
       />
 
+      <Route
+        path="/orders"
+        element={
+          <Layout>
+            <MyOrdersPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/orders/:id"
+        element={
+          <Layout>
+            <OrderDetailsPage />
+          </Layout>
+        }
+      />
+
+      <Route 
+        path="/profile/settings/addresses" 
+        element={
+          <AddressesPage />
+        } 
+      />
+
+      <Route 
+        path="/profile/settings" 
+        element={
+          <ProfileSettingsPage />
+        } 
+      />
+      <Route path="/checkout" element={<CheckoutPage />} />
+      <Route path="/order-success" element={<OrderSuccessPage />} />
+      <Route path="/order-failed" element={<OrderFailedPage />} />
+      <Route path="/profile/settings/account" element={<AccountSettingsPage />} />
+      <Route path="/profile/settings/security" element={<SecuritySettingsPage />} />
+      
       <Route path="*" element={<Navigate to="/" />} />
 
       {/* Admin Routes */ }
