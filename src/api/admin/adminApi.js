@@ -8,6 +8,7 @@ export async function adminFetch(endpoint, options = {}) {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
+      Accept: "*/*",
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
@@ -25,35 +26,103 @@ export async function adminFetch(endpoint, options = {}) {
   if (res.status === 401 || res.status === 403) {
     clearAdminAuth();
     window.location.href = "/SuperAdmin";
-    return;
+    return null;
   }
 
-  if (!res.ok) {
-    throw new Error(
+  if (!res.ok || result?.success === false) {
+    const message =
       result?.message ||
-        result?.error ||
-        result?.errors?.[0] ||
-        "Admin əməliyyatı uğursuz oldu"
-    );
+      result?.error ||
+      result?.errors?.[0] ||
+      "Admin əməliyyatı uğursuz oldu";
+
+    throw new Error(message);
   }
 
   return result;
+}
+
+export function unwrapAdmin(res) {
+  return res?.data?.data || res?.data || res;
+}
+
+export function listAdmin(res) {
+  const data = unwrapAdmin(res);
+
+  return (
+    data?.items ||
+    data?.list ||
+    data?.result ||
+    data?.products ||
+    data?.orders ||
+    data?.logs ||
+    (Array.isArray(data) ? data : [])
+  );
+}
+
+export function metaAdmin(res) {
+  const data = unwrapAdmin(res);
+
+  return {
+    page: data?.page || 1,
+    pageSize: data?.pageSize || 20,
+    totalCount: data?.totalCount || 0,
+    totalPages: data?.totalPages || 1,
+    hasNextPage: Boolean(data?.hasNextPage),
+    hasPreviousPage: Boolean(data?.hasPreviousPage),
+  };
+}
+
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.append(key, value);
+    }
+  });
+
+  const text = query.toString();
+  return text ? `?${text}` : "";
 }
 
 export const adminDashboardApi = {
   getStats: () => adminFetch("/api/Stats/dashboard"),
 };
 
+export const adminUsersApi = {
+  list: ({ page = 1, pageSize = 20, search = "", role = "" } = {}) =>
+    adminFetch(
+      `/api/AdminUsers${buildQuery({ page, pageSize, search, role })}`
+    ),
+
+  detail: (id) => adminFetch(`/api/AdminUsers/${id}`),
+
+  createAdmin: (body) =>
+    adminFetch("/api/AdminUsers/create-admin", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deactivate: (id) =>
+    adminFetch(`/api/AdminUsers/${id}/deactivate`, {
+      method: "PUT",
+    }),
+
+  activate: (id) =>
+    adminFetch(`/api/AdminUsers/${id}/activate`, {
+      method: "PUT",
+    }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminUsers/${id}`, {
+      method: "DELETE",
+    }),
+};
+
 export const adminProductsApi = {
-  list: ({ page = 1, pageSize = 200, search = "" } = {}) => {
-    const params = new URLSearchParams();
-
-    params.append("page", page);
-    params.append("pageSize", pageSize);
-    if (search) params.append("search", search);
-
-    return adminFetch(`/api/AdminProducts?${params.toString()}`);
-  },
+  list: ({ page = 1, pageSize = 200, search = "" } = {}) =>
+    adminFetch(`/api/AdminProducts${buildQuery({ page, pageSize, search })}`),
 
   detail: (id) => adminFetch(`/api/AdminProducts/${id}`),
 
@@ -75,7 +144,7 @@ export const adminProductsApi = {
     }),
 
   lowStock: (threshold = 2) =>
-    adminFetch(`/api/AdminProducts/low-stock?threshold=${threshold}`),
+    adminFetch(`/api/AdminProducts/low-stock${buildQuery({ threshold })}`),
 };
 
 export const adminProductImagesApi = {
@@ -84,7 +153,7 @@ export const adminProductImagesApi = {
     formData.append("file", file);
 
     return adminFetch(
-      `/api/AdminProducts/${productId}/images?isMain=${isMain}`,
+      `/api/AdminProducts/${productId}/images${buildQuery({ isMain })}`,
       {
         method: "POST",
         body: formData,
@@ -128,27 +197,13 @@ export const adminProductVariantsApi = {
     }),
 };
 
-export const adminCategoriesApi = {
-  list: () => adminFetch("/api/AdminCategories"),
-
-  create: (body) =>
-    adminFetch("/api/AdminCategories", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-};
-
 export const adminBrandsApi = {
   list: () => adminFetch("/api/AdminBrands"),
 
   create: ({ name, image }) => {
     const formData = new FormData();
-
     formData.append("Name", name);
-
-    if (image) {
-      formData.append("Image", image);
-    }
+    if (image) formData.append("Image", image);
 
     return adminFetch("/api/AdminBrands", {
       method: "POST",
@@ -158,12 +213,8 @@ export const adminBrandsApi = {
 
   update: (id, { name, image }) => {
     const formData = new FormData();
-
     formData.append("Name", name);
-
-    if (image) {
-      formData.append("Image", image);
-    }
+    if (image) formData.append("Image", image);
 
     return adminFetch(`/api/AdminBrands/${id}`, {
       method: "PUT",
@@ -177,12 +228,38 @@ export const adminBrandsApi = {
     }),
 };
 
+export const adminCategoriesApi = {
+  list: () => adminFetch("/api/AdminCategories"),
+
+  create: (body) =>
+    adminFetch("/api/AdminCategories", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  update: (id, body) =>
+    adminFetch(`/api/AdminCategories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminCategories/${id}`, {
+      method: "DELETE",
+    }),
+};
+
 export const adminSizesApi = {
   list: () => adminFetch("/api/AdminSizes"),
 
   create: (size) =>
-    adminFetch(`/api/AdminSizes?size=${encodeURIComponent(size)}`, {
+    adminFetch(`/api/AdminSizes${buildQuery({ size })}`, {
       method: "POST",
+    }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminSizes/${id}`, {
+      method: "DELETE",
     }),
 };
 
@@ -194,19 +271,18 @@ export const adminColorsApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminColors/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const adminOrdersApi = {
-  list: ({ page = 1, pageSize = 20, search = "", status = "" } = {}) => {
-    const params = new URLSearchParams();
-
-    params.append("page", page);
-    params.append("pageSize", pageSize);
-    if (search) params.append("search", search);
-    if (status) params.append("status", status);
-
-    return adminFetch(`/api/AdminOrders?${params.toString()}`);
-  },
+  list: ({ page = 1, pageSize = 20, search = "", status = "" } = {}) =>
+    adminFetch(
+      `/api/AdminOrders${buildQuery({ page, pageSize, search, status })}`
+    ),
 
   detail: (id) => adminFetch(`/api/AdminOrders/${id}`),
 
@@ -230,9 +306,7 @@ export const adminCampaignsApi = {
     formData.append("EndDate", body.endDate);
     formData.append("IsActive", body.isActive);
 
-    if (body.file) {
-      formData.append("File", body.file);
-    }
+    if (body.file) formData.append("File", body.file);
 
     return adminFetch("/api/AdminCampaigns", {
       method: "POST",
@@ -250,9 +324,7 @@ export const adminCampaignsApi = {
     formData.append("EndDate", body.endDate);
     formData.append("IsActive", body.isActive);
 
-    if (body.file) {
-      formData.append("File", body.file);
-    }
+    if (body.file) formData.append("File", body.file);
 
     return adminFetch(`/api/AdminCampaigns/${id}`, {
       method: "PUT",
@@ -266,18 +338,70 @@ export const adminCampaignsApi = {
     }),
 };
 
-export const adminAuditLogsApi = {
-  list: ({ page = 1, pageSize = 20, search = "" } = {}) => {
-    const params = new URLSearchParams();
+export const adminBannersApi = {
+  list: () => adminFetch("/api/AdminBanners"),
 
-    params.append("page", page);
-    params.append("pageSize", pageSize);
+  create: (body) => {
+    const formData = new FormData();
 
-    if (search) {
-      params.append("search", search);
-    }
+    formData.append("Title", body.title || "");
+    formData.append("Description", body.description || "");
+    formData.append("ButtonText", body.buttonText || "");
+    formData.append("ButtonUrl", body.buttonUrl || "/");
+    formData.append("SortOrder", body.sortOrder || 0);
 
-    return adminFetch(`/api/AdminAuditLogs?${params.toString()}`);
+    if (body.file) formData.append("File", body.file);
+
+    return adminFetch("/api/AdminBanners", {
+      method: "POST",
+      body: formData,
+    });
   },
+
+  update: (id, body) => {
+    const formData = new FormData();
+
+    formData.append("Title", body.title || "");
+    formData.append("Description", body.description || "");
+    formData.append("ButtonText", body.buttonText || "");
+    formData.append("ButtonUrl", body.buttonUrl || "/");
+    formData.append("SortOrder", body.sortOrder || 0);
+
+    if (body.file) formData.append("File", body.file);
+
+    return adminFetch(`/api/AdminBanners/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
+  },
+
+  delete: (id) =>
+    adminFetch(`/api/AdminBanners/${id}`, {
+      method: "DELETE",
+    }),
 };
 
+export const adminAuditLogsApi = {
+  list: ({ page = 1, pageSize = 20, search = "" } = {}) =>
+    adminFetch(
+      `/api/AdminAuditLogs${buildQuery({ page, pageSize, search })}`
+    ),
+};
+
+export const adminStoreInfoApi = {
+  get: () => adminFetch("/api/StoreInfo"),
+
+  update: (body) =>
+    adminFetch("/api/StoreInfo", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+};
+
+export const adminPromoCodesApi = {
+  check: (body) =>
+    adminFetch("/api/PromoCodes/check", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};

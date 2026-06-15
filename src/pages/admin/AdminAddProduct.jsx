@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiImage, FiPlus, FiTrash2, FiUploadCloud } from "react-icons/fi";
+import { FiImage, FiPlus, FiTrash2, FiUploadCloud, FiX } from "react-icons/fi";
 import {
   adminBrandsApi,
   adminCategoriesApi,
@@ -29,37 +29,34 @@ const emptyForm = {
 };
 
 const emptyVariant = {
-  sizeValue: "42",
-  colorName: "Qara",
-  colorHex: "#000000",
+  sizeId: "",
+  colorId: "",
   stockCount: "",
 };
 
-const defaultSizeValues = Array.from({ length: 9 }, (_, i) => String(i + 34));
-
-const defaultColors = [
-  { name: "Qara", hexCode: "#000000" },
-  { name: "Ağ", hexCode: "#FFFFFF" },
-  { name: "Boz", hexCode: "#808080" },
-  { name: "Qırmızı", hexCode: "#DC2626" },
-  { name: "Mavi", hexCode: "#2563EB" },
-  { name: "Yaşıl", hexCode: "#16A34A" },
-  { name: "Sarı", hexCode: "#FACC15" },
-  { name: "Narıncı", hexCode: "#F97316" },
-  { name: "Bənövşəyi", hexCode: "#7C3AED" },
-  { name: "Çəhrayı", hexCode: "#EC4899" },
-  { name: "Qəhvəyi", hexCode: "#92400E" },
-  { name: "Bej", hexCode: "#D6C3A5" },
-  { name: "Krem", hexCode: "#F5EBDD" },
-];
+function unwrapData(res) {
+  return res?.data?.data || res?.data || res;
+}
 
 function listOf(res) {
-  const data = res?.data || res;
+  const data = unwrapData(res);
   return data?.items || data?.list || data?.result || (Array.isArray(data) ? data : []);
 }
 
 function getCreatedId(res) {
-  return res?.data?.id || res?.data || res?.id || res?.result?.id || res?.result;
+  return res?.data?.id || res?.data?.data?.id || res?.id || res?.result?.id || res?.result;
+}
+
+function uniqueById(list) {
+  const map = new Map();
+
+  list.forEach((item) => {
+    if (item?.id && !map.has(item.id)) {
+      map.set(item.id, item);
+    }
+  });
+
+  return [...map.values()];
 }
 
 export default function AdminAddProduct() {
@@ -79,30 +76,10 @@ export default function AdminAddProduct() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const sizeOptions = useMemo(() => {
-    const apiSizes = sizes
-      .map((x) => String(x.value || x.size || x.name || ""))
-      .filter(Boolean);
-
-    return [...new Set([...defaultSizeValues, ...apiSizes])].sort(
-      (a, b) => Number(a) - Number(b)
-    );
-  }, [sizes]);
-
-  const colorOptions = useMemo(() => {
-    const apiColors = colors.map((x) => ({
-      name: x.name,
-      hexCode: x.hexCode || "#000000",
-    }));
-
-    const map = new Map();
-
-    [...defaultColors, ...apiColors].forEach((c) => {
-      if (c.name) map.set(c.name.toLowerCase(), c);
-    });
-
-    return [...map.values()];
-  }, [colors]);
+  const [optionsModal, setOptionsModal] = useState(null);
+  const [newSize, setNewSize] = useState("");
+  const [newColorName, setNewColorName] = useState("");
+  const [newColorHex, setNewColorHex] = useState("#000000");
 
   useEffect(() => {
     loadOptions();
@@ -119,10 +96,12 @@ export default function AdminAddProduct() {
         adminColorsApi.list(),
       ]);
 
-      setCategories(listOf(catRes));
-      setBrands(listOf(brandRes));
-      setSizes(listOf(sizeRes));
-      setColors(listOf(colorRes));
+      setCategories(uniqueById(listOf(catRes)));
+      setBrands(uniqueById(listOf(brandRes)));
+      setSizes(uniqueById(listOf(sizeRes)));
+      setColors(uniqueById(listOf(colorRes)));
+    } catch (err) {
+      setError(err.message || "Məlumatlar yüklənmədi.");
     } finally {
       setLoading(false);
     }
@@ -136,22 +115,6 @@ export default function AdminAddProduct() {
     setVariants((prev) =>
       prev.map((variant, i) =>
         i === index ? { ...variant, [key]: value } : variant
-      )
-    );
-  }
-
-  function updateVariantColor(index, colorName) {
-    const selected = colorOptions.find((c) => c.name === colorName);
-
-    setVariants((prev) =>
-      prev.map((variant, i) =>
-        i === index
-          ? {
-              ...variant,
-              colorName,
-              colorHex: selected?.hexCode || variant.colorHex || "#000000",
-            }
-          : variant
       )
     );
   }
@@ -197,43 +160,6 @@ export default function AdminAddProduct() {
     setDragIndex(null);
   }
 
-  async function ensureSizeId(sizeValue) {
-    const found = sizes.find(
-      (s) => String(s.value || s.size || s.name) === String(sizeValue)
-    );
-
-    if (found) return found.id;
-
-    const res = await adminSizesApi.create(sizeValue);
-    const id = getCreatedId(res);
-
-    setSizes((prev) => [...prev, { id, value: sizeValue }]);
-
-    return id;
-  }
-
-  async function ensureColorId(colorName, colorHex) {
-    const found = colors.find(
-      (c) => c.name?.toLowerCase() === colorName?.toLowerCase()
-    );
-
-    if (found) return found.id;
-
-    const res = await adminColorsApi.create({
-      name: colorName,
-      hexCode: colorHex || "#000000",
-    });
-
-    const id = getCreatedId(res);
-
-    setColors((prev) => [
-      ...prev,
-      { id, name: colorName, hexCode: colorHex || "#000000" },
-    ]);
-
-    return id;
-  }
-
   async function uploadImages(productId) {
     for (let i = 0; i < images.length; i++) {
       await adminProductImagesApi.upload(productId, images[i].file, i === 0);
@@ -250,7 +176,7 @@ export default function AdminAddProduct() {
     if (!form.brandId) return setError("Brend seçilməlidir.");
 
     const validVariants = variants.filter(
-      (v) => v.sizeValue && v.colorName && v.stockCount !== ""
+      (v) => v.sizeId && v.colorId && v.stockCount !== ""
     );
 
     if (validVariants.length === 0) {
@@ -260,18 +186,11 @@ export default function AdminAddProduct() {
     try {
       setSaving(true);
 
-      const preparedVariants = [];
-
-      for (const variant of validVariants) {
-        const sizeId = await ensureSizeId(variant.sizeValue);
-        const colorId = await ensureColorId(variant.colorName, variant.colorHex);
-
-        preparedVariants.push({
-          sizeId,
-          colorId,
-          stockCount: Number(variant.stockCount),
-        });
-      }
+      const preparedVariants = validVariants.map((variant) => ({
+        sizeId: variant.sizeId,
+        colorId: variant.colorId,
+        stockCount: Number(variant.stockCount),
+      }));
 
       const productRes = await adminProductsApi.create({
         name: form.name.trim(),
@@ -317,7 +236,7 @@ export default function AdminAddProduct() {
           Məhsul əlavə et
         </h1>
         <p className="mt-1 text-sm font-medium text-zinc-500">
-          Məhsul məlumatı, şəkillər, razmer/rəng/stok variantları bir yerdə.
+          Məhsul məlumatı, şəkillər və hazır razmer/rəng variantları.
         </p>
       </div>
 
@@ -335,13 +254,27 @@ export default function AdminAddProduct() {
             </h2>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <AdminInput label="Məhsul adı" placeholder="Məsələn: Nike Air Max 270" value={form.name} onChange={(v) => updateForm("name", v)} />
-              <AdminInput label="Məhsul kodu" placeholder="Məsələn: NK-AM270-001" value={form.productCode} onChange={(v) => updateForm("productCode", v)} />
-              <AdminInput label="Model" placeholder="Məsələn: Air Max 270" value={form.model} onChange={(v) => updateForm("model", v)} />
-              <AdminInput label="Qiymət" placeholder="Məsələn: 289" type="number" value={form.price} onChange={(v) => updateForm("price", v)} />
-              <AdminInput label="Endirim qiyməti" placeholder="Məsələn: 249" type="number" value={form.discountPrice} onChange={(v) => updateForm("discountPrice", v)} />
-              <AdminSelect label="Kateqoriya" value={form.categoryId} onChange={(v) => updateForm("categoryId", v)} items={categories} placeholder="Kateqoriya seç" />
-              <AdminSelect label="Brend" value={form.brandId} onChange={(v) => updateForm("brandId", v)} items={brands} placeholder="Brend seç" />
+              <AdminInput label="Məhsul adı" placeholder="Adidas Gazelle Green" value={form.name} onChange={(v) => updateForm("name", v)} />
+              <AdminInput label="Məhsul kodu" placeholder="AD-GZL-GRN" value={form.productCode} onChange={(v) => updateForm("productCode", v)} />
+              <AdminInput label="Model" placeholder="Gazelle" value={form.model} onChange={(v) => updateForm("model", v)} />
+              <AdminInput label="Qiymət" placeholder="100" type="number" value={form.price} onChange={(v) => updateForm("price", v)} />
+              <AdminInput label="Endirim qiyməti" placeholder="90" type="number" value={form.discountPrice} onChange={(v) => updateForm("discountPrice", v)} />
+
+              <NativeSelect
+                label="Kateqoriya"
+                value={form.categoryId}
+                onChange={(v) => updateForm("categoryId", v)}
+                items={categories.map((x) => ({ id: x.id, name: x.name }))}
+                placeholder="Kateqoriya seç"
+              />
+
+              <NativeSelect
+                label="Brend"
+                value={form.brandId}
+                onChange={(v) => updateForm("brandId", v)}
+                items={brands.map((x) => ({ id: x.id, name: x.name }))}
+                placeholder="Brend seç"
+              />
             </div>
 
             <label className="mt-4 block">
@@ -349,7 +282,7 @@ export default function AdminAddProduct() {
               <textarea
                 value={form.description}
                 onChange={(e) => updateForm("description", e.target.value)}
-                placeholder="Məsələn: Premium sneaker, gündəlik istifadə üçün rahat model."
+                placeholder="Məhsul haqqında qısa məlumat yazın."
                 rows={5}
                 className="w-full resize-none rounded-[18px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-zinc-400"
               />
@@ -372,7 +305,9 @@ export default function AdminAddProduct() {
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-extrabold tracking-[-0.03em]">Şəkillər</h2>
-                <p className="text-sm font-medium text-zinc-500">Ən soldakı şəkil avtomatik əsas şəkil olacaq. Sürüşdürərək sıralaya bilərsiniz.</p>
+                <p className="text-sm font-medium text-zinc-500">
+                  Ən soldakı şəkil əsas şəkil olacaq.
+                </p>
               </div>
 
               <label className="grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-[#244989] text-white">
@@ -386,17 +321,34 @@ export default function AdminAddProduct() {
                 <div>
                   <FiImage className="mx-auto mb-3 text-[38px] text-zinc-300" />
                   <p className="text-sm font-extrabold text-zinc-700">Şəkil seç</p>
-                  <p className="mt-1 text-xs font-medium text-zinc-400">PNG, JPG, WEBP — bir neçə şəkil seçə bilərsiniz.</p>
+                  <p className="mt-1 text-xs font-medium text-zinc-400">
+                    PNG, JPG, WEBP — bir neçə şəkil seçə bilərsiniz.
+                  </p>
                 </div>
                 <input type="file" accept="image/*" multiple onChange={handleImages} className="hidden" />
               </label>
             ) : (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {images.map((img, index) => (
-                  <div key={img.id} draggable onDragStart={() => setDragIndex(index)} onDragOver={(e) => e.preventDefault()} onDrop={() => handleImageDrop(index)} className="group relative aspect-square cursor-grab overflow-hidden rounded-[22px] border border-zinc-100 bg-zinc-50 active:cursor-grabbing">
+                  <div
+                    key={img.id}
+                    draggable
+                    onDragStart={() => setDragIndex(index)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleImageDrop(index)}
+                    className="group relative aspect-square cursor-grab overflow-hidden rounded-[22px] border border-zinc-100 bg-zinc-50 active:cursor-grabbing"
+                  >
                     <img src={img.preview} alt="" className="h-full w-full object-cover" />
-                    <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-extrabold text-zinc-900 shadow-sm">{index === 0 ? "MAIN" : `${index + 1}`}</div>
-                    <button type="button" onClick={() => removeImage(img.id)} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-red-600 opacity-100 shadow-sm md:opacity-0 md:transition md:group-hover:opacity-100"><FiTrash2 /></button>
+                    <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-extrabold text-zinc-900 shadow-sm">
+                      {index === 0 ? "MAIN" : `${index + 1}`}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.id)}
+                      className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm"
+                    >
+                      <FiTrash2 />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -405,13 +357,39 @@ export default function AdminAddProduct() {
         </section>
 
         <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="mb-5 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-extrabold tracking-[-0.03em]">Variantlar</h2>
-              <p className="text-sm font-medium text-zinc-500">Razmer 34–42 select olacaq. Rəng də hazır siyahıdan seçilir.</p>
+              <p className="text-sm font-medium text-zinc-500">
+                Hazır razmer və rəng seçilir. Yoxdursa əlavə edə və ya silə bilərsiniz.
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOptionsModal("sizes")}
+                  className="rounded-full bg-green-50 px-3 py-2 text-xs font-extrabold text-green-700"
+                >
+                  Yeni razmer +
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOptionsModal("colors")}
+                  className="rounded-full bg-green-50 px-3 py-2 text-xs font-extrabold text-green-700"
+                >
+                  Yeni rəng +
+                </button>
+              </div>
             </div>
 
-            <button type="button" onClick={addVariant} className="grid h-11 w-11 place-items-center rounded-full bg-[#244989] text-white"><FiPlus /></button>
+            <button
+              type="button"
+              onClick={addVariant}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#244989] text-white"
+            >
+              <FiPlus />
+            </button>
           </div>
 
           <div className="space-y-3">
@@ -419,23 +397,78 @@ export default function AdminAddProduct() {
               <div key={index} className="rounded-[22px] border border-zinc-100 bg-zinc-50 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-sm font-extrabold text-zinc-900">Variant #{index + 1}</p>
-                  {variants.length > 1 && <button type="button" onClick={() => removeVariant(index)} className="grid h-8 w-8 place-items-center rounded-full bg-red-50 text-red-600"><FiTrash2 /></button>}
+
+                  {variants.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeVariant(index)}
+                      className="grid h-8 w-8 place-items-center rounded-full bg-red-50 text-red-600"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid gap-3">
-                  <NativeSelect label="Razmer" value={variant.sizeValue} onChange={(v) => updateVariant(index, "sizeValue", v)} items={sizeOptions.map((size) => ({ id: size, name: size }))} placeholder="Razmer seç" />
-                  <NativeSelect label="Rəng" value={variant.colorName} onChange={(v) => updateVariantColor(index, v)} items={colorOptions.map((color) => ({ id: color.name, name: color.name }))} placeholder="Rəng seç" />
-                  <AdminInput label="Stok sayı" placeholder="Məsələn: 5" type="number" value={variant.stockCount} onChange={(v) => updateVariant(index, "stockCount", v)} />
+                  <NativeSelect
+                    label="Razmer"
+                    value={variant.sizeId}
+                    onChange={(v) => updateVariant(index, "sizeId", v)}
+                    items={sizes.map((size) => ({
+                      id: size.id,
+                      name: size.value || size.size || size.name,
+                    }))}
+                    placeholder="Razmer seç"
+                  />
+
+                  <NativeSelect
+                    label="Rəng"
+                    value={variant.colorId}
+                    onChange={(v) => updateVariant(index, "colorId", v)}
+                    items={colors.map((color) => ({
+                      id: color.id,
+                      name: color.name,
+                      hexCode: color.hexCode,
+                    }))}
+                    placeholder="Rəng seç"
+                  />
+
+                  <AdminInput
+                    label="Stok sayı"
+                    placeholder="5"
+                    type="number"
+                    value={variant.stockCount}
+                    onChange={(v) => updateVariant(index, "stockCount", v)}
+                  />
                 </div>
               </div>
             ))}
           </div>
 
-          <button disabled={saving} className="mt-5 h-14 w-full rounded-[18px] bg-[#244989] text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60">
+          <button
+            disabled={saving}
+            className="mt-5 h-14 w-full rounded-[18px] bg-[#244989] text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
+          >
             {saving ? "Yaradılır..." : "Məhsulu yarat"}
           </button>
         </section>
       </form>
+
+      {optionsModal && (
+        <OptionsModal
+          type={optionsModal}
+          sizes={sizes}
+          colors={colors}
+          newSize={newSize}
+          setNewSize={setNewSize}
+          newColorName={newColorName}
+          setNewColorName={setNewColorName}
+          newColorHex={newColorHex}
+          setNewColorHex={setNewColorHex}
+          onClose={() => setOptionsModal(null)}
+          onReload={loadOptions}
+        />
+      )}
     </div>
   );
 }
@@ -444,23 +477,31 @@ function AdminInput({ label, placeholder, value, onChange, type = "text" }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-bold text-zinc-800">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400" />
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
+      />
     </label>
   );
-}
-
-function AdminSelect({ label, placeholder, value, onChange, items }) {
-  return <NativeSelect label={label} placeholder={placeholder} value={value} onChange={onChange} items={items} />;
 }
 
 function NativeSelect({ label, placeholder, value, onChange, items }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-bold text-zinc-800">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
+      >
         <option value="">{placeholder}</option>
         {items.map((item) => (
-          <option key={item.id} value={item.id}>{item.name || item.value}</option>
+          <option key={item.id} value={item.id}>
+            {item.name || item.value}
+          </option>
         ))}
       </select>
     </label>
@@ -469,9 +510,180 @@ function NativeSelect({ label, placeholder, value, onChange, items }) {
 
 function Toggle({ label, checked, onClick }) {
   return (
-    <button type="button" onClick={onClick} className={`flex h-13 items-center justify-between rounded-[16px] border px-4 text-sm font-extrabold transition ${checked ? "border-[#244989] bg-[#244989]/8 text-[#244989]" : "border-zinc-100 bg-zinc-50 text-zinc-700"}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex h-13 items-center justify-between rounded-[16px] border px-4 text-sm font-extrabold transition ${
+        checked
+          ? "border-[#244989] bg-[#244989]/8 text-[#244989]"
+          : "border-zinc-100 bg-zinc-50 text-zinc-700"
+      }`}
+    >
       {label}
-      <span className={`h-5 w-5 rounded-full border transition ${checked ? "border-[#244989] bg-[#244989]" : "border-zinc-300 bg-white"}`} />
+      <span
+        className={`h-5 w-5 rounded-full border transition ${
+          checked ? "border-[#244989] bg-[#244989]" : "border-zinc-300 bg-white"
+        }`}
+      />
     </button>
+  );
+}
+
+function OptionsModal({
+  type,
+  sizes,
+  colors,
+  newSize,
+  setNewSize,
+  newColorName,
+  setNewColorName,
+  newColorHex,
+  setNewColorHex,
+  onClose,
+  onReload,
+}) {
+  const [busy, setBusy] = useState(false);
+  const isSizes = type === "sizes";
+  const list = isSizes ? sizes : colors;
+
+  async function createItem() {
+    try {
+      setBusy(true);
+
+      if (isSizes) {
+        if (!newSize.trim()) return alert("Razmer yazın");
+        await adminSizesApi.create(newSize.trim());
+        setNewSize("");
+      } else {
+        if (!newColorName.trim()) return alert("Rəng adı yazın");
+
+        await adminColorsApi.create({
+          name: newColorName.trim(),
+          hexCode: newColorHex || "#000000",
+        });
+
+        setNewColorName("");
+        setNewColorHex("#000000");
+      }
+
+      await onReload();
+    } catch (err) {
+      alert(err.message || "Yaratmaq mümkün olmadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteItem(id) {
+    const ok = confirm("Silinsin?");
+    if (!ok) return;
+
+    try {
+      setBusy(true);
+
+      if (isSizes) {
+        await adminSizesApi.delete(id);
+      } else {
+        await adminColorsApi.delete(id);
+      }
+
+      await onReload();
+    } catch (err) {
+      alert(err.message || "Silmək mümkün olmadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[999] grid place-items-center bg-black/35 px-4">
+      <div className="w-full max-w-[520px] rounded-[28px] bg-white p-5 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-xl font-extrabold">
+            {isSizes ? "Razmerlər" : "Rənglər"}
+          </h3>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-10 w-10 place-items-center rounded-full bg-zinc-100 text-zinc-700"
+          >
+            <FiX />
+          </button>
+        </div>
+
+        <div className="mb-5 grid gap-3">
+          {isSizes ? (
+            <AdminInput
+              label="Yeni razmer"
+              placeholder="Məsələn: 43"
+              value={newSize}
+              onChange={setNewSize}
+            />
+          ) : (
+            <>
+              <AdminInput
+                label="Rəng adı"
+                placeholder="Məsələn: Bej"
+                value={newColorName}
+                onChange={setNewColorName}
+              />
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-zinc-800">
+                  Rəng kodu
+                </span>
+                <input
+                  type="color"
+                  value={newColorHex}
+                  onChange={(e) => setNewColorHex(e.target.value)}
+                  className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-2"
+                />
+              </label>
+            </>
+          )}
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={createItem}
+            className="h-12 rounded-[16px] bg-green-600 text-sm font-extrabold text-white disabled:opacity-60"
+          >
+            {busy ? "Gözlə..." : "Yarat +"}
+          </button>
+        </div>
+
+        <div className="max-h-[320px] space-y-2 overflow-auto">
+          {list.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between rounded-[16px] bg-zinc-50 px-4 py-3"
+            >
+              <div className="flex items-center gap-3">
+                {!isSizes && (
+                  <span
+                    className="h-6 w-6 rounded-full border border-zinc-200"
+                    style={{ backgroundColor: item.hexCode || "#000000" }}
+                  />
+                )}
+
+                <span className="text-sm font-extrabold">
+                  {isSizes ? item.value || item.size || item.name : item.name}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => deleteItem(item.id)}
+                className="grid h-9 w-9 place-items-center rounded-full bg-red-50 text-red-600 disabled:opacity-60"
+              >
+                <FiTrash2 />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

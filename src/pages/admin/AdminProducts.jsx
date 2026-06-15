@@ -1,21 +1,36 @@
-import { useEffect, useState } from "react";
-import { FiEdit3, FiEye, FiPlus, FiTrash2, FiX } from "react-icons/fi";
-import { NavLink } from "react-router-dom";
-import { adminProductsApi } from "../../api/admin/adminApi";
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  FiAlertTriangle,
+  FiChevronLeft,
+  FiChevronRight,
+  FiEdit3,
+  FiEye,
+  FiImage,
+  FiPackage,
+  FiPlus,
+  FiRefreshCw,
+  FiSearch,
+  FiTag,
+  FiTrash2,
+} from "react-icons/fi";
+import {
+  adminProductsApi,
+  listAdmin,
+  metaAdmin,
+} from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 
-function unwrapData(res) {
-  return res?.data?.data || res?.data || res;
+function getProductId(product) {
+  return product?.id || product?.productId;
 }
 
-function dataOf(res) {
-  const data = unwrapData(res);
-  return data?.items || data?.products || data?.result || (Array.isArray(data) ? data : []);
+function money(value) {
+  return `${Number(value || 0).toFixed(2)} ₼`;
 }
 
 function getImageUrl(image) {
   if (!image) return null;
-
   if (typeof image === "string") return image;
 
   return (
@@ -26,8 +41,6 @@ function getImageUrl(image) {
     image.path ||
     image.secureUrl ||
     image.src ||
-    image.image ||
-    image.imagePath ||
     null
   );
 }
@@ -39,14 +52,13 @@ function getProductImages(product) {
     product.imageDtos ||
     product.productImageDtos ||
     product.imageUrls ||
-    product.imagesUrl ||
     [];
 
   const list = Array.isArray(raw) ? raw : [];
 
   const images = list
     .map((img, index) => ({
-      id: img?.id || index,
+      id: img?.id || img?.imageId || index,
       isMain: Boolean(img?.isMain || img?.isMainImage),
       displayOrder: img?.displayOrder ?? img?.order ?? index,
       src: getImageUrl(img),
@@ -73,56 +85,159 @@ function getProductImages(product) {
   return images;
 }
 
-export default function AdminProducts() {
-  const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-async function loadProducts() {
-  try {
-    setLoading(true);
-    const res = await adminProductsApi.list({ page: 1, pageSize: 200 });
-    setProducts(dataOf(res));
-  } finally {
-    setLoading(false);
+function getTotalStock(product) {
+  if (product.totalStock !== undefined && product.totalStock !== null) {
+    return Number(product.totalStock);
   }
+
+  const variants =
+    product.variants ||
+    product.productVariants ||
+    product.productVariantDtos ||
+    [];
+
+  if (!Array.isArray(variants)) return 0;
+
+  return variants.reduce(
+    (sum, variant) => sum + Number(variant.stockCount || variant.stock || 0),
+    0
+  );
 }
 
-  async function openProduct(productId) {
+function getProductStatus(product) {
+  if (product.isDeleted) {
+    return {
+      label: "Silinib",
+      className: "bg-red-50 text-red-600",
+    };
+  }
+
+  if (product.isActive === false) {
+    return {
+      label: "Deaktiv",
+      className: "bg-orange-50 text-orange-600",
+    };
+  }
+
+  return {
+    label: "Aktiv",
+    className: "bg-green-50 text-green-700",
+  };
+}
+
+function getCategoryName(product) {
+  return (
+    product.categoryName ||
+    product.category?.name ||
+    product.categoryTitle ||
+    "—"
+  );
+}
+
+function getBrandName(product) {
+  return product.brandName || product.brand?.name || product.brandTitle || "—";
+}
+
+export default function AdminProducts() {
+  const navigate = useNavigate();
+
+  const [products, setProducts] = useState([]);
+  const [search, setSearch] = useState("");
+
+  const [meta, setMeta] = useState({
+    page: 1,
+    pageSize: 20,
+    totalCount: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadProducts(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function loadProducts(page = 1) {
     try {
-      setDetailLoading(true);
+      setError("");
+      setLoading(true);
 
-      const res = await adminProductsApi.detail(productId);
-      const product = unwrapData(res);
+      const res = await adminProductsApi.list({
+        page,
+        pageSize: 20,
+        search,
+      });
 
-      console.log("ADMIN PRODUCT DETAIL:", product);
-
-      setSelectedProduct(product);
+      setProducts(listAdmin(res));
+      setMeta(metaAdmin(res));
+    } catch (err) {
+      setError(err.message || "Məhsullar yüklənmədi.");
     } finally {
-      setDetailLoading(false);
+      setLoading(false);
     }
   }
 
-  async function deleteProduct(id) {
-    const ok = confirm("Bu məhsul silinsin?");
+  function openProduct(product) {
+    const productId = getProductId(product);
+
+    if (!productId) {
+      setError("Bu məhsul üçün ID gəlmədi. Detail səhifəsi açıla bilməz.");
+      return;
+    }
+
+    navigate(`/SuperAdmin/products/details/${productId}`);
+  }
+
+  async function deleteProduct(product) {
+    const productId = getProductId(product);
+
+    if (!productId) {
+      setError("Bu məhsul üçün ID gəlmədi. Silmək mümkün deyil.");
+      return;
+    }
+
+    const ok = confirm(`${product.name || "Bu məhsul"} silinsin?`);
     if (!ok) return;
 
-    await adminProductsApi.delete(id);
-    setProducts((prev) => prev.filter((x) => x.id !== id));
+    try {
+      setSaving(true);
+      setError("");
+
+      await adminProductsApi.delete(productId);
+
+      setProducts((prev) => prev.filter((x) => getProductId(x) !== productId));
+    } catch (err) {
+      setError(err.message || "Məhsul silinmədi.");
+    } finally {
+      setSaving(false);
+    }
   }
+
+  const counters = useMemo(() => {
+    const total = products.length;
+    const active = products.filter(
+      (p) => p.isActive !== false && !p.isDeleted
+    ).length;
+    const discounted = products.filter(
+      (p) => p.isDiscounted || p.discountPrice
+    ).length;
+    const lowStock = products.filter((p) => getTotalStock(p) <= 2).length;
+
+    return { total, active, discounted, lowStock };
+  }, [products]);
 
   if (loading) return <AppLoader text="Məhsullar yüklənir" />;
 
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
-      {detailLoading && <AppLoader text="Məhsul açılır" />}
+      {saving && <AppLoader text="Əməliyyat icra olunur" />}
 
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
             Admin məhsullar
@@ -133,80 +248,176 @@ async function loadProducts() {
           </h1>
 
           <p className="mt-1 text-sm font-medium text-zinc-500">
-            Məhsula klikləyin, detail pəncərəsi açılacaq.
+            Məhsula kliklə, tam detalları ayrıca səhifədə aç.
           </p>
         </div>
 
-        <NavLink
-          to="/SuperAdmin/add-product"
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white"
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <NavLink
+            to="/SuperAdmin/add-product"
+            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
+          >
+            <FiPlus />
+            Məhsul əlavə et
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={() => loadProducts(meta.page)}
+            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
+          >
+            <FiRefreshCw />
+            Yenilə
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CounterCard icon={<FiPackage />} label="Bu səhifədə" value={counters.total} />
+        <CounterCard icon={<FiPackage />} label="Aktiv" value={counters.active} green />
+        <CounterCard icon={<FiTag />} label="Endirimli" value={counters.discounted} blue />
+        <CounterCard icon={<FiAlertTriangle />} label="Az stok" value={counters.lowStock} red />
+      </div>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-[1fr_130px]">
+        <div className="flex h-13 items-center gap-3 rounded-[16px] border border-zinc-100 bg-white px-4">
+          <FiSearch className="text-zinc-400" />
+
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") loadProducts(1);
+            }}
+            placeholder="Məhsul adı, kodu və ya model ilə axtar"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-zinc-400"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => loadProducts(1)}
+          className="flex h-13 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
         >
-          <FiPlus />
-          Məhsul əlavə et
-        </NavLink>
+          <FiSearch />
+          Axtar
+        </button>
       </div>
 
       <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left">
+          <table className="w-full min-w-[1050px] text-left">
             <thead>
               <tr className="border-b border-zinc-100 text-xs uppercase tracking-[0.14em] text-zinc-400">
                 <th className="px-5 py-4">Məhsul</th>
+                <th className="px-5 py-4">Kateqoriya</th>
+                <th className="px-5 py-4">Brend</th>
                 <th className="px-5 py-4">Qiymət</th>
-                <th className="px-5 py-4">Endirim</th>
                 <th className="px-5 py-4">Stok</th>
+                <th className="px-5 py-4">Status</th>
                 <th className="px-5 py-4 text-right">Əməliyyat</th>
               </tr>
             </thead>
 
             <tbody>
-              {products.map((product) => {
-                const tableImages = getProductImages(product);
-                const tableImage = tableImages[0]?.src;
+              {products.map((product, index) => {
+                const productId = getProductId(product);
+                const images = getProductImages(product);
+                const image = images[0]?.src;
+                const status = getProductStatus(product);
+                const stock = getTotalStock(product);
 
                 return (
                   <tr
-                    key={product.id}
-                    onClick={() => openProduct(product.id)}
+                    key={productId || index}
+                    onClick={() => openProduct(product)}
                     className="cursor-pointer border-b border-zinc-50 transition hover:bg-zinc-50"
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-14 w-14 overflow-hidden rounded-[18px] bg-zinc-50">
-                          {tableImage ? (
+                        <div className="h-16 w-16 overflow-hidden rounded-[20px] bg-zinc-50">
+                          {image ? (
                             <img
-                              src={tableImage}
-                              alt={product.name}
+                              src={image}
+                              alt={product.name || "Məhsul"}
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="grid h-full w-full place-items-center text-xs font-bold text-zinc-300">
-                              N
+                            <div className="grid h-full w-full place-items-center text-zinc-300">
+                              <FiImage />
                             </div>
                           )}
                         </div>
 
                         <div>
                           <p className="font-extrabold text-zinc-950">
-                            {product.name}
+                            {product.name || "Məhsul adı yoxdur"}
                           </p>
+
                           <p className="text-xs font-bold text-zinc-400">
-                            {product.productCode || "Kod yoxdur"}
+                            Kod: {product.productCode || "—"} · Model:{" "}
+                            {product.model || "—"}
                           </p>
+
+                          {!productId && (
+                            <p className="mt-1 text-xs font-extrabold text-red-600">
+                              Sistem xətası: məhsul ID gəlmədi
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 text-sm font-extrabold">
-                      {product.price} ₼
+                    <td className="px-5 py-4 text-sm font-bold">
+                      {getCategoryName(product)}
                     </td>
 
-                    <td className="px-5 py-4 text-sm font-extrabold text-[#244989]">
-                      {product.discountPrice ? `${product.discountPrice} ₼` : "—"}
+                    <td className="px-5 py-4 text-sm font-bold">
+                      {getBrandName(product)}
                     </td>
 
-                    <td className="px-5 py-4 text-sm font-extrabold">
-                      {product.totalStock ?? 0}
+                    <td className="px-5 py-4">
+                      <div>
+                        <p className="text-sm font-extrabold text-zinc-950">
+                          {money(product.price)}
+                        </p>
+
+                        {product.discountPrice ? (
+                          <p className="text-xs font-extrabold text-[#244989]">
+                            Endirim: {money(product.discountPrice)}
+                          </p>
+                        ) : (
+                          <p className="text-xs font-bold text-zinc-400">
+                            Endirim yoxdur
+                          </p>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                          stock <= 2
+                            ? "bg-red-50 text-red-600"
+                            : "bg-green-50 text-green-700"
+                        }`}
+                      >
+                        {stock}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-extrabold ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
                     </td>
 
                     <td className="px-5 py-4">
@@ -215,27 +426,32 @@ async function loadProducts() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            openProduct(product.id);
+                            openProduct(product);
                           }}
-                          className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700"
+                          className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.94]"
                         >
                           <FiEye />
                         </button>
 
                         <NavLink
                           onClick={(e) => e.stopPropagation()}
-                          to={`/SuperAdmin/products/${product.id}`}
-                          className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700"
+                          to={
+                            productId
+                              ? `/SuperAdmin/products/${productId}`
+                              : "/SuperAdmin/products"
+                          }
+                          className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.94]"
                         >
                           <FiEdit3 />
                         </NavLink>
 
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteProduct(product.id);
+                            deleteProduct(product);
                           }}
-                          className="grid h-10 w-10 place-items-center rounded-full bg-red-50 text-red-600"
+                          className="grid h-10 w-10 place-items-center rounded-full bg-red-50 text-red-600 transition hover:-translate-y-0.5 active:scale-[0.94]"
                         >
                           <FiTrash2 />
                         </button>
@@ -248,183 +464,76 @@ async function loadProducts() {
               {products.length === 0 && (
                 <tr>
                   <td
-                    colSpan="5"
-                    className="px-5 py-10 text-center text-sm font-bold text-zinc-400"
+                    colSpan="7"
+                    className="px-5 py-12 text-center text-sm font-bold text-zinc-400"
                   >
-                    Hələ məhsul yoxdur.
+                    Məhsul tapılmadı.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
 
-      {selectedProduct && (
-        <ProductDetailModal
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
+        <div className="flex flex-col gap-3 border-t border-zinc-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm font-bold text-zinc-500">
+            Cəmi: {meta.totalCount} məhsul · Səhifə {meta.page} /{" "}
+            {meta.totalPages}
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!meta.hasPreviousPage}
+              onClick={() => loadProducts(meta.page - 1)}
+              className="flex h-10 items-center gap-2 rounded-[14px] bg-zinc-50 px-4 text-sm font-extrabold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <FiChevronLeft />
+              Əvvəlki
+            </button>
+
+            <button
+              type="button"
+              disabled={!meta.hasNextPage}
+              onClick={() => loadProducts(meta.page + 1)}
+              className="flex h-10 items-center gap-2 rounded-[14px] bg-zinc-50 px-4 text-sm font-extrabold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Növbəti
+              <FiChevronRight />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function ProductDetailModal({ product, onClose }) {
-  const images = getProductImages(product);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+function CounterCard({
+  icon,
+  label,
+  value,
+  green = false,
+  red = false,
+  blue = false,
+}) {
+  let tone = "bg-zinc-50 text-zinc-700";
 
-  const mainImage =
-    images[activeImageIndex]?.src ||
-    images.find((x) => x.isMain)?.src ||
-    images[0]?.src ||
-    product.mainImageUrl ||
-    product.imageUrl ||
-    null;
-
-  const variants =
-    product.variants ||
-    product.productVariants ||
-    product.variantDtos ||
-    product.productVariantDtos ||
-    [];
+  if (green) tone = "bg-green-50 text-green-700";
+  if (red) tone = "bg-red-50 text-red-600";
+  if (blue) tone = "bg-[#244989]/8 text-[#244989]";
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/25 px-4 py-5 backdrop-blur-[2px]">
-      <div className="relative max-h-[calc(100vh-40px)] w-full max-w-[980px] overflow-y-auto rounded-[34px] bg-white p-5 shadow-[0_30px_100px_rgba(0,0,0,0.18)] md:p-7">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-5 top-5 z-10 grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-800"
-        >
-          <FiX />
-        </button>
-
-        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div>
-            <div className="aspect-square overflow-hidden rounded-[28px] bg-zinc-50">
-              {mainImage ? (
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className="h-full w-full object-cover transition duration-500"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-sm font-bold text-zinc-300">
-                  Şəkil yoxdur
-                </div>
-              )}
-            </div>
-
-            {images.length > 0 && (
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
-                {images.map((img, index) => (
-                  <button
-                    type="button"
-                    key={img.id || index}
-                    onClick={() => setActiveImageIndex(index)}
-                    className={`h-20 w-20 shrink-0 overflow-hidden rounded-[18px] border bg-zinc-50 transition ${
-                      activeImageIndex === index
-                        ? "border-[#244989] ring-2 ring-[#244989]/20"
-                        : "border-zinc-100"
-                    }`}
-                  >
-                    <img
-                      src={img.src}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="pr-0 md:pr-10">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#244989]">
-              {product.brandName || product.brand?.name || "NemesisBaku"}
-            </p>
-
-            <h2 className="mt-2 text-[32px] font-extrabold leading-[1.05] tracking-[-0.045em] text-zinc-950 md:text-[44px]">
-              {product.name}
-            </h2>
-
-            <p className="mt-3 text-sm font-bold text-zinc-400">
-              Kod: {product.productCode || "—"} / Model: {product.model || "—"}
-            </p>
-
-            <div className="mt-5 flex items-end gap-3">
-              <p className="text-[28px] font-extrabold text-[#244989]">
-                {product.discountPrice || product.price} ₼
-              </p>
-
-              {product.discountPrice && (
-                <p className="text-sm font-bold text-zinc-400 line-through">
-                  {product.price} ₼
-                </p>
-              )}
-            </div>
-
-            {product.description && (
-              <p className="mt-5 text-sm font-medium leading-7 text-zinc-600">
-                {product.description}
-              </p>
-            )}
-
-            <div className="mt-6">
-              <h3 className="mb-3 text-sm font-extrabold text-zinc-950">
-                Variantlar
-              </h3>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                {variants.map((variant, index) => (
-                  <div
-                    key={variant.id || index}
-                    className="rounded-[18px] border border-zinc-100 bg-zinc-50 p-3"
-                  >
-                    <p className="text-sm font-extrabold text-zinc-950">
-                      Razmer:{" "}
-                      {variant.sizeValue ||
-                        variant.size?.value ||
-                        variant.sizeName ||
-                        variant.size ||
-                        "—"}
-                    </p>
-
-                    <p className="mt-1 text-sm font-bold text-zinc-500">
-                      Rəng:{" "}
-                      {variant.colorName ||
-                        variant.color?.name ||
-                        variant.colorValue ||
-                        variant.color ||
-                        "—"}
-                    </p>
-
-                    <p className="mt-1 text-sm font-bold text-[#244989]">
-                      Stok: {variant.stockCount ?? variant.stock ?? 0}
-                    </p>
-                  </div>
-                ))}
-
-                {variants.length === 0 && (
-                  <div className="rounded-[18px] bg-zinc-50 p-4 text-sm font-bold text-zinc-400">
-                    Variant yoxdur.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-[20px] bg-zinc-50 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-zinc-400">
-                Debug
-              </p>
-              <p className="mt-2 text-sm font-bold text-zinc-600">
-                Şəkil sayı: {images.length}
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="rounded-[24px] bg-white p-5 shadow-[0_14px_42px_rgba(0,0,0,0.035)] transition hover:-translate-y-1 active:scale-[0.98]">
+      <div
+        className={`mb-4 grid h-11 w-11 place-items-center rounded-[16px] text-xl ${tone}`}
+      >
+        {icon}
       </div>
+
+      <p className="text-sm font-bold text-zinc-400">{label}</p>
+      <h3 className="mt-1 text-[28px] font-extrabold tracking-[-0.04em]">
+        {value ?? 0}
+      </h3>
     </div>
   );
 }

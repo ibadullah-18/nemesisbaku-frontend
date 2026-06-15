@@ -1,91 +1,180 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
+  FiActivity,
   FiBox,
+  FiChevronLeft,
+  FiChevronRight,
   FiGrid,
-  FiHome,
   FiImage,
+  FiLayers,
   FiLogOut,
+  FiMaximize2,
+  FiMenu,
   FiPackage,
-  FiSettings,
   FiShoppingBag,
   FiTag,
   FiUsers,
+  FiX,
 } from "react-icons/fi";
 import { clearAdminAuth } from "../../api/admin/adminAuth";
-import { FiShield } from "react-icons/fi";
 
-const links = [
-  { to: "/SuperAdmin/dashboard", label: "Dashboard", icon: <FiGrid /> },
-  { to: "/SuperAdmin/products", label: "Məhsullar", icon: <FiPackage /> },
-  { to: "/SuperAdmin/add-product", label: "Məhsul əlavə et", icon: <FiBox /> },
-  { to: "/SuperAdmin/orders", label: "Sifarişlər", icon: <FiShoppingBag /> },
-  { to: "/SuperAdmin/brands", label: "Brendlər", icon: <FiTag /> },
-  { to: "/SuperAdmin/categories", label: "Kateqoriyalar", icon: <FiTag /> },
-  { to: "/SuperAdmin/campaigns", label: "Kampaniyalar", icon: <FiImage /> },
-  { to: "/SuperAdmin/users", label: "İstifadəçilər", icon: <FiUsers /> },
-  { to: "/SuperAdmin/audit-logs",label: "Audit Loglar",icon: <FiShield />,},
-  { to: "/SuperAdmin/store", label: "Mağaza ayarları", icon: <FiSettings /> },
+const navItems = [
+  {
+    title: "Əsas",
+    items: [
+      { label: "Dashboard", to: "/SuperAdmin/dashboard", icon: <FiGrid /> },
+      { label: "Sifarişlər", to: "/SuperAdmin/orders", icon: <FiShoppingBag /> },
+      { label: "İstifadəçilər", to: "/SuperAdmin/users", icon: <FiUsers /> },
+    ],
+  },
+  {
+    title: "Məhsul idarəsi",
+    items: [
+      { label: "Məhsullar", to: "/SuperAdmin/products", icon: <FiPackage /> },
+      { label: "Məhsul əlavə et", to: "/SuperAdmin/add-product", icon: <FiBox /> },
+      { label: "Kateqoriyalar", to: "/SuperAdmin/categories", icon: <FiLayers /> },
+      { label: "Brendlər", to: "/SuperAdmin/brands", icon: <FiTag /> },
+      { label: "Ölçülər", to: "/SuperAdmin/sizes", icon: <FiMaximize2 /> },
+      { label: "Rənglər", to: "/SuperAdmin/colors", icon: <FiImage /> },
+    ],
+  },
+  {
+    title: "Marketinq",
+    items: [
+      { label: "Kampaniyalar", to: "/SuperAdmin/campaigns", icon: <FiImage /> },
+    ],
+  },
+  {
+    title: "Nəzarət",
+    items: [
+      { label: "Audit loglar", to: "/SuperAdmin/audit-logs", icon: <FiActivity /> },
+    ],
+  },
 ];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   function logout() {
     clearAdminAuth();
-    navigate("/SuperAdmin");
+    navigate("/SuperAdmin", { replace: true });
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f3ef] text-zinc-950 lg:flex">
-      <aside className="sticky top-0 z-40 border-b border-zinc-100 bg-white/95 px-4 py-4 backdrop-blur-xl lg:h-screen lg:w-[285px] lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-        <div className="mb-5 flex items-center justify-between gap-3 lg:mb-8">
-          <NavLink to="/SuperAdmin/dashboard">
-            <h1 className="text-[23px] font-extrabold tracking-[-0.045em]">
-              NemesisAdmin
-            </h1>
-            <p className="text-xs font-bold text-zinc-400">SuperAdmin Panel</p>
-          </NavLink>
+    <div className="min-h-screen bg-[#f6f4f0]">
+      <button
+        type="button"
+        onClick={() => setSidebarOpen(true)}
+        className="fixed left-4 top-4 z-[80] grid h-12 w-12 place-items-center rounded-full bg-zinc-950 text-white shadow-[0_18px_45px_rgba(0,0,0,0.18)] lg:hidden"
+      >
+        <FiMenu />
+      </button>
 
-          <NavLink
-            to="/"
-            className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700"
-          >
-            <FiHome />
-          </NavLink>
-        </div>
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[2px] lg:hidden"
+        />
+      )}
 
-        <nav className="flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `flex shrink-0 items-center gap-3 rounded-[16px] px-4 py-3 text-sm font-extrabold transition ${
-                  isActive
-                    ? "bg-[#244989] text-white shadow-[0_14px_34px_rgba(36,73,137,0.22)]"
-                    : "bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:bg-transparent"
-                }`
-              }
+      <aside
+        className={`fixed left-0 top-0 z-[100] h-screen bg-white shadow-[24px_0_70px_rgba(0,0,0,0.06)] transition-all duration-300 ${
+          collapsed ? "lg:w-[92px]" : "lg:w-[286px]"
+        } ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } w-[286px]`}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
+            <div className={collapsed ? "lg:hidden" : ""}>
+              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#244989]">
+                NemesisBaku
+              </p>
+              <h1 className="mt-1 text-xl font-extrabold tracking-[-0.04em] text-zinc-950">
+                Admin Panel
+              </h1>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700 lg:hidden"
             >
-              <span className="text-[18px]">{link.icon}</span>
-              <span>{link.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+              <FiX />
+            </button>
 
-        <button
-          type="button"
-          onClick={logout}
-          className="mt-5 hidden w-full items-center justify-center gap-2 rounded-[16px] bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100 lg:flex"
-        >
-          <FiLogOut />
-          Çıxış et
-        </button>
+            <button
+              type="button"
+              onClick={() => setCollapsed((prev) => !prev)}
+              className="hidden h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.94] lg:grid"
+            >
+              {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
+            </button>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto px-4 py-5">
+            <div className="space-y-6">
+              {navItems.map((group) => (
+                <div key={group.title}>
+                  <p
+                    className={`mb-2 px-3 text-[11px] font-extrabold uppercase tracking-[0.18em] text-zinc-400 ${
+                      collapsed ? "lg:hidden" : ""
+                    }`}
+                  >
+                    {group.title}
+                  </p>
+
+                  <div className="space-y-1">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setSidebarOpen(false)}
+                        className={({ isActive }) =>
+                          `group flex h-12 items-center gap-3 rounded-[16px] px-3 text-sm font-extrabold transition hover:-translate-y-0.5 active:scale-[0.97] ${
+                            isActive
+                              ? "bg-[#244989] text-white shadow-[0_14px_34px_rgba(36,73,137,0.22)]"
+                              : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                          } ${collapsed ? "lg:justify-center lg:px-0" : ""}`
+                        }
+                      >
+                        <span className="text-[20px]">{item.icon}</span>
+                        <span className={collapsed ? "lg:hidden" : ""}>
+                          {item.label}
+                        </span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </nav>
+
+          <div className="border-t border-zinc-100 p-4">
+            <button
+              type="button"
+              onClick={logout}
+              className={`flex h-12 w-full items-center gap-3 rounded-[16px] bg-red-50 px-3 text-sm font-extrabold text-red-600 transition hover:-translate-y-0.5 active:scale-[0.97] ${
+                collapsed ? "lg:justify-center lg:px-0" : ""
+              }`}
+            >
+              <FiLogOut className="text-[20px]" />
+              <span className={collapsed ? "lg:hidden" : ""}>Çıxış et</span>
+            </button>
+          </div>
+        </div>
       </aside>
 
-      <section className="min-w-0 flex-1">
+      <main
+        className={`min-h-screen transition-all duration-300 ${
+          collapsed ? "lg:pl-[92px]" : "lg:pl-[286px]"
+        }`}
+      >
         <Outlet />
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

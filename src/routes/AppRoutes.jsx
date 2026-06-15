@@ -1,20 +1,28 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+
 import Navbar from "../components/layout/Navbar";
 import LoginPage from "../pages/auth/LoginPage";
 import SearchPage from "../components/common/SearchOverlay";
 import HomePage from "../pages/home/HomePage";
+
 import SuperAdminLogin from "../pages/admin/SuperAdminLogin";
 import AdminLayout from "../components/admin/AdminLayout";
 import AdminProtectedRoute from "../components/admin/AdminProtectedRoute";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminProducts from "../pages/admin/AdminProducts";
+import AdminProductDetails from "../pages/admin/AdminProductDetails";
 import AdminAddProduct from "../pages/admin/AdminAddProduct";
 import AdminEditProduct from "../pages/admin/AdminEditProduct";
 import AdminCampaigns from "../pages/admin/AdminCampaigns";
-import AdminOrders from "../pages/admin/AdminOrders"; 
+import AdminOrders from "../pages/admin/AdminOrders";
+import AdminOrderDetails from "../pages/admin/AdminOrderDetails";
 import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 import AdminCategories from "../pages/admin/AdminCategories";
 import AdminBrands from "../pages/admin/AdminBrands";
+import AdminUsers from "../pages/admin/AdminUsers";
+import AdminSizes from "../pages/admin/AdminSizes";
+import AdminColors from "../pages/admin/AdminColors";
+
 import ProfilePage from "../pages/profile/ProfilePage";
 import ProductDetailsPage from "../pages/product/ProductDetailsPage";
 import FavoritesPage from "../pages/favorites/FavoritesPage";
@@ -33,42 +41,6 @@ function PageShell({ children }) {
   return (
     <div className="animate-[pageSlideIn_0.38s_cubic-bezier(0.22,1,0.36,1)_both]">
       {children}
-    </div>
-  );
-}
-
-function FavoritesTemp() {
-  return (
-    <div className="min-h-screen bg-[#fafafa] px-5 py-8 md:px-8">
-      <div className="mx-auto max-w-[1180px]">
-        <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-zinc-950">
-          Favorilər
-        </h1>
-      </div>
-    </div>
-  );
-}
-
-function BasketTemp() {
-  return (
-    <div className="min-h-screen bg-[#fafafa] px-5 py-8 md:px-8">
-      <div className="mx-auto max-w-[1180px]">
-        <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-zinc-950">
-          Səbət
-        </h1>
-      </div>
-    </div>
-  );
-}
-
-function ProfileTemp() {
-  return (
-    <div className="min-h-screen bg-[#fafafa] px-5 py-8 md:px-8">
-      <div className="mx-auto max-w-[1180px]">
-        <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-zinc-950">
-          Profil
-        </h1>
-      </div>
     </div>
   );
 }
@@ -130,7 +102,7 @@ export default function AppRoutes() {
             <ProfilePage />
           </Layout>
         }
-        />
+      />
 
       <Route
         path="/login"
@@ -168,28 +140,68 @@ export default function AppRoutes() {
         }
       />
 
-      <Route 
-        path="/profile/settings/addresses" 
+      <Route
+        path="/checkout"
         element={
-          <AddressesPage />
-        } 
+          <Layout>
+            <CheckoutPage />
+          </Layout>
+        }
       />
 
-      <Route 
-        path="/profile/settings" 
+      <Route
+        path="/order-success"
         element={
-          <ProfileSettingsPage />
-        } 
+          <Layout>
+            <OrderSuccessPage />
+          </Layout>
+        }
       />
-      <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/order-success" element={<OrderSuccessPage />} />
-      <Route path="/order-failed" element={<OrderFailedPage />} />
-      <Route path="/profile/settings/account" element={<AccountSettingsPage />} />
-      <Route path="/profile/settings/security" element={<SecuritySettingsPage />} />
-      
-      <Route path="*" element={<Navigate to="/" />} />
 
-      {/* Admin Routes */ }
+      <Route
+        path="/order-failed"
+        element={
+          <Layout>
+            <OrderFailedPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/profile/settings"
+        element={
+          <Layout>
+            <ProfileSettingsPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/profile/settings/addresses"
+        element={
+          <Layout>
+            <AddressesPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/profile/settings/account"
+        element={
+          <Layout>
+            <AccountSettingsPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/profile/settings/security"
+        element={
+          <Layout>
+            <SecuritySettingsPage />
+          </Layout>
+        }
+      />
 
       <Route path="/SuperAdmin" element={<SuperAdminLogin />} />
 
@@ -202,20 +214,28 @@ export default function AppRoutes() {
         }
       >
         <Route path="dashboard" element={<AdminDashboard />} />
+
         <Route path="products" element={<AdminProducts />} />
-        <Route path="add-product" element={<AdminAddProduct />} />  
+        <Route path="products/details/:id" element={<AdminProductDetails />} />
+        <Route path="add-product" element={<AdminAddProduct />} />
         <Route path="products/:id" element={<AdminEditProduct />} />
+
         <Route path="campaigns" element={<AdminCampaigns />} />
+
         <Route path="orders" element={<AdminOrders />} />
+        <Route path="orders/:id" element={<AdminOrderDetails />} />
+
         <Route path="audit-logs" element={<AdminAuditLogs />} />
+
         <Route path="categories" element={<AdminCategories />} />
         <Route path="brands" element={<AdminBrands />} />
+        <Route path="sizes" element={<AdminSizes />} />
+        <Route path="colors" element={<AdminColors />} />
+
+        <Route path="users" element={<AdminUsers />} />
       </Route>
 
-
-
-
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    
   );
 }

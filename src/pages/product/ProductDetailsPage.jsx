@@ -19,7 +19,6 @@ import { useLanguage } from "../../i18n/LanguageContext";
 import { createPortal } from "react-dom";
 import { favoritesApi } from "../../api/favoritesApi";
 
-
 const LOW_STOCK_LIMIT = 3;
 const RELATED_PAGE_SIZE = 15;
 const STORE_WHATSAPP_NUMBER = "994514349829";
@@ -89,6 +88,7 @@ export default function ProductDetailsPage() {
 
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
+  const [selectedVariantId, setSelectedVariantId] = useState("");
   const [quantity, setQuantity] = useState(1);
 
   const [favorite, setFavorite] = useState(false);
@@ -112,19 +112,19 @@ export default function ProductDetailsPage() {
   }, [id]);
 
   useEffect(() => {
-  if (!modalOpen) return;
+    if (!modalOpen) return;
 
-  const oldOverflow = document.body.style.overflow;
-  const oldTouchAction = document.body.style.touchAction;
+    const oldOverflow = document.body.style.overflow;
+    const oldTouchAction = document.body.style.touchAction;
 
-  document.body.style.overflow = "hidden";
-  document.body.style.touchAction = "none";
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
 
-  return () => {
-    document.body.style.overflow = oldOverflow;
-    document.body.style.touchAction = oldTouchAction;
-  };
-}, [modalOpen]);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      document.body.style.touchAction = oldTouchAction;
+    };
+  }, [modalOpen]);
 
   async function loadPage() {
     try {
@@ -141,14 +141,13 @@ export default function ProductDetailsPage() {
 
       await loadFavoriteStatus();
 
-      const firstColor = data?.variants?.[0]?.colorName || "";
-      const firstSize =
-        data?.variants?.find(
-          (v) => v.colorName === firstColor && Number(v.stockCount || 0) > 0
-        )?.sizeValue || "";
+      const firstVariant = data?.variants?.find(
+        (v) => Number(v.stockCount || 0) > 0
+      );
 
-      setSelectedColor(firstColor);
-      setSelectedSize(firstSize);
+      setSelectedVariantId(firstVariant?.id || "");
+      setSelectedColor(firstVariant?.colorName || "");
+      setSelectedSize(firstVariant?.sizeValue || "");
       setQuantity(1);
 
       await loadRelated(data, 1, true);
@@ -160,15 +159,15 @@ export default function ProductDetailsPage() {
   }
 
   async function loadFavoriteStatus() {
-  try {
-    const res = await favoritesApi.check(id);
-    const result = res?.data?.data ?? res?.data ?? res;
+    try {
+      const res = await favoritesApi.check(id);
+      const result = res?.data?.data ?? res?.data ?? res;
 
-    setFavorite(Boolean(result));
-  } catch {
-    setFavorite(false);
+      setFavorite(Boolean(result));
+    } catch {
+      setFavorite(false);
+    }
   }
-}
 
   async function loadRelated(
     currentProduct = product,
@@ -252,10 +251,8 @@ export default function ProductDetailsPage() {
   }, [product, selectedColor]);
 
   const selectedVariant = useMemo(() => {
-    return (product?.variants || []).find(
-      (v) => v.colorName === selectedColor && v.sizeValue === selectedSize
-    );
-  }, [product, selectedColor, selectedSize]);
+    return (product?.variants || []).find((v) => v.id === selectedVariantId);
+  }, [product, selectedVariantId]);
 
   const stock = Number(selectedVariant?.stockCount || 0);
   const price = Number(product?.price || 0);
@@ -265,12 +262,12 @@ export default function ProductDetailsPage() {
   function chooseColor(colorName) {
     setSelectedColor(colorName);
 
-    const firstSize =
-      (product?.variants || []).find(
-        (v) => v.colorName === colorName && Number(v.stockCount || 0) > 0
-      )?.sizeValue || "";
+    const firstVariant = (product?.variants || []).find(
+      (v) => v.colorName === colorName && Number(v.stockCount || 0) > 0
+    );
 
-    setSelectedSize(firstSize);
+    setSelectedVariantId(firstVariant?.id || "");
+    setSelectedSize(firstVariant?.sizeValue || "");
     setQuantity(1);
   }
 
@@ -305,30 +302,33 @@ export default function ProductDetailsPage() {
     setActiveImage((prev) => (prev >= images.length - 1 ? 0 : prev + 1));
   }
 
- async function toggleFavorite() {
-  if (!getAccessToken()) {
-    navigate("/login");
-    return;
-  }
-
-  if (!id) return;
-
-  try {
-    setActionLoading(true);
-
-    if (favorite) {
-      await favoritesApi.remove(id);
-      setFavorite(false);
-    } else {
-      await favoritesApi.add(id);
-      setFavorite(true);
+  async function toggleFavorite() {
+    if (!getAccessToken()) {
+      navigate("/login");
+      return;
     }
 
-    window.dispatchEvent(new Event("nemesis_auth_changed"));
-  } finally {
-    setActionLoading(false);
+    if (!id) return;
+
+    try {
+      setActionLoading(true);
+
+      if (favorite) {
+        await favoritesApi.remove(id);
+        setFavorite(false);
+        setFavoriteCache(id, false);
+      } else {
+        await favoritesApi.add(id);
+        setFavorite(true);
+        setFavoriteCache(id, true);
+      }
+
+      window.dispatchEvent(new Event("nemesis_auth_changed"));
+    } finally {
+      setActionLoading(false);
+    }
   }
-}
+
   async function addBasket() {
     if (!getAccessToken()) {
       navigate("/login");
@@ -375,69 +375,43 @@ export default function ProductDetailsPage() {
       message
     )}`;
   }
+
   function handleModalPointerDown(e) {
-  modalStartXRef.current = e.clientX;
-  modalStartYRef.current = e.clientY;
-  setModalDragging(true);
-  setModalDragX(0);
+    modalStartXRef.current = e.clientX;
+    modalStartYRef.current = e.clientY;
+    setModalDragging(true);
+    setModalDragX(0);
 
-  e.currentTarget.setPointerCapture?.(e.pointerId);
-}
-
-function handleModalPointerMove(e) {
-  if (!modalDragging || modalStartXRef.current === null) return;
-
-  const diffX = e.clientX - modalStartXRef.current;
-  const diffY = e.clientY - modalStartYRef.current;
-
-  if (Math.abs(diffY) > Math.abs(diffX)) return;
-
-  e.preventDefault();
-  setModalDragX(Math.max(-120, Math.min(120, diffX)));
-}
-
-async function toggleFavorite() {
-  if (!getAccessToken()) {
-    navigate("/login");
-    return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
   }
 
-  if (!id) return;
+  function handleModalPointerMove(e) {
+    if (!modalDragging || modalStartXRef.current === null) return;
 
-  try {
-    setActionLoading(true);
+    const diffX = e.clientX - modalStartXRef.current;
+    const diffY = e.clientY - modalStartYRef.current;
 
-    if (favorite) {
-      await favoritesApi.remove(id);
-      setFavorite(false);
-      setFavoriteCache(id, false);
-    } else {
-      await favoritesApi.add(id);
-      setFavorite(true);
-      setFavoriteCache(id, true);
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
+
+    e.preventDefault();
+    setModalDragX(Math.max(-120, Math.min(120, diffX)));
+  }
+
+  function handleModalPointerUp(e) {
+    if (!modalDragging) return;
+
+    const diffX = e.clientX - modalStartXRef.current;
+
+    if (Math.abs(diffX) > 55) {
+      if (diffX < 0) modalNext();
+      if (diffX > 0) modalPrev();
     }
 
-    window.dispatchEvent(new Event("nemesis_auth_changed"));
-  } finally {
-    setActionLoading(false);
+    modalStartXRef.current = null;
+    modalStartYRef.current = null;
+    setModalDragging(false);
+    setModalDragX(0);
   }
-}
-
-function handleModalPointerUp(e) {
-  if (!modalDragging) return;
-
-  const diffX = e.clientX - modalStartXRef.current;
-
-  if (Math.abs(diffX) > 55) {
-    if (diffX < 0) modalNext();
-    if (diffX > 0) modalPrev();
-  }
-
-  modalStartXRef.current = null;
-  modalStartYRef.current = null;
-  setModalDragging(false);
-  setModalDragX(0);
-}
 
   async function openWhatsapp() {
     try {
@@ -609,7 +583,7 @@ function handleModalPointerUp(e) {
 
               <div className="flex min-h-[52px] flex-wrap items-center gap-2">
                 {availableSizes.map((item) => {
-                  const active = selectedSize === item.size;
+                  const active = selectedVariantId === item.variantId;
                   const lowStock =
                     item.stock > 0 && item.stock <= LOW_STOCK_LIMIT;
 
@@ -618,6 +592,7 @@ function handleModalPointerUp(e) {
                       key={item.variantId}
                       type="button"
                       onClick={() => {
+                        setSelectedVariantId(item.variantId);
                         setSelectedSize(item.size);
                         setQuantity(1);
                       }}
@@ -784,86 +759,86 @@ function handleModalPointerUp(e) {
         )}
       </div>
 
-{modalOpen &&
-  createPortal(
-    <div className="fixed inset-0 z-[99999] flex h-dvh w-screen touch-none items-center justify-center overflow-hidden bg-black/95 p-2 md:p-8">
-      <button
-        type="button"
-        onClick={() => setModalOpen(false)}
-        className="fixed right-4 top-4 z-[100002] text-[34px] text-white transition hover:scale-110 active:scale-95 md:right-7 md:top-7"
-      >
-        <FiX />
-      </button>
-
-      {images.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              modalPrev();
-            }}
-            className="fixed left-4 top-1/2 z-[100002] hidden -translate-y-1/2 text-[58px] text-white/90 transition hover:-translate-x-1 md:block"
-          >
-            <FiChevronLeft />
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              modalNext();
-            }}
-            className="fixed right-4 top-1/2 z-[100002] hidden -translate-y-1/2 text-[58px] text-white/90 transition hover:translate-x-1 md:block"
-          >
-            <FiChevronRight />
-          </button>
-        </>
-      )}
-
-      <img
-        key={images[activeImage]}
-        src={images[activeImage]}
-        alt={product.name}
-        draggable="false"
-        onPointerDown={handleModalPointerDown}
-        onPointerMove={handleModalPointerMove}
-        onPointerUp={handleModalPointerUp}
-        onPointerCancel={() => {
-          setModalDragging(false);
-          setModalDragX(0);
-        }}
-        className="block max-h-[98dvh] max-w-[98vw] select-none animate-[modalImage_.28s_cubic-bezier(.22,1,.36,1)_both] rounded-[14px] object-contain"
-        style={{
-          transform: `translateX(${modalDragX}px)`,
-          transition: modalDragging ? "none" : "transform 260ms ease-out",
-          touchAction: "none",
-        }}
-      />
-
-      {images.length > 1 && (
-        <div className="fixed bottom-5 left-1/2 z-[100002] flex -translate-x-1/2 gap-2">
-          {images.map((_, index) => (
+      {modalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex h-dvh w-screen touch-none items-center justify-center overflow-hidden bg-black/95 p-2 md:p-8">
             <button
-              key={index}
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setActiveImage(index);
+              onClick={() => setModalOpen(false)}
+              className="fixed right-4 top-4 z-[100002] text-[34px] text-white transition hover:scale-110 active:scale-95 md:right-7 md:top-7"
+            >
+              <FiX />
+            </button>
+
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modalPrev();
+                  }}
+                  className="fixed left-4 top-1/2 z-[100002] hidden -translate-y-1/2 text-[58px] text-white/90 transition hover:-translate-x-1 md:block"
+                >
+                  <FiChevronLeft />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modalNext();
+                  }}
+                  className="fixed right-4 top-1/2 z-[100002] hidden -translate-y-1/2 text-[58px] text-white/90 transition hover:translate-x-1 md:block"
+                >
+                  <FiChevronRight />
+                </button>
+              </>
+            )}
+
+            <img
+              key={images[activeImage]}
+              src={images[activeImage]}
+              alt={product.name}
+              draggable="false"
+              onPointerDown={handleModalPointerDown}
+              onPointerMove={handleModalPointerMove}
+              onPointerUp={handleModalPointerUp}
+              onPointerCancel={() => {
+                setModalDragging(false);
+                setModalDragX(0);
               }}
-              className={`h-1.5 rounded-full transition-all ${
-                activeImage === index ? "w-8 bg-white" : "w-2 bg-white/40"
-              }`}
+              className="block max-h-[98dvh] max-w-[98vw] select-none animate-[modalImage_.28s_cubic-bezier(.22,1,.36,1)_both] rounded-[14px] object-contain"
+              style={{
+                transform: `translateX(${modalDragX}px)`,
+                transition: modalDragging ? "none" : "transform 260ms ease-out",
+                touchAction: "none",
+              }}
             />
-          ))}
-        </div>
-      )}
-    </div>,
-    document.body
-  )}
+
+            {images.length > 1 && (
+              <div className="fixed bottom-5 left-1/2 z-[100002] flex -translate-x-1/2 gap-2">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setActiveImage(index);
+                    }}
+                    className={`h-1.5 rounded-full transition-all ${
+                      activeImage === index ? "w-8 bg-white" : "w-2 bg-white/40"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
 
       <style>{`
         @keyframes detailsUp {

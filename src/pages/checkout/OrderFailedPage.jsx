@@ -26,9 +26,9 @@ export default function OrderFailedPage() {
   }, []);
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#fafafa] px-5 py-8">
-      <section className="w-full max-w-[620px] animate-[failedIn_.45s_cubic-bezier(.22,1,.36,1)_both] rounded-[26px] bg-white p-6 text-center shadow-[0_26px_90px_rgba(0,0,0,0.08)] md:p-8">
-        <div className="mx-auto grid h-24 w-24 animate-[failedPop_.7s_cubic-bezier(.22,1,.36,1)_both] place-items-center rounded-full bg-red-50 text-[48px] text-red-600">
+    <main className="grid min-h-screen place-items-center bg-[#fafafa] px-5 py-8 md:px-8">
+      <section className="w-full max-w-[640px] animate-[failedIn_.45s_cubic-bezier(.22,1,.36,1)_both] rounded-[26px] bg-white p-6 text-center shadow-[0_26px_90px_rgba(0,0,0,0.08)] md:p-8">
+        <div className="mx-auto grid h-24 w-24 animate-[failedPop_.75s_cubic-bezier(.22,1,.36,1)_both] place-items-center rounded-full bg-red-50 text-[50px] text-red-600">
           <FiX />
         </div>
 
@@ -45,8 +45,9 @@ export default function OrderFailedPage() {
         </div>
 
         <button
+          type="button"
           onClick={() => navigate("/checkout")}
-          className="mt-6 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition active:scale-[0.98]"
+          className="mt-6 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98]"
         >
           <FiArrowLeft />
           {text.backToCheckout}
@@ -58,8 +59,9 @@ export default function OrderFailedPage() {
           from { opacity: 0; transform: translateY(22px) scale(.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+
         @keyframes failedPop {
-          0% { opacity: 0; transform: scale(.4) rotate(16deg); }
+          0% { opacity: 0; transform: scale(.35) rotate(18deg); }
           65% { transform: scale(1.08) rotate(-3deg); }
           100% { opacity: 1; transform: scale(1) rotate(0); }
         }
