@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import ProductCard from "../product/ProductCard";
 
-export default function ProductSection({ title, products }) {
+export default function ProductSection({ title, subtitle, products }) {
   const rowRef = useRef(null);
 
   if (!products || products.length === 0) return null;
@@ -30,7 +30,7 @@ export default function ProductSection({ title, products }) {
           </h2>
 
           <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">
-            sürüşdür
+            {subtitle || "SÜRÜŞDÜR"}
           </p>
         </div>
 
@@ -52,10 +52,10 @@ export default function ProductSection({ title, products }) {
           <FiChevronRight />
         </button>
 
-        <div className="overflow-hidden">
+        <div className="overflow-hidden md:overflow-visible">
           <div
             ref={rowRef}
-            className="flex touch-pan-x justify-start gap-3 overflow-x-auto overscroll-x-contain pb-2 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 [&::-webkit-scrollbar]:hidden"
+            className="flex touch-pan-x justify-start gap-3 overflow-x-auto overscroll-x-contain pb-3 scroll-smooth [-ms-overflow-style:auto] [scrollbar-width:thin] md:gap-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {products.map((product) => (
               <div

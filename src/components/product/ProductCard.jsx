@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { FiHeart, FiShoppingBag } from "react-icons/fi";
+import { FiHeart } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { favoritesApi } from "../../api/favoritesApi";
@@ -90,6 +90,10 @@ export default function ProductCard({ product }) {
   const price = Number(mergedProduct?.price || 0);
   const discountPrice = Number(mergedProduct?.discountPrice || 0);
   const hasDiscount = discountPrice > 0 && discountPrice < price;
+
+  const discountPercent = hasDiscount
+    ? Math.round(((price - discountPrice) / price) * 100)
+    : 0;
 
   useEffect(() => {
     return () => {
@@ -311,42 +315,6 @@ export default function ProductCard({ product }) {
     }
   }
 
-  async function handleBasket(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!productId) return;
-
-    if (!getAccessToken()) {
-      navigate("/login");
-      return;
-    }
-
-    await loadDetailOnce();
-
-    const variants = detailProduct?.variants || mergedProduct?.variants || [];
-    const firstVariant = variants.find((x) => Number(x.stockCount ?? x.stock ?? 0) > 0) || variants[0];
-
-    if (!firstVariant?.id) return;
-
-    try {
-      setActionLoading(true);
-
-      await apiFetch("/api/Basket", {
-        method: "POST",
-        body: JSON.stringify({
-          productId,
-          productVariantId: firstVariant.id,
-          quantity: 1,
-        }),
-      });
-
-      window.dispatchEvent(new Event("nemesis_auth_changed"));
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
   return (
     <NavLink
       to={productId ? `/products/${productId}` : "#"}
@@ -368,7 +336,7 @@ export default function ProductCard({ product }) {
       >
         {hasDiscount && (
           <span className="absolute left-3 top-3 z-20 rounded-full bg-red-600 px-3 py-1 text-[11px] font-extrabold text-white">
-            SALE
+            -{discountPercent}%
           </span>
         )}
 
@@ -456,35 +424,12 @@ export default function ProductCard({ product }) {
         )}
       </div>
 
-      <div className="p-3">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="truncate text-xs font-bold uppercase tracking-[0.12em] text-zinc-400">
-            {mergedProduct?.brandName || mergedProduct?.brand?.name || "Nemesis"}
-          </p>
-
-          <button
-            type="button"
-            onClick={handleBasket}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            disabled={actionLoading}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-zinc-50 text-[17px] text-zinc-900 transition hover:bg-zinc-100 active:scale-90"
-          >
-            <FiShoppingBag />
-          </button>
-        </div>
-
+      <div className="p-3 pt-2">
         <h3 className="line-clamp-2 min-h-[40px] text-[14px] font-bold leading-5 text-zinc-950">
           {mergedProduct?.name || mergedProduct?.productName}
         </h3>
 
-        <div className="mt-3 flex items-end gap-2">
+        <div className="mt-2 flex items-end gap-2">
           <p
             className={`text-[16px] font-extrabold ${
               hasDiscount ? "text-red-600" : "text-zinc-950"

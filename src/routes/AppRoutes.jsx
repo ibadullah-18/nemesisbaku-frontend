@@ -14,6 +14,7 @@ import AdminProductDetails from "../pages/admin/AdminProductDetails";
 import AdminAddProduct from "../pages/admin/AdminAddProduct";
 import AdminEditProduct from "../pages/admin/AdminEditProduct";
 import AdminCampaigns from "../pages/admin/AdminCampaigns";
+import AdminPromoForm from "../pages/admin/AdminPromoForm";
 import AdminOrders from "../pages/admin/AdminOrders";
 import AdminOrderDetails from "../pages/admin/AdminOrderDetails";
 import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
@@ -22,6 +23,8 @@ import AdminBrands from "../pages/admin/AdminBrands";
 import AdminUsers from "../pages/admin/AdminUsers";
 import AdminSizes from "../pages/admin/AdminSizes";
 import AdminColors from "../pages/admin/AdminColors";
+import AdminHomeSections from "../pages/admin/AdminHomeSections";
+import AdminHomeSectionForm from "../pages/admin/AdminHomeSectionForm";
 
 import ProfilePage from "../pages/profile/ProfilePage";
 import ProductDetailsPage from "../pages/product/ProductDetailsPage";
@@ -36,6 +39,7 @@ import OrderSuccessPage from "../pages/checkout/OrderSuccessPage";
 import OrderFailedPage from "../pages/checkout/OrderFailedPage";
 import AccountSettingsPage from "../pages/profile/AccountSettingsPage";
 import SecuritySettingsPage from "../pages/profile/SecuritySettingsPage";
+import PromoPage from "../pages/promo/PromoPage";
 
 function PageShell({ children }) {
   return (
@@ -221,6 +225,8 @@ export default function AppRoutes() {
         <Route path="products/:id" element={<AdminEditProduct />} />
 
         <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route path="campaigns/create" element={<AdminPromoForm mode="create" />} />
+        <Route path="campaigns/:id" element={<AdminPromoForm mode="edit" />} />
 
         <Route path="orders" element={<AdminOrders />} />
         <Route path="orders/:id" element={<AdminOrderDetails />} />
@@ -233,9 +239,23 @@ export default function AppRoutes() {
         <Route path="colors" element={<AdminColors />} />
 
         <Route path="users" element={<AdminUsers />} />
+
+        <Route path="home-sections" element={<AdminHomeSections />} />
+        <Route path="home-sections/create" element={<AdminHomeSectionForm mode="create" />} />
+        <Route path="home-sections/:id" element={<AdminHomeSectionForm mode="edit" />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      <Route
+        path="/:slug"
+        element={
+          <Layout>
+            <PromoPage />
+          </Layout>
+        }
+      />
+      
     </Routes>
   );
 }

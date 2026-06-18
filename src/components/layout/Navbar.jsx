@@ -235,7 +235,7 @@ export default function Navbar() {
             : "-translate-y-full opacity-0"
         }`}
       >
-        <div className="mx-auto flex h-[62px] max-w-[1180px] items-center justify-between px-4 md:h-[72px] md:px-6">
+        <div className="relative mx-auto flex h-[62px] max-w-[1180px] items-center justify-between px-4 md:h-[72px] md:px-6">
           <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
             <button
               type="button"
@@ -265,14 +265,14 @@ export default function Navbar() {
                 {brandName}
               </span>
             </NavLink>
-
-            <NavLink
-              to="/"
-              className="truncate text-[20px] font-semibold tracking-[0.015em] text-zinc-950 md:hidden"
-            >
-              {brandName}
-            </NavLink>
           </div>
+
+          <NavLink
+            to="/"
+            className="absolute left-1/2 max-w-[150px] -translate-x-1/2 truncate text-center text-[20px] font-semibold tracking-[0.015em] text-zinc-950 md:hidden"
+          >
+            {brandName}
+          </NavLink>
 
           <div className="flex items-center gap-1.5 md:gap-2.5">
             <NavLink

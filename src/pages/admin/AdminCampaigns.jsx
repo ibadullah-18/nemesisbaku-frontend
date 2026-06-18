@@ -1,21 +1,17 @@
-import { useEffect, useState } from "react";
-import { FiEdit3, FiPlus, FiSave, FiTrash2, FiUploadCloud, FiX } from "react-icons/fi";
-import { adminCampaignsApi } from "../../api/admin/adminApi";
+import { useEffect, useMemo, useState } from "react";
+import { NavLink } from "react-router-dom";
+import {
+  FiEdit3,
+  FiImage,
+  FiPlus,
+  FiRefreshCw,
+  FiTrash2,
+} from "react-icons/fi";
+import { adminPromoPagesApi } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 
-const emptyForm = {
-  title: "",
-  description: "",
-  redirectUrl: "/",
-  startDate: "",
-  endDate: "",
-  isActive: true,
-  file: null,
-  previewUrl: "",
-};
-
 function unwrapData(res) {
-  return res?.data?.data || res?.data || res;
+  return res?.data?.data ?? res?.data ?? res;
 }
 
 function listOf(res) {
@@ -23,160 +19,105 @@ function listOf(res) {
   return data?.items || data?.list || data?.result || (Array.isArray(data) ? data : []);
 }
 
-function toInputDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 16);
+function promoTypeText(type) {
+  return Number(type) === 2 ? "Banner" : "Campaign";
+}
+
+function promoTypeClass(type) {
+  return Number(type) === 2
+    ? "bg-orange-50 text-orange-700"
+    : "bg-[#eef3ff] text-[#244989]";
 }
 
 export default function AdminCampaigns() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-
+  const [promos, setPromos] = useState([]);
+  const [filterType, setFilterType] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    loadCampaigns();
-  }, []);
+    loadPromos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterType]);
 
-  async function loadCampaigns() {
+  async function loadPromos() {
     try {
       setLoading(true);
-      const res = await adminCampaignsApi.list();
-      setCampaigns(listOf(res));
+      setError("");
+
+      const res = await adminPromoPagesApi.list(filterType || undefined);
+      setPromos(listOf(res));
+    } catch (err) {
+      setError(err.message || "Promo səhifələr yüklənmədi.");
     } finally {
       setLoading(false);
     }
   }
 
-  function updateForm(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function resetForm() {
-    if (form.previewUrl?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.previewUrl);
-    }
-
-    setForm(emptyForm);
-    setEditingId(null);
-    setError("");
-    setSuccess("");
-  }
-
-  function startEdit(campaign) {
-    if (form.previewUrl?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.previewUrl);
-    }
-
-    setEditingId(campaign.id);
-
-    setForm({
-      title: campaign.title || "",
-      description: campaign.description || "",
-      redirectUrl: campaign.redirectUrl || "/",
-      startDate: toInputDate(campaign.startDate),
-      endDate: toInputDate(campaign.endDate),
-      isActive: campaign.isActive ?? true,
-      file: null,
-      previewUrl: campaign.imageUrl || "",
-    });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    if (form.previewUrl?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.previewUrl);
-    }
-
-    updateForm("file", file);
-    updateForm("previewUrl", URL.createObjectURL(file));
-
-    e.target.value = "";
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (!form.title.trim()) return setError("Başlıq yazılmalıdır.");
-    if (!editingId && !form.file) return setError("Banner şəkli seçilməlidir.");
-    if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
-    if (!form.endDate) return setError("Bitmə tarixi seçilməlidir.");
-
-    try {
-      setSaving(true);
-
-      const body = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        redirectUrl: form.redirectUrl.trim() || "/",
-        startDate: form.startDate,
-        endDate: form.endDate,
-        isActive: form.isActive,
-        file: form.file,
-      };
-
-      if (editingId) {
-        await adminCampaignsApi.update(editingId, body);
-        setSuccess("Kampaniya yeniləndi.");
-      } else {
-        await adminCampaignsApi.create(body);
-        setSuccess("Kampaniya yaradıldı.");
-      }
-
-      resetForm();
-      await loadCampaigns();
-    } catch (err) {
-      setError(err.message || "Kampaniya yadda saxlanmadı.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteCampaign(id) {
-    const ok = confirm("Bu kampaniya silinsin?");
+  async function deletePromo(promo) {
+    const ok = confirm(`${promo.title || "Bu promo"} silinsin?`);
     if (!ok) return;
 
     try {
       setSaving(true);
-      await adminCampaignsApi.delete(id);
-      await loadCampaigns();
-
-      if (editingId === id) resetForm();
+      await adminPromoPagesApi.delete(promo.id);
+      await loadPromos();
+    } catch (err) {
+      setError(err.message || "Promo silinmədi.");
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <AppLoader text="Kampaniyalar yüklənir" />;
+  const counters = useMemo(() => {
+    return {
+      total: promos.length,
+      campaigns: promos.filter((x) => Number(x.type) === 1).length,
+      banners: promos.filter((x) => Number(x.type) === 2).length,
+      active: promos.filter((x) => x.isActive).length,
+    };
+  }, [promos]);
+
+  if (loading) return <AppLoader text="Promolar yüklənir" />;
 
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Yadda saxlanılır" />}
+      {saving && <AppLoader text="Əməliyyat icra olunur" />}
 
-      <div className="mb-7">
-        <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-          Homepage banner
-        </p>
+      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
+            Promo pages
+          </p>
 
-        <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
-          Kampaniyalar
-        </h1>
+          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
+            Kampaniya və Bannerlər
+          </h1>
 
-        <p className="mt-1 text-sm font-medium text-zinc-500">
-          Ana səhifədə görünən banner və kampaniya slayderlərini idarə edin.
-        </p>
+          <p className="mt-1 text-sm font-medium text-zinc-500">
+            Homepage-də görünən campaign və banner slotlarını idarə edin.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <NavLink
+            to="/SuperAdmin/campaigns/create"
+            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white transition active:scale-[0.97]"
+          >
+            <FiPlus />
+            Promo yarat
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={loadPromos}
+            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white transition active:scale-[0.97]"
+          >
+            <FiRefreshCw />
+            Yenilə
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -185,253 +126,149 @@ export default function AdminCampaigns() {
         </div>
       )}
 
-      {success && (
-        <div className="mb-5 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-          {success}
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CounterCard label="Hamısı" value={counters.total} />
+        <CounterCard label="Campaign" value={counters.campaigns} />
+        <CounterCard label="Banner" value={counters.banners} />
+        <CounterCard label="Aktiv" value={counters.active} />
+      </div>
+
+      <div className="mb-5 flex flex-wrap gap-2 rounded-[22px] bg-white p-2 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+        <FilterButton active={filterType === ""} onClick={() => setFilterType("")}>
+          Hamısı
+        </FilterButton>
+
+        <FilterButton active={filterType === "1"} onClick={() => setFilterType("1")}>
+          Campaign
+        </FilterButton>
+
+        <FilterButton active={filterType === "2"} onClick={() => setFilterType("2")}>
+          Banner
+        </FilterButton>
+      </div>
+
+      {promos.length === 0 ? (
+        <div className="rounded-[28px] bg-white p-10 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+          <FiImage className="mx-auto text-[42px] text-zinc-300" />
+          <p className="mt-3 text-sm font-extrabold text-zinc-400">
+            Hələ promo yoxdur.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {promos.map((promo) => (
+            <article
+              key={promo.id}
+              className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)]"
+            >
+              <div className="relative h-52 bg-zinc-50">
+                {promo.imageUrl ? (
+                  <img
+                    src={promo.imageUrl}
+                    alt={promo.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-zinc-300">
+                    <FiImage className="text-[36px]" />
+                  </div>
+                )}
+
+                <div className="absolute left-3 top-3 flex gap-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-extrabold ${promoTypeClass(
+                      promo.type
+                    )}`}
+                  >
+                    {promoTypeText(promo.type)}
+                  </span>
+
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-zinc-700">
+                    Slot {promo.slotNumber || "—"}
+                  </span>
+                </div>
+
+                <span
+                  className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-extrabold ${
+                    promo.isActive
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-600"
+                  }`}
+                >
+                  {promo.isActive ? "Aktiv" : "Passiv"}
+                </span>
+              </div>
+
+              <div className="p-5">
+                <h3 className="line-clamp-1 text-lg font-extrabold text-zinc-950">
+                  {promo.title}
+                </h3>
+
+                <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-zinc-500">
+                  {promo.description || "Açıqlama yoxdur"}
+                </p>
+
+                <div className="mt-4 rounded-[20px] bg-zinc-50 p-3 text-xs font-bold text-zinc-500">
+                  <p>Slug: {promo.slug || "—"}</p>
+                  <p className="mt-1">
+                    Tarix: {String(promo.startDate || "").slice(0, 10)} —{" "}
+                    {String(promo.endDate || "").slice(0, 10)}
+                  </p>
+                  <p className="mt-1">
+                    Məhsul sayı: {(promo.productIds || []).length}
+                  </p>
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  <NavLink
+                    to={`/SuperAdmin/campaigns/${promo.id}`}
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-white text-sm font-extrabold text-zinc-800 ring-1 ring-zinc-100 transition active:scale-[0.97]"
+                  >
+                    <FiEdit3 />
+                    Edit
+                  </NavLink>
+
+                  <button
+                    type="button"
+                    onClick={() => deletePromo(promo)}
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-red-50 text-sm font-extrabold text-red-600 transition active:scale-[0.97]"
+                  >
+                    <FiTrash2 />
+                    Sil
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
       )}
-
-      <div className="grid gap-5 xl:grid-cols-[430px_1fr]">
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-                {editingId ? "Kampaniyanı yenilə" : "Yeni kampaniya"}
-              </h2>
-
-              <p className="text-sm font-medium text-zinc-500">
-                Başlıq, şəkil, link və tarix aralığı yazın.
-              </p>
-            </div>
-
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="grid h-10 w-10 place-items-center rounded-full bg-zinc-50 text-zinc-800"
-              >
-                <FiX />
-              </button>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <AdminInput
-              label="Başlıq"
-              placeholder="Məsələn: Summer Sale"
-              value={form.title}
-              onChange={(v) => updateForm("title", v)}
-            />
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-zinc-800">
-                Açıqlama
-              </span>
-
-              <textarea
-                value={form.description}
-                onChange={(e) => updateForm("description", e.target.value)}
-                placeholder="Məsələn: 50% endirim kampaniyası başladı."
-                rows={4}
-                className="w-full resize-none rounded-[18px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-zinc-400"
-              />
-            </label>
-
-            <AdminInput
-              label="Yönləndirmə linki"
-              placeholder="Məsələn: /products və ya /"
-              value={form.redirectUrl}
-              onChange={(v) => updateForm("redirectUrl", v)}
-            />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AdminInput
-                label="Başlama tarixi"
-                type="datetime-local"
-                value={form.startDate}
-                onChange={(v) => updateForm("startDate", v)}
-              />
-
-              <AdminInput
-                label="Bitmə tarixi"
-                type="datetime-local"
-                value={form.endDate}
-                onChange={(v) => updateForm("endDate", v)}
-              />
-            </div>
-
-            <Toggle
-              label="Aktiv kampaniyadır"
-              checked={form.isActive}
-              onClick={() => updateForm("isActive", !form.isActive)}
-            />
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-zinc-800">
-                Banner şəkli
-              </span>
-
-              <div className="flex cursor-pointer items-center justify-center gap-3 rounded-[18px] border border-dashed border-zinc-200 bg-zinc-50 px-4 py-5 text-sm font-extrabold text-zinc-600 transition hover:bg-zinc-100">
-                <FiUploadCloud className="text-[22px]" />
-                {form.file ? form.file.name : "Şəkil seç"}
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-
-            {form.previewUrl && (
-              <div className="overflow-hidden rounded-[22px] border border-zinc-100 bg-zinc-50">
-                <img
-                  src={form.previewUrl}
-                  alt="Campaign preview"
-                  className="h-44 w-full object-cover"
-                />
-              </div>
-            )}
-
-            <button
-              disabled={saving}
-              className="flex h-13 w-full items-center justify-center gap-2 rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
-            >
-              {editingId ? <FiSave /> : <FiPlus />}
-              {editingId ? "Yenilə" : "Kampaniya yarat"}
-            </button>
-          </form>
-        </section>
-
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <div className="mb-5">
-            <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-              Kampaniya siyahısı
-            </h2>
-
-            <p className="text-sm font-medium text-zinc-500">
-              Aktiv olanlar homepage banner hissəsində görünəcək.
-            </p>
-          </div>
-
-          {campaigns.length === 0 ? (
-            <div className="rounded-[24px] bg-zinc-50 p-8 text-center text-sm font-bold text-zinc-400">
-              Hələ kampaniya yoxdur.
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {campaigns.map((campaign) => (
-                <article
-                  key={campaign.id}
-                  className="overflow-hidden rounded-[26px] border border-zinc-100 bg-zinc-50"
-                >
-                  <div className="relative h-48 bg-zinc-100">
-                    {campaign.imageUrl ? (
-                      <img
-                        src={campaign.imageUrl}
-                        alt={campaign.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-sm font-bold text-zinc-300">
-                        Banner yoxdur
-                      </div>
-                    )}
-
-                    <span
-                      className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-extrabold ${
-                        campaign.isActive
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {campaign.isActive ? "Aktiv" : "Passiv"}
-                    </span>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="line-clamp-1 text-lg font-extrabold text-zinc-950">
-                      {campaign.title}
-                    </h3>
-
-                    <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-zinc-500">
-                      {campaign.description || "Açıqlama yoxdur"}
-                    </p>
-
-                    <div className="mt-3 rounded-[18px] bg-white p-3 text-xs font-bold text-zinc-500">
-                      <p>Link: {campaign.redirectUrl || "/"}</p>
-                      <p className="mt-1">
-                        Tarix: {String(campaign.startDate || "").slice(0, 10)} —{" "}
-                        {String(campaign.endDate || "").slice(0, 10)}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(campaign)}
-                        className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-white text-sm font-extrabold text-zinc-800"
-                      >
-                        <FiEdit3 />
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => deleteCampaign(campaign.id)}
-                        className="grid h-11 w-11 place-items-center rounded-[16px] bg-red-50 text-red-600"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
     </div>
   );
 }
 
-function AdminInput({ label, placeholder, value, onChange, type = "text" }) {
+function CounterCard({ label, value }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold text-zinc-800">
+    <div className="rounded-[24px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+      <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-zinc-400">
         {label}
-      </span>
-
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
-      />
-    </label>
+      </p>
+      <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em]">
+        {value}
+      </p>
+    </div>
   );
 }
 
-function Toggle({ label, checked, onClick }) {
+function FilterButton({ active, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-13 w-full items-center justify-between rounded-[16px] border px-4 text-sm font-extrabold transition ${
-        checked
-          ? "border-[#244989] bg-[#244989]/8 text-[#244989]"
-          : "border-zinc-100 bg-zinc-50 text-zinc-700"
+      className={`h-11 rounded-[15px] px-5 text-sm font-extrabold transition active:scale-[0.97] ${
+        active ? "bg-zinc-950 text-white" : "bg-zinc-50 text-zinc-600"
       }`}
     >
-      {label}
-
-      <span
-        className={`h-5 w-5 rounded-full border transition ${
-          checked ? "border-[#244989] bg-[#244989]" : "border-zinc-300 bg-white"
-        }`}
-      />
+      {children}
     </button>
   );
 }

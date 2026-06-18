@@ -1,10 +1,6 @@
 import { apiFetch } from "./apiFetch";
 
-export function getActiveCampaigns() {
-  return apiFetch("/api/Campaigns/active");
-}
-
-export function getProducts(params = {}) {
+function buildQuery(params = {}) {
   const query = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -14,8 +10,39 @@ export function getProducts(params = {}) {
   });
 
   const queryString = query.toString();
+  return queryString ? `?${queryString}` : "";
+}
 
-  return apiFetch(`/api/Products${queryString ? `?${queryString}` : ""}`);
+export async function getActiveCampaigns() {
+  try {
+    return await apiFetch("/api/PromoPages/active?type=1");
+  } catch {
+    return [];
+  }
+}
+
+export async function getActiveBanners() {
+  try {
+    return await apiFetch("/api/PromoPages/active?type=2");
+  } catch {
+    return [];
+  }
+}
+
+export async function getPromoPage(slug) {
+  return apiFetch(`/api/PromoPages/${slug}`);
+}
+
+export async function getActiveHomeSections() {
+  try {
+    return await apiFetch("/api/HomeSections/active");
+  } catch {
+    return [];
+  }
+}
+
+export function getProducts(params = {}) {
+  return apiFetch(`/api/Products${buildQuery(params)}`);
 }
 
 export function getStoreInfo() {

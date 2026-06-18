@@ -8,7 +8,6 @@ export async function adminFetch(endpoint, options = {}) {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      Accept: "*/*",
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
@@ -16,11 +15,12 @@ export async function adminFetch(endpoint, options = {}) {
   });
 
   let result = null;
+  const text = await res.text();
 
   try {
-    result = await res.json();
+    result = text ? JSON.parse(text) : null;
   } catch {
-    result = null;
+    result = text;
   }
 
   if (res.status === 401 || res.status === 403) {
@@ -30,20 +30,33 @@ export async function adminFetch(endpoint, options = {}) {
   }
 
   if (!res.ok || result?.success === false) {
-    const message =
-      result?.message ||
-      result?.error ||
-      result?.errors?.[0] ||
-      "Admin əməliyyatı uğursuz oldu";
+    console.error("ADMIN API ERROR:", {
+      endpoint,
+      status: res.status,
+      response: result,
+    });
 
-    throw new Error(message);
+    const validationErrors =
+      result?.errors && typeof result.errors === "object"
+        ? Object.entries(result.errors)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
+            .join(" | ")
+        : "";
+
+    throw new Error(
+      validationErrors ||
+        result?.message ||
+        result?.title ||
+        result?.error ||
+        "Admin əməliyyatı uğursuz oldu"
+    );
   }
 
   return result;
 }
 
 export function unwrapAdmin(res) {
-  return res?.data?.data || res?.data || res;
+  return res?.data?.data ?? res?.data ?? res;
 }
 
 export function listAdmin(res) {
@@ -86,38 +99,26 @@ function buildQuery(params = {}) {
   return text ? `?${text}` : "";
 }
 
+export function getCreatedEntityId(res) {
+  const data = unwrapAdmin(res);
+
+  if (typeof data === "string") return data;
+
+  return (
+    data?.id ||
+    data?.productId ||
+    res?.id ||
+    res?.productId ||
+    res?.data?.id ||
+    res?.data?.productId ||
+    res?.data?.data?.id ||
+    res?.data?.data?.productId ||
+    null
+  );
+}
+
 export const adminDashboardApi = {
   getStats: () => adminFetch("/api/Stats/dashboard"),
-};
-
-export const adminUsersApi = {
-  list: ({ page = 1, pageSize = 20, search = "", role = "" } = {}) =>
-    adminFetch(
-      `/api/AdminUsers${buildQuery({ page, pageSize, search, role })}`
-    ),
-
-  detail: (id) => adminFetch(`/api/AdminUsers/${id}`),
-
-  createAdmin: (body) =>
-    adminFetch("/api/AdminUsers/create-admin", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-
-  deactivate: (id) =>
-    adminFetch(`/api/AdminUsers/${id}/deactivate`, {
-      method: "PUT",
-    }),
-
-  activate: (id) =>
-    adminFetch(`/api/AdminUsers/${id}/activate`, {
-      method: "PUT",
-    }),
-
-  delete: (id) =>
-    adminFetch(`/api/AdminUsers/${id}`, {
-      method: "DELETE",
-    }),
 };
 
 export const adminProductsApi = {
@@ -197,6 +198,27 @@ export const adminProductVariantsApi = {
     }),
 };
 
+export const adminCategoriesApi = {
+  list: () => adminFetch("/api/AdminCategories"),
+
+  create: (body) =>
+    adminFetch("/api/AdminCategories", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  update: (id, body) =>
+    adminFetch(`/api/AdminCategories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminCategories/${id}`, {
+      method: "DELETE",
+    }),
+};
+
 export const adminBrandsApi = {
   list: () => adminFetch("/api/AdminBrands"),
 
@@ -224,27 +246,6 @@ export const adminBrandsApi = {
 
   delete: (id) =>
     adminFetch(`/api/AdminBrands/${id}`, {
-      method: "DELETE",
-    }),
-};
-
-export const adminCategoriesApi = {
-  list: () => adminFetch("/api/AdminCategories"),
-
-  create: (body) =>
-    adminFetch("/api/AdminCategories", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-
-  update: (id, body) =>
-    adminFetch(`/api/AdminCategories/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
-
-  delete: (id) =>
-    adminFetch(`/api/AdminCategories/${id}`, {
       method: "DELETE",
     }),
 };
@@ -293,115 +294,156 @@ export const adminOrdersApi = {
     }),
 };
 
-export const adminCampaignsApi = {
-  list: () => adminFetch("/api/AdminCampaigns"),
+export const adminUsersApi = {
+  list: ({ page = 1, pageSize = 20, search = "", role = "" } = {}) =>
+    adminFetch(`/api/AdminUsers${buildQuery({ page, pageSize, search, role })}`),
 
-  create: (body) => {
-    const formData = new FormData();
+  detail: (id) => adminFetch(`/api/AdminUsers/${id}`),
 
-    formData.append("Title", body.title);
-    formData.append("Description", body.description || "");
-    formData.append("RedirectUrl", body.redirectUrl || "/");
-    formData.append("StartDate", body.startDate);
-    formData.append("EndDate", body.endDate);
-    formData.append("IsActive", body.isActive);
-
-    if (body.file) formData.append("File", body.file);
-
-    return adminFetch("/api/AdminCampaigns", {
+  createAdmin: (body) =>
+    adminFetch("/api/AdminUsers/create-admin", {
       method: "POST",
-      body: formData,
-    });
-  },
+      body: JSON.stringify(body),
+    }),
 
-  update: (id, body) => {
-    const formData = new FormData();
-
-    formData.append("Title", body.title);
-    formData.append("Description", body.description || "");
-    formData.append("RedirectUrl", body.redirectUrl || "/");
-    formData.append("StartDate", body.startDate);
-    formData.append("EndDate", body.endDate);
-    formData.append("IsActive", body.isActive);
-
-    if (body.file) formData.append("File", body.file);
-
-    return adminFetch(`/api/AdminCampaigns/${id}`, {
+  deactivate: (id) =>
+    adminFetch(`/api/AdminUsers/${id}/deactivate`, {
       method: "PUT",
-      body: formData,
-    });
-  },
+    }),
+
+  activate: (id) =>
+    adminFetch(`/api/AdminUsers/${id}/activate`, {
+      method: "PUT",
+    }),
 
   delete: (id) =>
-    adminFetch(`/api/AdminCampaigns/${id}`, {
+    adminFetch(`/api/AdminUsers/${id}`, {
       method: "DELETE",
     }),
 };
 
-export const adminBannersApi = {
-  list: () => adminFetch("/api/AdminBanners"),
-
-  create: (body) => {
-    const formData = new FormData();
-
-    formData.append("Title", body.title || "");
-    formData.append("Description", body.description || "");
-    formData.append("ButtonText", body.buttonText || "");
-    formData.append("ButtonUrl", body.buttonUrl || "/");
-    formData.append("SortOrder", body.sortOrder || 0);
-
-    if (body.file) formData.append("File", body.file);
-
-    return adminFetch("/api/AdminBanners", {
-      method: "POST",
-      body: formData,
-    });
-  },
-
-  update: (id, body) => {
-    const formData = new FormData();
-
-    formData.append("Title", body.title || "");
-    formData.append("Description", body.description || "");
-    formData.append("ButtonText", body.buttonText || "");
-    formData.append("ButtonUrl", body.buttonUrl || "/");
-    formData.append("SortOrder", body.sortOrder || 0);
-
-    if (body.file) formData.append("File", body.file);
-
-    return adminFetch(`/api/AdminBanners/${id}`, {
-      method: "PUT",
-      body: formData,
-    });
-  },
-
-  delete: (id) =>
-    adminFetch(`/api/AdminBanners/${id}`, {
-      method: "DELETE",
-    }),
-};
 
 export const adminAuditLogsApi = {
   list: ({ page = 1, pageSize = 20, search = "" } = {}) =>
-    adminFetch(
-      `/api/AdminAuditLogs${buildQuery({ page, pageSize, search })}`
-    ),
+    adminFetch(`/api/AdminAuditLogs${buildQuery({ page, pageSize, search })}`),
 };
 
-export const adminStoreInfoApi = {
-  get: () => adminFetch("/api/StoreInfo"),
+export const adminPromoPagesApi = {
+  list: (type) => {
+    const query = type ? `?type=${type}` : "";
 
-  update: (body) =>
-    adminFetch("/api/StoreInfo", {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-};
+    return adminFetch(`/api/AdminPromoPages${query}`);
+  },
 
-export const adminPromoCodesApi = {
-  check: (body) =>
-    adminFetch("/api/PromoCodes/check", {
+  detail: (id) => {
+    return adminFetch(`/api/AdminPromoPages/${id}`);
+  },
+
+  create: (body) => {
+    const formData = new FormData();
+
+    formData.append("Title", body.title || "");
+    formData.append("Description", body.description || "");
+    formData.append("Type", String(body.type || 1));
+    formData.append("StartDate", body.startDate || "");
+    formData.append("EndDate", body.endDate || "");
+    formData.append("IsActive", String(Boolean(body.isActive)));
+
+    if (body.file) {
+      formData.append("File", body.file);
+    }
+
+    (body.productIds || []).forEach((productId) => {
+      formData.append("ProductIds", productId);
+    });
+
+    return adminFetch("/api/AdminPromoPages", {
       method: "POST",
-      body: JSON.stringify(body),
-    }),
+      body: formData,
+    });
+  },
+
+  update: (id, body) => {
+    const formData = new FormData();
+
+    formData.append("Title", body.title || "");
+    formData.append("Description", body.description || "");
+    formData.append("StartDate", body.startDate || "");
+    formData.append("EndDate", body.endDate || "");
+    formData.append("IsActive", String(Boolean(body.isActive)));
+
+    if (body.file) {
+      formData.append("File", body.file);
+    }
+
+    (body.productIds || []).forEach((productId) => {
+      formData.append("ProductIds", productId);
+    });
+
+    return adminFetch(`/api/AdminPromoPages/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
+  },
+
+  delete: (id) => {
+    return adminFetch(`/api/AdminPromoPages/${id}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+export const adminHomeSectionsApi = {
+  list: () => {
+    return adminFetch("/api/AdminHomeSections");
+  },
+
+  detail: (id) => {
+    return adminFetch(`/api/AdminHomeSections/${id}`);
+  },
+
+  create: (body) => {
+    return adminFetch("/api/AdminHomeSections", {
+      method: "POST",
+      body: JSON.stringify({
+        title: body.title || "",
+        subtitle: body.subtitle || "",
+        displayOrder: Number(body.displayOrder || 1),
+        startDate: body.startDate || null,
+        endDate: body.endDate || null,
+        isActive: Boolean(body.isActive),
+        productIds: body.productIds || [],
+      }),
+    });
+  },
+
+  update: (id, body) => {
+    return adminFetch(`/api/AdminHomeSections/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        title: body.title || "",
+        subtitle: body.subtitle || "",
+        displayOrder: Number(body.displayOrder || 1),
+        startDate: body.startDate || null,
+        endDate: body.endDate || null,
+        isActive: Boolean(body.isActive),
+        productIds: body.productIds || [],
+      }),
+    });
+  },
+
+  delete: (id) => {
+    return adminFetch(`/api/AdminHomeSections/${id}`, {
+      method: "DELETE",
+    });
+  },
+};
+export const adminCampaignsApi = {
+  list: () => adminPromoPagesApi.list(),
+
+  create: (body) => adminPromoPagesApi.create(body),
+
+  update: (id, body) => adminPromoPagesApi.update(id, body),
+
+  delete: (id) => adminPromoPagesApi.delete(id),
 };

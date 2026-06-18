@@ -42,7 +42,16 @@ const navItems = [
   {
     title: "Marketinq",
     items: [
-      { label: "Kampaniyalar", to: "/SuperAdmin/campaigns", icon: <FiImage /> },
+      {
+        label: "Promo Pages",
+        to: "/SuperAdmin/campaigns",
+        icon: <FiImage />,
+      },
+      {
+        label: "Home Sections",
+        to: "/SuperAdmin/home-sections",
+        icon: <FiGrid />,
+      },
     ],
   },
   {
@@ -142,6 +151,7 @@ export default function AdminLayout() {
                         }
                       >
                         <span className="text-[20px]">{item.icon}</span>
+
                         <span className={collapsed ? "lg:hidden" : ""}>
                           {item.label}
                         </span>
@@ -162,7 +172,10 @@ export default function AdminLayout() {
               }`}
             >
               <FiLogOut className="text-[20px]" />
-              <span className={collapsed ? "lg:hidden" : ""}>Çıxış et</span>
+
+              <span className={collapsed ? "lg:hidden" : ""}>
+                Çıxış et
+              </span>
             </button>
           </div>
         </div>
