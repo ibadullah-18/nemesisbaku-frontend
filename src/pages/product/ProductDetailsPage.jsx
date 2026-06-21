@@ -29,7 +29,6 @@ function unwrap(res) {
 
 function normalizeList(res) {
   const data = res?.data || res;
-
   return (
     data?.items ||
     data?.products ||
@@ -42,16 +41,7 @@ function normalizeList(res) {
 function getImageUrl(x) {
   if (!x) return null;
   if (typeof x === "string") return x;
-
-  return (
-    x.imageUrl ||
-    x.url ||
-    x.mainImageUrl ||
-    x.secureUrl ||
-    x.src ||
-    x.path ||
-    null
-  );
+  return x.imageUrl || x.url || x.mainImageUrl || x.secureUrl || x.src || x.path || null;
 }
 
 function getFavoriteCache() {
@@ -64,7 +54,6 @@ function getFavoriteCache() {
 
 function setFavoriteCache(productId, value) {
   const list = getFavoriteCache();
-
   const next = value
     ? [...new Set([...list, productId])]
     : list.filter((x) => x !== productId);
@@ -78,6 +67,8 @@ export default function ProductDetailsPage() {
   const { text } = useLanguage();
 
   const relatedRef = useRef(null);
+  const toastTimerRef = useRef(null);
+  const toastCloseTimerRef = useRef(null);
 
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -93,6 +84,7 @@ export default function ProductDetailsPage() {
 
   const [favorite, setFavorite] = useState(false);
   const [basketSuccess, setBasketSuccess] = useState(false);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -100,6 +92,8 @@ export default function ProductDetailsPage() {
   const [relatedPage, setRelatedPage] = useState(1);
 
   const [error, setError] = useState("");
+  const [toastError, setToastError] = useState("");
+  const [toastClosing, setToastClosing] = useState(false);
 
   const modalStartXRef = useRef(null);
   const modalStartYRef = useRef(null);
@@ -110,6 +104,13 @@ export default function ProductDetailsPage() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     loadPage();
   }, [id]);
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(toastTimerRef.current);
+      window.clearTimeout(toastCloseTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -126,28 +127,48 @@ export default function ProductDetailsPage() {
     };
   }, [modalOpen]);
 
+  function hideToastAnimated() {
+    setToastClosing(true);
+
+    window.clearTimeout(toastCloseTimerRef.current);
+    toastCloseTimerRef.current = window.setTimeout(() => {
+      setToastError("");
+      setToastClosing(false);
+    }, 280);
+  }
+
+  function showToast(message) {
+    window.clearTimeout(toastTimerRef.current);
+    window.clearTimeout(toastCloseTimerRef.current);
+
+    setToastClosing(false);
+    setToastError(message);
+
+    toastTimerRef.current = window.setTimeout(() => {
+      hideToastAnimated();
+    }, 5000);
+  }
+
   async function loadPage() {
     try {
       setLoading(true);
       setError("");
+      setToastError("");
+      setToastClosing(false);
       setBasketSuccess(false);
       setModalOpen(false);
       setActiveImage(0);
+      setDescriptionOpen(false);
 
       const res = await apiFetch(`/api/Products/${id}`);
       const data = unwrap(res);
 
       setProduct(data);
-
       await loadFavoriteStatus();
 
-      const firstVariant = data?.variants?.find(
-        (v) => Number(v.stockCount || 0) > 0
-      );
-
-      setSelectedVariantId(firstVariant?.id || "");
-      setSelectedColor(firstVariant?.colorName || "");
-      setSelectedSize(firstVariant?.sizeValue || "");
+      setSelectedVariantId("");
+      setSelectedColor("");
+      setSelectedSize("");
       setQuantity(1);
 
       await loadRelated(data, 1, true);
@@ -162,18 +183,20 @@ export default function ProductDetailsPage() {
     try {
       const res = await favoritesApi.check(id);
       const result = res?.data?.data ?? res?.data ?? res;
-
       setFavorite(Boolean(result));
     } catch {
       setFavorite(false);
     }
   }
 
-  async function loadRelated(
-    currentProduct = product,
-    page = relatedPage + 1,
-    replace = false
-  ) {
+  async function loadFreshProduct() {
+    const res = await apiFetch(`/api/Products/${id}`);
+    const data = unwrap(res);
+    setProduct(data);
+    return data;
+  }
+
+  async function loadRelated(currentProduct = product, page = relatedPage + 1, replace = false) {
     try {
       setRelatedLoading(true);
 
@@ -227,28 +250,36 @@ export default function ProductDetailsPage() {
   const colors = useMemo(() => {
     const map = new Map();
 
-    (product?.variants || []).forEach((v) => {
-      if (!v.colorName) return;
+    (product?.variants || [])
+      .filter((v) => Number(v.stockCount || 0) > 0)
+      .forEach((v) => {
+        if (!v.colorName) return;
 
-      map.set(v.colorName, {
-        name: v.colorName,
-        hex: v.colorHexCode || v.colorHex || "#111111",
+        map.set(v.colorName, {
+          name: v.colorName,
+          hex: v.colorHexCode || v.colorHex || "#111111",
+        });
       });
-    });
 
     return [...map.values()];
   }, [product]);
 
   const availableSizes = useMemo(() => {
     return (product?.variants || [])
-      .filter((v) => v.colorName === selectedColor)
+      .filter((v) => {
+        if (colors.length > 0 && selectedColor) return v.colorName === selectedColor;
+        return true;
+      })
       .filter((v) => Number(v.stockCount || 0) > 0)
       .map((v) => ({
         size: v.sizeValue,
         stock: Number(v.stockCount || 0),
         variantId: v.id,
-      }));
-  }, [product, selectedColor]);
+        colorName: v.colorName || "",
+      }))
+      .filter((x) => x.size)
+      .sort((a, b) => Number(a.size) - Number(b.size));
+  }, [product, selectedColor, colors.length]);
 
   const selectedVariant = useMemo(() => {
     return (product?.variants || []).find((v) => v.id === selectedVariantId);
@@ -258,17 +289,28 @@ export default function ProductDetailsPage() {
   const price = Number(product?.price || 0);
   const discountPrice = Number(product?.discountPrice || 0);
   const hasDiscount = discountPrice > 0 && discountPrice < price;
+  const description = product?.description || "";
+  const shouldClampDescription = description.length > 155;
 
   function chooseColor(colorName) {
     setSelectedColor(colorName);
-
-    const firstVariant = (product?.variants || []).find(
-      (v) => v.colorName === colorName && Number(v.stockCount || 0) > 0
-    );
-
-    setSelectedVariantId(firstVariant?.id || "");
-    setSelectedSize(firstVariant?.sizeValue || "");
+    setSelectedVariantId("");
+    setSelectedSize("");
     setQuantity(1);
+    setToastError("");
+    setToastClosing(false);
+  }
+
+  function chooseSize(item) {
+    if (colors.length > 0 && !selectedColor) {
+      setSelectedColor(item.colorName || "");
+    }
+
+    setSelectedVariantId(item.variantId);
+    setSelectedSize(item.size);
+    setQuantity(1);
+    setToastError("");
+    setToastClosing(false);
   }
 
   function handleZoomMove(e) {
@@ -335,20 +377,46 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    if (!selectedVariant?.id) {
-      setError(text.selectSizeError);
+    if (colors.length > 0 && !selectedColor && !selectedVariantId) {
+      showToast(text.selectColorSizeError || "Rəng və razmer seçilməlidir.");
+      return;
+    }
+
+    if (colors.length > 0 && !selectedColor) {
+      showToast(text.selectColorError || "Rəng seçilməlidir.");
+      return;
+    }
+
+    if (!selectedVariantId) {
+      showToast(text.selectSizeError || "Razmer seçilməlidir.");
       return;
     }
 
     try {
       setActionLoading(true);
       setError("");
+      setToastError("");
+      setToastClosing(false);
+
+      const freshProduct = await loadFreshProduct();
+
+      const freshVariant = (freshProduct?.variants || []).find(
+        (v) =>
+          v.id === selectedVariantId &&
+          Number(v.stockCount || 0) > 0 &&
+          (!selectedColor || v.colorName === selectedColor)
+      );
+
+      if (!freshVariant?.id) {
+        showToast(text.variantUnavailable || "Seçilən variant artıq mövcud deyil.");
+        return;
+      }
 
       await apiFetch("/api/Basket", {
         method: "POST",
         body: JSON.stringify({
-          productId: product.id,
-          productVariantId: selectedVariant.id,
+          productId: freshProduct.id,
+          productVariantId: freshVariant.id,
           quantity: Math.max(1, quantity),
         }),
       });
@@ -360,7 +428,7 @@ export default function ProductDetailsPage() {
         setBasketSuccess(false);
       }, 3000);
     } catch (err) {
-      setError(err.message || text.basketAddError);
+      showToast(err.message || text.basketAddError);
     } finally {
       setActionLoading(false);
     }
@@ -371,9 +439,35 @@ export default function ProductDetailsPage() {
       product?.name || ""
     }\nKod: ${product?.productCode || ""}\nLink: https://nemesisbaku.az/products/${id}`;
 
-    return `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(
-      message
-    )}`;
+    return `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  }
+
+  async function openWhatsapp() {
+    try {
+      const res = await apiFetch(`/api/WhatsApp/product-inquiry/${id}`);
+      const data = unwrap(res);
+
+      const url =
+        data?.url ||
+        data?.link ||
+        data?.whatsappUrl ||
+        data?.redirectUrl ||
+        data;
+
+      const validUrl =
+        typeof url === "string" &&
+        url.startsWith("http") &&
+        !url.includes("/string") &&
+        !url.includes("not_found=1");
+
+      window.open(
+        validUrl ? url : buildWhatsappFallback(),
+        "_blank",
+        "noopener,noreferrer"
+      );
+    } catch {
+      window.open(buildWhatsappFallback(), "_blank", "noopener,noreferrer");
+    }
   }
 
   function handleModalPointerDown(e) {
@@ -381,7 +475,6 @@ export default function ProductDetailsPage() {
     modalStartYRef.current = e.clientY;
     setModalDragging(true);
     setModalDragX(0);
-
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
 
@@ -413,34 +506,6 @@ export default function ProductDetailsPage() {
     setModalDragX(0);
   }
 
-  async function openWhatsapp() {
-    try {
-      const res = await apiFetch(`/api/WhatsApp/product-inquiry/${id}`);
-      const data = unwrap(res);
-
-      const url =
-        data?.url ||
-        data?.link ||
-        data?.whatsappUrl ||
-        data?.redirectUrl ||
-        data;
-
-      const validUrl =
-        typeof url === "string" &&
-        url.startsWith("http") &&
-        !url.includes("/string") &&
-        !url.includes("not_found=1");
-
-      window.open(
-        validUrl ? url : buildWhatsappFallback(),
-        "_blank",
-        "noopener,noreferrer"
-      );
-    } catch {
-      window.open(buildWhatsappFallback(), "_blank", "noopener,noreferrer");
-    }
-  }
-
   if (loading) return <AppLoader text={text.loading} />;
 
   if (!product) {
@@ -454,310 +519,318 @@ export default function ProductDetailsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
-        <section className="grid gap-7 lg:grid-cols-[minmax(0,650px)_1fr]">
-          <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both]">
-            <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)]">
-              <div className="order-2 flex gap-2 overflow-x-auto md:order-1 md:flex-col md:overflow-visible">
-                {images.map((img, index) => (
-                  <button
-                    key={img}
-                    type="button"
-                    onClick={() => setActiveImage(index)}
-                    className={`h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] border bg-white transition duration-300 ${
-                      activeImage === index
-                        ? "border-zinc-950 opacity-100"
-                        : "border-zinc-100 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <img src={img} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                onMouseMove={handleZoomMove}
-                onMouseEnter={() => setZoom((p) => ({ ...p, active: true }))}
-                onMouseLeave={() => setZoom((p) => ({ ...p, active: false }))}
-                className="relative order-1 aspect-[4/4.75] max-h-[620px] w-full overflow-hidden rounded-[18px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.045)] md:order-2"
-              >
-                {images[activeImage] ? (
-                  <img
-                    src={images[activeImage]}
-                    alt={product.name}
-                    className="h-full w-full object-cover transition-transform duration-300"
-                    style={{
-                      transform: zoom.active ? "scale(1.55)" : "scale(1)",
-                      transformOrigin: `${zoom.x}% ${zoom.y}%`,
-                    }}
-                  />
-                ) : (
-                  <div className="grid h-full place-items-center text-zinc-300">
-                    NemesisBaku
-                  </div>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="animate-[detailsUp_.62s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
-                  {product.brandName || "NemesisBaku"}
-                </p>
-
-                <h1 className="mt-2 text-[30px] font-medium leading-[1.08] tracking-[-0.035em] text-zinc-950 md:text-[40px]">
-                  {product.name}
-                </h1>
-              </div>
-
-              <button
-                type="button"
-                onClick={toggleFavorite}
-                disabled={actionLoading}
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-zinc-50 text-xl text-zinc-950 transition duration-300 hover:bg-zinc-100 hover:scale-105 active:scale-95"
-              >
-                {favorite ? <FaHeart className="text-red-600" /> : <FiHeart />}
-              </button>
-            </div>
-
-            <p className="mt-4 text-[15px] font-normal leading-7 text-zinc-500">
-              {product.description}
-            </p>
-
-            <div className="mt-5 flex items-end gap-3">
-              <p
-                className={`text-[30px] font-medium ${
-                  hasDiscount ? "text-red-600" : "text-zinc-950"
-                }`}
-              >
-                {hasDiscount ? discountPrice : price} ₼
-              </p>
-
-              {hasDiscount && (
-                <p className="pb-1 text-base font-normal text-zinc-400 line-through">
-                  {price} ₼
-                </p>
-              )}
-            </div>
-
-            <div className="mt-6">
-              <p className="mb-3 text-sm font-medium text-zinc-950">
-                {text.color}
-              </p>
-
-              <div className="flex min-h-[44px] flex-wrap items-center gap-">
-                {colors.map((color) => {
-                  const active = selectedColor === color.name;
-
-                  return (
+    <>
+      <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
+        <div className="mx-auto max-w-[1180px]">
+          <section className="grid gap-7 lg:grid-cols-[minmax(0,650px)_1fr]">
+            <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both]">
+              <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)]">
+                <div className="order-2 flex gap-2 overflow-x-auto md:order-1 md:flex-col md:overflow-visible">
+                  {images.map((img, index) => (
                     <button
-                      key={color.name}
+                      key={img}
                       type="button"
-                      onClick={() => chooseColor(color.name)}
-                      title={color.name}
-                      className="grid h-11 w-11 place-items-center rounded-full transition"
-                    >
-                      <span
-                        className={`rounded-full border border-black/10 transition-all duration-300 ${
-                          active
-                            ? "h-[33px] w-[33px] shadow-[0_0_0_4px_rgba(0,0,0,0.06)]"
-                            : "h-7 w-7 hover:scale-105"
-                        }`}
-                        style={{ backgroundColor: color.hex }}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <p className="mb-3 text-sm font-medium text-zinc-950">
-                {text.size}
-              </p>
-
-              <div className="flex min-h-[52px] flex-wrap items-center gap-2">
-                {availableSizes.map((item) => {
-                  const active = selectedVariantId === item.variantId;
-                  const lowStock =
-                    item.stock > 0 && item.stock <= LOW_STOCK_LIMIT;
-
-                  return (
-                    <button
-                      key={item.variantId}
-                      type="button"
-                      onClick={() => {
-                        setSelectedVariantId(item.variantId);
-                        setSelectedSize(item.size);
-                        setQuantity(1);
-                      }}
-                      className={`relative h-12 min-w-12 rounded-[12px] border px-4 text-sm transition-all duration-300 ${
-                        active
-                          ? "border-zinc-950 bg-white font-semibold text-zinc-950 shadow-[0_0_0_1px_rgba(9,9,11,1)]"
-                          : "border-zinc-200 bg-white font-normal text-zinc-700 hover:border-zinc-500"
+                      onClick={() => setActiveImage(index)}
+                      className={`h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] border bg-white transition duration-300 ${
+                        activeImage === index
+                          ? "border-zinc-950 opacity-100"
+                          : "border-zinc-100 opacity-70 hover:opacity-100"
                       }`}
                     >
-                      {lowStock && (
-                        <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 animate-[stockPulse_1.15s_ease-in-out_infinite] items-center justify-center gap-0.5 rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-[0_0_0_4px_rgba(220,38,38,0.12)]">
-                          <FiZap className="fill-white text-[10px]" />
-                          {item.stock}
-                        </span>
-                      )}
-
-                      {item.size}
+                      <img src={img} alt="" className="h-full w-full object-cover" />
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <p className="mb-3 text-sm font-medium text-zinc-950">
-                {text.quantity}
-              </p>
-
-              <div className="inline-flex h-12 overflow-hidden rounded-[12px] border border-zinc-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
-                >
-                  <FiMinus />
-                </button>
-
-                <div className="grid w-14 place-items-center text-sm font-medium">
-                  {quantity}
+                  ))}
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.min(stock || 1, q + 1))}
-                  className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
+                  onClick={() => setModalOpen(true)}
+                  onMouseMove={handleZoomMove}
+                  onMouseEnter={() => setZoom((p) => ({ ...p, active: true }))}
+                  onMouseLeave={() => setZoom((p) => ({ ...p, active: false }))}
+                  className="relative order-1 aspect-[4/4.75] max-h-[620px] w-full overflow-hidden rounded-[18px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.045)] md:order-2"
                 >
-                  <FiPlus />
+                  {images[activeImage] ? (
+                    <img
+                      src={images[activeImage]}
+                      alt={product.name}
+                      className="h-full w-full object-cover transition-transform duration-300"
+                      style={{
+                        transform: zoom.active ? "scale(1.55)" : "scale(1)",
+                        transformOrigin: `${zoom.x}% ${zoom.y}%`,
+                      }}
+                    />
+                  ) : (
+                    <div className="grid h-full place-items-center text-zinc-300">
+                      NemesisBaku
+                    </div>
+                  )}
                 </button>
               </div>
             </div>
 
-            {error && (
-              <div className="mt-5 animate-[softFade_.25s_ease_both] rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-                {error}
-              </div>
-            )}
+            <div className="animate-[detailsUp_.62s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="text-[30px] font-medium leading-[1.08] tracking-[-0.035em] text-zinc-950 md:text-[40px]">
+                  {product.name}
+                </h1>
 
-            <button
-              type="button"
-              onClick={addBasket}
-              disabled={actionLoading || !selectedVariant}
-              className={`group relative mt-7 inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-[14px] text-sm font-medium text-white transition duration-300 active:scale-[0.98] disabled:opacity-50 ${
-                basketSuccess ? "bg-emerald-600" : "bg-zinc-950 hover:bg-zinc-800"
-              }`}
-            >
-              <span
-                className={`absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-zinc-950 transition-all duration-500 ${
-                  basketSuccess ? "scale-[9] opacity-100" : "scale-0 opacity-0"
-                }`}
-              />
-
-              <span
-                className={`relative z-10 flex items-center gap-2 transition-all duration-500 ${
-                  basketSuccess ? "scale-105 text-zinc-950" : "text-white"
-                }`}
-              >
-                {basketSuccess ? (
-                  <>
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-zinc-950 text-white">
-                      ✓
-                    </span>
-                    {text.addedToBasket}
-                  </>
-                ) : (
-                  <>
-                    <FiShoppingBag />
-                    {text.addToBasket}
-                  </>
-                )}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={openWhatsapp}
-              className="mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition duration-300 hover:opacity-95 active:scale-[0.98]"
-            >
-              <FaWhatsapp className="text-xl" />
-              {text.askWhatsapp}
-            </button>
-          </div>
-        </section>
-
-        {relatedProducts.length > 0 && (
-          <section className="mt-10 animate-[detailsUp_.72s_cubic-bezier(.22,1,.36,1)_both]">
-            <div className="relative px-0 py-6 md:px-5 md:py-8">
-              <div className="mb-5 text-center">
-                <h2 className="text-[25px] font-medium tracking-[-0.035em] text-zinc-950 md:text-[32px]">
-                  {text.selectedForYou}
-                </h2>
-
-                <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
-                  {text.swipe}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => scrollRelated("left")}
-                className="absolute -left-7 top-1/2 z-20 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-zinc-900 transition hover:-translate-x-1 md:grid"
-                aria-label="left"
-              >
-                <FiChevronLeft />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => scrollRelated("right")}
-                className="absolute -right-7 top-1/2 z-20 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-zinc-900 transition hover:translate-x-1 md:grid"
-                aria-label="right"
-              >
-                <FiChevronRight />
-              </button>
-
-              <div className="overflow-hidden">
-                <div
-                  ref={relatedRef}
-                  className="flex justify-start gap-3 overflow-x-auto pb-3 scroll-smooth md:gap-4"
+                <button
+                  type="button"
+                  onClick={toggleFavorite}
+                  disabled={actionLoading}
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-zinc-50 text-xl text-zinc-950 transition duration-300 hover:bg-zinc-100 hover:scale-105 active:scale-95"
                 >
-                  {relatedProducts.map((item) => (
-                    <div
-                      key={item.id}
-                      data-related-card
-                      className="w-[47%] min-w-[47%] sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]"
-                    >
-                      <ProductCard product={item} />
-                    </div>
-                  ))}
+                  {favorite ? <FaHeart className="text-red-600" /> : <FiHeart />}
+                </button>
+              </div>
 
-                  <div className="grid w-[47%] min-w-[47%] place-items-center sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]">
-                    <button
-                      type="button"
-                      onClick={() => loadRelated(product)}
-                      disabled={relatedLoading}
-                      className="h-14 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
+              {description && (
+                <div className="mt-4">
+                  {!descriptionOpen ? (
+                    <div
+                      className={`relative overflow-hidden ${
+                        shouldClampDescription ? "max-h-[84px]" : ""
+                      }`}
                     >
-                      {relatedLoading ? text.loading : text.more}
-                    </button>
+                      <p className="text-[15px] font-normal leading-7 text-zinc-500">
+                        {description}
+                      </p>
+
+                      {shouldClampDescription && (
+                        +<div className="absolute bottom-0 right-0 flex h-7 w-[42%] items-center justify-end bg-gradient-to-l from-white via-white/95 to-transparent">                          <button
+                            type="button"
+                            onClick={() => setDescriptionOpen(true)}
+                            className="bg-white pl-2 text-[15px] font-medium text-zinc-950"
+                          >
+                            {text.showMore || "Daha çox"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[15px] font-normal leading-7 text-zinc-500">
+                        {description}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => setDescriptionOpen(false)}
+                        className="mt-1 text-[15px] font-medium text-zinc-950"
+                      >
+                        {text.showLess || "Daha az"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-5 flex items-end gap-3">
+                <p
+                  className={`text-[30px] font-medium ${
+                    hasDiscount ? "text-red-600" : "text-zinc-950"
+                  }`}
+                >
+                  {hasDiscount ? discountPrice : price} ₼
+                </p>
+
+                {hasDiscount && (
+                  <p className="pb-1 text-base font-normal text-zinc-400 line-through">
+                    {price} ₼
+                  </p>
+                )}
+              </div>
+
+              {colors.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex min-h-[44px] flex-wrap items-center gap-2">
+                    {colors.map((color) => {
+                      const active = selectedColor === color.name;
+
+                      return (
+                        <button
+                          key={color.name}
+                          type="button"
+                          onClick={() => chooseColor(color.name)}
+                          title={color.name}
+                          className="grid h-11 w-11 place-items-center rounded-full transition"
+                        >
+                          <span
+                            className={`rounded-full border border-black/10 transition-all duration-300 ${
+                              active
+                                ? "h-[33px] w-[33px] shadow-[0_0_0_4px_rgba(0,0,0,0.06)]"
+                                : "h-7 w-7 hover:scale-105"
+                            }`}
+                            style={{ backgroundColor: color.hex }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6">
+                <div className="flex min-h-[52px] flex-wrap items-center gap-2">
+                  {availableSizes.map((item) => {
+                    const active = selectedVariantId === item.variantId;
+                    const lowStock = item.stock > 0 && item.stock <= LOW_STOCK_LIMIT;
+
+                    return (
+                      <button
+                        key={item.variantId}
+                        type="button"
+                        onClick={() => chooseSize(item)}
+                        className={`relative h-12 min-w-12 rounded-[12px] border px-4 text-sm transition-all duration-300 ${
+                          active
+                            ? "border-zinc-950 bg-white font-semibold text-zinc-950 shadow-[0_0_0_1px_rgba(9,9,11,1)]"
+                            : "border-zinc-200 bg-white font-normal text-zinc-700 hover:border-zinc-500"
+                        }`}
+                      >
+                        {lowStock && (
+                          <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 animate-[stockPulse_1.15s_ease-in-out_infinite] items-center justify-center gap-0.5 rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-[0_0_0_4px_rgba(220,38,38,0.12)]">
+                            <FiZap className="fill-white text-[10px]" />
+                            {item.stock}
+                          </span>
+                        )}
+
+                        {item.size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="inline-flex h-12 overflow-hidden rounded-[12px] border border-zinc-200 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
+                  >
+                    <FiMinus />
+                  </button>
+
+                  <div className="grid w-14 place-items-center text-sm font-medium">
+                    {quantity}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(stock || 99, q + 1))}
+                    className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
+                  >
+                    <FiPlus />
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={addBasket}
+                disabled={actionLoading}
+                className={`group relative mt-7 inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-[14px] text-sm font-medium text-white transition duration-300 active:scale-[0.98] disabled:opacity-50 ${
+                  basketSuccess ? "bg-emerald-600" : "bg-zinc-950 hover:bg-zinc-800"
+                }`}
+              >
+                <span
+                  className={`absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-zinc-950 transition-all duration-500 ${
+                    basketSuccess ? "scale-[9] opacity-100" : "scale-0 opacity-0"
+                  }`}
+                />
+
+                <span
+                  className={`relative z-10 flex items-center gap-2 transition-all duration-500 ${
+                    basketSuccess ? "scale-105 text-zinc-950" : "text-white"
+                  }`}
+                >
+                  {basketSuccess ? (
+                    <>
+                      <span className="grid h-6 w-6 place-items-center rounded-full bg-zinc-950 text-white">
+                        ✓
+                      </span>
+                      {text.addedToBasket}
+                    </>
+                  ) : (
+                    <>
+                      <FiShoppingBag />
+                      {text.addToBasket}
+                    </>
+                  )}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openWhatsapp}
+                className="mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition duration-300 hover:opacity-95 active:scale-[0.98]"
+              >
+                <FaWhatsapp className="text-xl" />
+                {text.askWhatsapp}
+              </button>
+            </div>
+          </section>
+
+          {relatedProducts.length > 0 && (
+            <section className="mt-10 animate-[detailsUp_.72s_cubic-bezier(.22,1,.36,1)_both]">
+              <div className="relative px-0 py-6 md:px-5 md:py-8">
+                <div className="mb-5 text-center">
+                  <h2 className="text-[25px] font-medium tracking-[-0.035em] text-zinc-950 md:text-[32px]">
+                    {text.selectedForYou}
+                  </h2>
+
+                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
+                    {text.swipe}
+                  </p>
+                </div>
+
+                <div className="overflow-hidden">
+                  <div
+                    ref={relatedRef}
+                    className="flex justify-start gap-3 overflow-x-auto pb-3 scroll-smooth md:gap-4"
+                  >
+                    {relatedProducts.map((item) => (
+                      <div
+                        key={item.id}
+                        data-related-card
+                        className="w-[47%] min-w-[47%] sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]"
+                      >
+                        <ProductCard product={item} />
+                      </div>
+                    ))}
+
+                    <div className="grid w-[47%] min-w-[47%] place-items-center sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]">
+                      <button
+                        type="button"
+                        onClick={() => loadRelated(product)}
+                        disabled={relatedLoading}
+                        className="h-14 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
+                      >
+                        {relatedLoading ? text.loading : text.more}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
+        </div>
+      </main>
+
+      {toastError &&
+        createPortal(
+          <div
+            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
+              toastClosing
+                ? "animate-[toastOut_.28s_cubic-bezier(.22,1,.36,1)_both]"
+                : "animate-[toastIn_.32s_cubic-bezier(.22,1,.36,1)_both]"
+            }`}
+          >
+            {toastError}
+          </div>,
+          document.body
         )}
-      </div>
 
       {modalOpen &&
         createPortal(
@@ -769,34 +842,6 @@ export default function ProductDetailsPage() {
             >
               <FiX />
             </button>
-
-            {images.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    modalPrev();
-                  }}
-                  className="fixed left-4 top-1/2 z-[100002] hidden -translate-y-1/2 text-[58px] text-white/90 transition hover:-translate-x-1 md:block"
-                >
-                  <FiChevronLeft />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    modalNext();
-                  }}
-                  className="fixed right-4 top-1/2 z-[100002] hidden -translate-y-1/2 text-[58px] text-white/90 transition hover:translate-x-1 md:block"
-                >
-                  <FiChevronRight />
-                </button>
-              </>
-            )}
 
             <img
               key={images[activeImage]}
@@ -817,25 +862,6 @@ export default function ProductDetailsPage() {
                 touchAction: "none",
               }}
             />
-
-            {images.length > 1 && (
-              <div className="fixed bottom-5 left-1/2 z-[100002] flex -translate-x-1/2 gap-2">
-                {images.map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setActiveImage(index);
-                    }}
-                    className={`h-1.5 rounded-full transition-all ${
-                      activeImage === index ? "w-8 bg-white" : "w-2 bg-white/40"
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
           </div>,
           document.body
         )}
@@ -846,19 +872,19 @@ export default function ProductDetailsPage() {
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
         @keyframes modalImage {
           from { opacity: 0; transform: scale(.94); }
           to { opacity: 1; transform: scale(1); }
         }
 
-        @keyframes softFade {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(-18px) translateY(18px) scale(.96); }
+          to { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+        }
+
+        @keyframes toastOut {
+          from { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+          to { opacity: 0; transform: translateX(-18px) translateY(18px) scale(.96); }
         }
 
         @keyframes stockPulse {
@@ -867,6 +893,6 @@ export default function ProductDetailsPage() {
           100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); transform: scale(1); }
         }
       `}</style>
-    </main>
+    </>
   );
 }

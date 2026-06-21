@@ -142,6 +142,10 @@ export default function Navbar() {
 
   const brandName = store?.storeName || "NemesisBaku";
 
+  const logoStyle = {
+    fontFamily: '"League Spartan", sans-serif',
+  };
+
   const authIcons = useMemo(() => {
     if (!isLoggedIn) {
       return [
@@ -236,7 +240,7 @@ export default function Navbar() {
         }`}
       >
         <div className="relative mx-auto flex h-[62px] max-w-[1180px] items-center justify-between px-4 md:h-[72px] md:px-6">
-          <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
+          <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
             <button
               type="button"
               onClick={openMenu}
@@ -245,6 +249,18 @@ export default function Navbar() {
             >
               <FiMenu />
             </button>
+
+            <NavLink
+              to="/search"
+              className={({ isActive }) =>
+                `grid h-9 w-9 place-items-center rounded-full text-[18px] transition hover:bg-zinc-50 active:scale-95 md:hidden ${
+                  isActive ? "bg-black/5 text-black" : "text-zinc-800"
+                }`
+              }
+              aria-label="Search"
+            >
+              <FiSearch />
+            </NavLink>
 
             <NavLink to="/" className="hidden items-center gap-3 md:flex">
               <div className="h-11 w-11 overflow-hidden rounded-[14px] border border-zinc-100 bg-zinc-50 shadow-sm">
@@ -255,13 +271,19 @@ export default function Navbar() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="grid h-full w-full place-items-center text-lg font-semibold">
+                  <div
+                    className="grid h-full w-full place-items-center text-lg font-black"
+                    style={logoStyle}
+                  >
                     n
                   </div>
                 )}
               </div>
 
-              <span className="text-[24px] font-semibold tracking-[0.015em] text-zinc-950">
+              <span
+                className="text-[25px] font-black tracking-[-0.055em] text-zinc-950"
+                style={logoStyle}
+              >
                 {brandName}
               </span>
             </NavLink>
@@ -269,7 +291,8 @@ export default function Navbar() {
 
           <NavLink
             to="/"
-            className="absolute left-1/2 max-w-[150px] -translate-x-1/2 truncate text-center text-[20px] font-semibold tracking-[0.015em] text-zinc-950 md:hidden"
+            className="absolute left-1/2 max-w-[170px] -translate-x-1/2 truncate text-center text-[25px] font-black leading-none tracking-[-0.06em] text-zinc-950 md:hidden"
+            style={logoStyle}
           >
             {brandName}
           </NavLink>
@@ -278,8 +301,8 @@ export default function Navbar() {
             <NavLink
               to="/search"
               className={({ isActive }) =>
-                `grid h-9 w-9 place-items-center rounded-full text-[18px] transition hover:bg-zinc-50 active:scale-95 md:h-10 md:w-10 md:text-[17px] ${
-                  isActive ? "bg-[#244989]/8 text-[#244989]" : "text-zinc-800"
+                `hidden h-9 w-9 place-items-center rounded-full text-[18px] transition hover:bg-zinc-50 active:scale-95 md:grid md:h-10 md:w-10 md:text-[17px] ${
+                  isActive ? "bg-black/5 text-black" : "text-zinc-800"
                 }`
               }
               aria-label="Search"
@@ -297,7 +320,7 @@ export default function Navbar() {
                     item.desktopOnly ? "hidden md:grid" : "grid"
                   } ${
                     isActive
-                      ? "bg-[#244989]/8 text-[#244989]"
+                      ? "bg-black/5 text-black"
                       : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950"
                   }`
                 }
@@ -309,7 +332,7 @@ export default function Navbar() {
                     </span>
 
                     {item.count > 0 && (
-                      <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#244989] px-1 text-[10px] font-extrabold leading-none text-white">
+                      <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-black px-1 text-[10px] font-extrabold leading-none text-white">
                         {item.count > 99 ? "99+" : item.count}
                       </span>
                     )}
@@ -355,7 +378,10 @@ export default function Navbar() {
             }`}
           >
             <div className="mb-7 flex items-center justify-between">
-              <h2 className="text-[22px] font-semibold tracking-[0.015em] text-zinc-950">
+              <h2
+                className="text-[24px] font-black tracking-[-0.055em] text-zinc-950"
+                style={logoStyle}
+              >
                 {brandName}
               </h2>
 
@@ -385,7 +411,7 @@ export default function Navbar() {
                   className={({ isActive }) =>
                     `flex items-center gap-3 rounded-[16px] px-4 py-3 text-sm font-semibold transition ${
                       isActive
-                        ? "bg-[#244989]/8 text-[#244989]"
+                        ? "bg-black/5 text-black"
                         : "text-zinc-800 hover:bg-zinc-50"
                     }`
                   }

@@ -334,12 +334,6 @@ export default function ProductCard({ product }) {
           hideSizesLater();
         }}
       >
-        {hasDiscount && (
-          <span className="absolute left-3 top-3 z-20 rounded-full bg-red-600 px-3 py-1 text-[11px] font-extrabold text-white">
-            -{discountPercent}%
-          </span>
-        )}
-
         <button
           type="button"
           onClick={handleFavorite}
@@ -425,23 +419,25 @@ export default function ProductCard({ product }) {
       </div>
 
       <div className="p-3 pt-2">
-        <h3 className="line-clamp-2 min-h-[40px] text-[14px] font-bold leading-5 text-zinc-950">
+        <h3 className="line-clamp-2 min-h-[38px] text-[15px] font-normal leading-5 tracking-[-0.01em] text-black">
           {mergedProduct?.name || mergedProduct?.productName}
         </h3>
 
-        <div className="mt-2 flex items-end gap-2">
-          <p
-            className={`text-[16px] font-extrabold ${
-              hasDiscount ? "text-red-600" : "text-zinc-950"
-            }`}
-          >
-            {hasDiscount ? discountPrice : price} ₼
-          </p>
+        <div className="mt-3 flex items-center gap-2 text-[16px] leading-none tracking-[-0.01em]">
+          <span className="font-normal text-black">
+            {hasDiscount ? discountPrice : price}₼
+          </span>
 
           {hasDiscount && (
-            <p className="text-xs font-bold text-zinc-400 line-through">
-              {price} ₼
-            </p>
+            <>
+              <span className="font-normal text-zinc-400 line-through">
+                {price}₼
+              </span>
+
+              <span className="font-normal text-red-600">
+                -{discountPercent}%
+              </span>
+            </>
           )}
         </div>
       </div>

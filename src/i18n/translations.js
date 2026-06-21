@@ -235,6 +235,12 @@ export const translations = {
     passwordsNotSame: "Şifrələr eyni deyil.",
     passwordChanged: "Şifrə dəyişdirildi.",
     passwordChangeError: "Şifrə dəyişdirilmədi.",
+
+    showMore: "Daha çox", 
+    showLess: "Daha az",
+    selectColorError: "Rəng seçilməlidir.",
+    selectColorSizeError: "Rəng və razmer seçilməlidir.",
+    variantUnavailable: "Seçilən variant artıq mövcud deyil.",
   },
 
   ru: {
@@ -469,6 +475,12 @@ export const translations = {
     passwordsNotSame: "Пароли не совпадают.",
     passwordChanged: "Пароль изменён.",
     passwordChangeError: "Не удалось изменить пароль.",
+
+    showMore: "Показать ещё",
+    showLess: "Скрыть",
+    selectColorError: "Выберите цвет.",
+    selectColorSizeError: "Выберите цвет и размер.",
+    variantUnavailable: "Выбранный вариант больше недоступен.",
   },
 
   en: {
@@ -702,5 +714,10 @@ export const translations = {
     passwordsNotSame: "Passwords do not match.",
     passwordChanged: "Password changed.",
     passwordChangeError: "Could not change password.",
+    showMore: "Show more",
+    showLess: "Show less",
+    selectColorError: "Please select a color.",
+    selectColorSizeError: "Please select a color and size.",
+    variantUnavailable: "Selected variant is no longer available.",
   },
 };

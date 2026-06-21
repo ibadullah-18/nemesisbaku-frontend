@@ -179,50 +179,56 @@ export default function HomePromoSlider({ promos = [] }) {
     scheduleFallbackNormalize(index + 1);
   }
 
-  function handlePointerDown(e) {
-    if (count <= 1 || movingRef.current) return;
-
-    pointerIdRef.current = e.pointerId;
-    pointerStartX.current = e.clientX;
-    pointerCurrentX.current = e.clientX;
-
-    setDragging(true);
-    setDragOffset(0);
+function handlePointerDown(e) {
+  if (e.pointerType === "mouse") {
     pauseAndResumeLater();
-
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    return;
   }
 
-  function handlePointerMove(e) {
-    if (!dragging || pointerIdRef.current !== e.pointerId) return;
+  if (count <= 1 || movingRef.current) return;
 
-    pointerCurrentX.current = e.clientX;
+  pointerIdRef.current = e.pointerId;
+  pointerStartX.current = e.clientX;
+  pointerCurrentX.current = e.clientX;
 
-    const diff = pointerCurrentX.current - pointerStartX.current;
-    const limited = Math.max(Math.min(diff, 120), -120);
+  setDragging(true);
+  setDragOffset(0);
+  pauseAndResumeLater();
 
-    setDragOffset(limited);
+  e.currentTarget.setPointerCapture?.(e.pointerId);
+}
+
+function handlePointerMove(e) {
+  if (e.pointerType === "mouse") return;
+  if (!dragging || pointerIdRef.current !== e.pointerId) return;
+
+  pointerCurrentX.current = e.clientX;
+
+  const diff = pointerCurrentX.current - pointerStartX.current;
+  const limited = Math.max(Math.min(diff, 120), -120);
+
+  setDragOffset(limited);
+}
+function handlePointerUp(e) {
+  if (e.pointerType === "mouse") return;
+  if (!dragging || pointerIdRef.current !== e.pointerId) return;
+
+  const diff = pointerCurrentX.current - pointerStartX.current;
+
+  setDragging(false);
+  setDragOffset(0);
+  pointerIdRef.current = null;
+
+  e.currentTarget.releasePointerCapture?.(e.pointerId);
+
+  if (Math.abs(diff) < SWIPE_LIMIT) return;
+
+  if (diff < 0) {
+    goNext(false);
+  } else {
+    goPrev(false);
   }
-
-  function handlePointerUp(e) {
-    if (!dragging || pointerIdRef.current !== e.pointerId) return;
-
-    const diff = pointerCurrentX.current - pointerStartX.current;
-
-    setDragging(false);
-    setDragOffset(0);
-    pointerIdRef.current = null;
-
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-
-    if (Math.abs(diff) < SWIPE_LIMIT) return;
-
-    if (diff < 0) {
-      goNext(false);
-    } else {
-      goPrev(false);
-    }
-  }
+}
 
   function handlePointerCancel() {
     setDragging(false);
@@ -284,10 +290,7 @@ export default function HomePromoSlider({ promos = [] }) {
               }}
             >
               {sliderPromos.map((promo, index) => (
-                <div
-                  key={`${promo.id}-${index}`}
-                  className="min-w-full px-0"
-                >
+                <div key={`${promo.id}-${index}`} className="min-w-full px-0">
                   <PromoCard promo={promo} text={text} />
                 </div>
               ))}
@@ -322,35 +325,39 @@ function PromoCard({ promo, text }) {
     <NavLink
       to={getPromoLink(promo)}
       draggable="false"
-      className="group relative block h-[360px] overflow-hidden rounded-[28px] bg-zinc-900 shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:h-[430px] md:rounded-[32px] lg:h-[460px]"
+      className="group relative block h-[360px] overflow-hidden rounded-[28px] bg-[#efe7da] shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:h-[430px] md:rounded-[32px] lg:h-[460px]"
     >
       <img
         src={promo.imageUrl}
         alt={promo.title}
         draggable="false"
-        className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+        className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
       />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-[#efe7da]/20" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#efe7da]/95 via-[#efe7da]/58 to-black/12" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 text-center text-white md:p-9">
-        <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.2em] text-white/70">
-          NemesisBaku
-        </p>
-
-        <h1 className="mx-auto max-w-[660px] text-[30px] font-extrabold leading-[1.05] tracking-[-0.045em] md:text-[52px] lg:text-[60px]">
-          {promo.title}
-        </h1>
-
-        {promo.description && (
-          <p className="mx-auto mt-3 max-w-[480px] text-sm font-medium leading-6 text-white/80 md:text-base">
-            {promo.description}
+      <div className="absolute left-0 top-0 z-10 flex h-full w-full items-center p-6 md:p-10">
+        <div className="max-w-[300px] text-left md:max-w-[430px]">
+          <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.32em] text-zinc-700 md:text-xs">
+            NemesisBaku
           </p>
-        )}
 
-        <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-extrabold text-zinc-950 transition group-hover:gap-3">
-          {text.discover}
-          <FiChevronRight />
+          <h1 className="text-[42px] font-extrabold leading-[0.92] tracking-[-0.065em] text-zinc-950 md:text-[72px]">
+            {promo.title}
+          </h1>
+
+          {promo.description && (
+            <p className="mt-4 max-w-[360px] text-xs font-semibold leading-5 text-zinc-700 md:text-sm md:leading-6">
+              {promo.description}
+            </p>
+          )}
+
+          <div className="mt-6 inline-flex h-11 items-center gap-4 rounded-[10px] bg-zinc-950 px-6 text-xs font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition group-hover:gap-6 active:scale-[0.97] md:h-14 md:rounded-[14px] md:px-8 md:text-sm">
+            {text.discover || "Kəşf et"}
+            <FiChevronRight className="text-lg md:text-xl" />
+          </div>
         </div>
       </div>
     </NavLink>

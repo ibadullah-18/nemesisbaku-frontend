@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import Navbar from "../components/layout/Navbar";
+import Footer from "../components/layout/Footer";
 import LoginPage from "../pages/auth/LoginPage";
 import SearchPage from "../components/common/SearchOverlay";
 import HomePage from "../pages/home/HomePage";
@@ -56,6 +57,7 @@ function Layout({ children }) {
     <>
       <Navbar />
       <PageShell key={location.pathname}>{children}</PageShell>
+      <Footer />
     </>
   );
 }
@@ -245,8 +247,6 @@ export default function AppRoutes() {
         <Route path="home-sections/:id" element={<AdminHomeSectionForm mode="edit" />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-
       <Route
         path="/:slug"
         element={
@@ -255,7 +255,8 @@ export default function AppRoutes() {
           </Layout>
         }
       />
-      
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
