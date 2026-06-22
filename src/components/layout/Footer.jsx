@@ -240,7 +240,7 @@ export default function Footer() {
               </h3>
 
               <nav className="mt-5 flex flex-col gap-3">
-                <FooterLink to="/infoAdress">{t.contact}</FooterLink>
+                <FooterLink to="/infoAddress">{t.contact}</FooterLink>
                 <FooterLink to="/delivery">{t.delivery}</FooterLink>
                 <FooterLink to="/return-policy">{t.returns}</FooterLink>
               </nav>

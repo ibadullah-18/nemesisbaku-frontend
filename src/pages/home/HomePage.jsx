@@ -35,11 +35,9 @@ function unwrap(res) {
 
 function uniqueById(list) {
   const map = new Map();
-
   (list || []).forEach((item) => {
     if (item?.id) map.set(item.id, item);
   });
-
   return [...map.values()];
 }
 
@@ -177,7 +175,7 @@ export default function HomePage() {
   if (loading) return <AppLoader text={text.loading} />;
 
   return (
-    <main className="min-h-screen bg-[#fafafa]">
+    <main className="min-h-screen bg-[#fafafa] text-zinc-950">
       <style>
         {`
           @keyframes bannerBackdropIn {
@@ -199,30 +197,75 @@ export default function HomePage() {
             from { opacity: 1; transform: translateY(0) scale(1); }
             to { opacity: 0; transform: translateY(18px) scale(0.97); }
           }
+
+          @keyframes softHomeIn {
+            from {
+              opacity: 0;
+              transform: translateY(14px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
         `}
       </style>
 
-      <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
+      <div className="animate-[softHomeIn_0.45s_ease_both]">
+        <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
+      </div>
 
-      <HomePromoSlider promos={campaigns} />
+      <div className="animate-[softHomeIn_0.55s_ease_both]">
+        <HomePromoSlider promos={campaigns} />
+      </div>
 
-      {homeSections
-        .slice()
-        .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0))
-        .map((section, index) => (
-          <ProductSection
-            key={section.id || `section-${index}`}
-            title={section.title}
-            subtitle={section.subtitle}
-            products={uniqueById(section.products || [])}
-          />
-        ))}
+      <div className="space-y-2">
+        {homeSections
+          .slice()
+          .sort(
+            (a, b) =>
+              Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+          )
+          .map((section, index) => (
+            <div
+              key={section.id || `section-wrap-${index}`}
+              style={{
+                animation: `softHomeIn 0.55s ease ${index * 0.06}s both`,
+              }}
+            >
+              <ProductSection
+                title={section.title}
+                subtitle={section.subtitle}
+                products={uniqueById(section.products || [])}
+              />
+            </div>
+          ))}
+      </div>
 
       {products.length > 0 && (
-        <section className="mx-auto max-w-[1180px] px-5 py-7 md:px-8 md:py-10">
+        <section className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-zinc-500">
+                NemesisBaku
+              </p>
+
+              <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-zinc-950 md:text-3xl">
+                {text.allProducts}
+              </h2>
+
+              <p className="mt-2 max-w-[520px] text-sm leading-6 text-zinc-600">
+                {text.allProductsDesc}
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {products.map((product, index) => (
-              <ProductCard key={product.id || `product-${index}`} product={product} />
+              <ProductCard
+                key={product.id || `product-${index}`}
+                product={product}
+              />
             ))}
           </div>
 
@@ -232,7 +275,7 @@ export default function HomePage() {
                 type="button"
                 onClick={loadMore}
                 disabled={moreLoading}
-                className="rounded-full bg-black px-7 py-4 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
+                className="rounded-full bg-[#120d09] px-8 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(15,15,15,0.16)] transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
               >
                 {moreLoading ? text.loading : text.loadMore}
               </button>

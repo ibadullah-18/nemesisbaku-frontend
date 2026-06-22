@@ -42,6 +42,13 @@ import AccountSettingsPage from "../pages/profile/AccountSettingsPage";
 import SecuritySettingsPage from "../pages/profile/SecuritySettingsPage";
 import PromoPage from "../pages/promo/PromoPage";
 
+import InfoAddressPage from "../pages/info/InfoAddressPage";
+import DeliveryPage from "../pages/info/DeliveryPage";
+import ReturnPolicyPage from "../pages/info/ReturnPolicyPage";
+import AboutPage from "../pages/info/AboutPage";
+import CareerPage from "../pages/info/CareerPage";
+import StoresPage from "../pages/info/StoresPage";
+
 function PageShell({ children }) {
   return (
     <div className="animate-[pageSlideIn_0.38s_cubic-bezier(0.22,1,0.36,1)_both]">
@@ -205,6 +212,60 @@ export default function AppRoutes() {
         element={
           <Layout>
             <SecuritySettingsPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/infoAddress"
+        element={
+          <Layout>
+            <InfoAddressPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/delivery"
+        element={
+          <Layout>
+            <DeliveryPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/return-policy"
+        element={
+          <Layout>
+            <ReturnPolicyPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/about"
+        element={
+          <Layout>
+            <AboutPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/career"
+        element={
+          <Layout>
+            <CareerPage />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/stores"
+        element={
+          <Layout>
+            <StoresPage />
           </Layout>
         }
       />
