@@ -14,6 +14,25 @@ import { FaHeart, FaShoppingBag, FaUser } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
 
+function BrandLogo({ logoUrl, brandName, className = "" }) {
+  if (!logoUrl) {
+    return (
+      <span className={`font-black lowercase tracking-[-0.055em] ${className}`}>
+        {brandName}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={brandName}
+      draggable={false}
+      className={`block h-auto object-contain select-none ${className}`}
+    />
+  );
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
   const { lang, setLang, text } = useLanguage();
@@ -140,11 +159,8 @@ export default function Navbar() {
     navigate("/login");
   }
 
-  const brandName = store?.storeName || "NemesisBaku";
-
-  const logoStyle = {
-    fontFamily: '"League Spartan", sans-serif',
-  };
+  const brandName = store?.storeName || "nemesisbaku";
+  const logoUrl = store?.logoUrl || "";
 
   const authIcons = useMemo(() => {
     if (!isLoggedIn) {
@@ -262,39 +278,37 @@ export default function Navbar() {
               <FiSearch />
             </NavLink>
 
-            <NavLink to="/" className="hidden items-center gap-3 md:flex">
-              <div className="h-11 w-11 overflow-hidden rounded-[14px] border border-zinc-100 bg-zinc-50 shadow-sm">
-                {store?.logoUrl ? (
-                  <img
-                    src={store.logoUrl}
-                    alt={brandName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="grid h-full w-full place-items-center text-lg font-black"
-                    style={logoStyle}
-                  >
-                    n
-                  </div>
-                )}
-              </div>
-
-              <span
-                className="text-[25px] font-black tracking-[-0.055em] text-zinc-950"
-                style={logoStyle}
-              >
-                {brandName}
-              </span>
+            <NavLink
+              to="/"
+              className="hidden items-center transition duration-300 hover:opacity-80 md:flex"
+              aria-label={brandName}
+            >
+              <BrandLogo
+                logoUrl={logoUrl}
+                brandName={brandName}
+                className={
+                  logoUrl
+                    ? "w-[128px] lg:w-[138px]"
+                    : "text-[25px] text-zinc-950"
+                }
+              />
             </NavLink>
           </div>
 
           <NavLink
             to="/"
-            className="absolute left-1/2 max-w-[170px] -translate-x-1/2 truncate text-center text-[25px] font-black leading-none tracking-[-0.06em] text-zinc-950 md:hidden"
-            style={logoStyle}
+            className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center transition duration-300 hover:opacity-80 md:hidden"
+            aria-label={brandName}
           >
-            {brandName}
+            <BrandLogo
+              logoUrl={logoUrl}
+              brandName={brandName}
+              className={
+                logoUrl
+                  ? "w-[112px] sm:w-[120px]"
+                  : "text-[20px] text-zinc-950"
+              }
+            />
           </NavLink>
 
           <div className="flex items-center gap-1.5 md:gap-2.5">
@@ -378,12 +392,22 @@ export default function Navbar() {
             }`}
           >
             <div className="mb-7 flex items-center justify-between">
-              <h2
-                className="text-[24px] font-black tracking-[-0.055em] text-zinc-950"
-                style={logoStyle}
+              <NavLink
+                to="/"
+                onClick={closeMenu}
+                className="flex items-center transition duration-300 hover:opacity-80"
+                aria-label={brandName}
               >
-                {brandName}
-              </h2>
+                <BrandLogo
+                  logoUrl={logoUrl}
+                  brandName={brandName}
+                  className={
+                    logoUrl
+                      ? "w-[122px]"
+                      : "text-[24px] text-zinc-950"
+                  }
+                />
+              </NavLink>
 
               <button
                 type="button"

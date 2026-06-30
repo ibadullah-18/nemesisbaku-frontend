@@ -30,8 +30,8 @@ export default function OrderSuccessPage() {
           <FiCheck />
         </div>
 
-        <p className="mt-6 text-xs font-medium uppercase tracking-[0.24em] text-zinc-400">
-          NemesisBaku
+        <p className="mt-6 text-[15px] font-medium  tracking-[0.17em] text-zinc-400">
+          nemesisbaku
         </p>
 
         <h1 className="mt-2 text-[34px] font-medium tracking-[-0.055em] text-zinc-950 md:text-[46px]">

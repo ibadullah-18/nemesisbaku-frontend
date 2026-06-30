@@ -105,8 +105,8 @@ export default function AccountSettingsPage() {
         <TopBar title={text.accountInfo} onBack={() => navigate("/profile/settings")} />
 
         <section className="mt-7 animate-[accountUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[24px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/45">
-            NemesisBaku
+          <p className="text-[15px] font-medium tracking-[0.17em] text-white/45">
+            nemesisbaku
           </p>
           <h1 className="mt-3 text-[34px] font-medium tracking-[-0.055em] md:text-[52px]">
             {text.accountInfo}
@@ -218,8 +218,8 @@ function TopBar({ title, onBack }) {
         <FiArrowLeft />
       </button>
       <div className="text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-400">
-          NemesisBaku
+        <p className="text-[15px] font-medium uppercase tracking-[0.17em] text-zinc-400">
+          nemesisbaku
         </p>
         <h1 className="mt-1 text-lg font-medium tracking-[-0.025em] text-zinc-950">
           {title}

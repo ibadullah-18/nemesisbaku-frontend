@@ -376,7 +376,7 @@ export default function ProductCard({ product }) {
             </div>
           ) : (
             <div className="grid h-full min-w-full place-items-center text-sm font-bold text-zinc-300">
-              NemesisBaku
+              nemesisbaku
             </div>
           )}
         </div>

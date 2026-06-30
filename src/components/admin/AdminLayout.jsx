@@ -52,6 +52,7 @@ const navItems = [
         to: "/SuperAdmin/home-sections",
         icon: <FiGrid />,
       },
+      { label: "Promo kodlar", to: "/SuperAdmin/promo-codes", icon: <FiTag /> },
     ],
   },
   {

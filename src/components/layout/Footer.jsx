@@ -74,10 +74,10 @@ function FooterLink({ to, children }) {
   return (
     <Link
       to={to}
-      className="group relative w-fit text-[13px] text-zinc-700 transition duration-300 hover:translate-x-1 hover:text-zinc-950"
+      className="group relative w-fit text-[13px] text-zinc-300 transition duration-300 hover:translate-x-1 hover:text-white"
     >
       {children}
-      <span className="absolute -bottom-1 left-0 h-px w-0 bg-zinc-950 transition-all duration-300 group-hover:w-full" />
+      <span className="absolute -bottom-1 left-0 h-px w-0 bg-white transition-all duration-300 group-hover:w-full" />
     </Link>
   );
 }
@@ -163,33 +163,47 @@ export default function Footer() {
   }
 
   return (
-    <footer className="mt-10 border-t border-zinc-200 bg-[#f3eee7] text-zinc-950">
+    <footer className="mt-10 border-t border-white/10 bg-[#050505] text-white">
       <div className="mx-auto max-w-[1420px] px-5 py-9 sm:px-7 md:py-11 lg:px-10">
         <div className="grid grid-cols-1 gap-9 md:grid-cols-2 lg:grid-cols-[1.15fr_0.65fr_0.65fr_1.2fr] lg:gap-12">
           <div className="animate-[footerFade_0.55s_ease_both] text-center md:text-left">
             <Link
               to="/"
-              className="mx-auto flex h-[50px] w-[126px] items-center justify-center rounded-2xl bg-white px-4 shadow-[0_12px_30px_rgba(15,15,15,0.08)] transition duration-500 hover:-translate-y-1 md:mx-0"
+              className="mx-auto inline-flex items-center md:mx-0"
             >
               {store?.logoUrl ? (
-                <img
-                  src={store.logoUrl}
-                  alt={storeName}
-                  className="max-h-9 max-w-[108px] object-contain"
-                />
+              <img
+                src={store.logoUrl}
+                alt={storeName}
+                draggable={false}
+                className="
+                  block
+                  h-auto
+                  w-[112px]
+                  sm:w-[120px]
+                  md:w-[128px]
+                  lg:w-[135px]
+                  object-contain
+                  rounded-[10px]
+                  select-none
+                  transition-all
+                  duration-300
+                  hover:scale-[1.02]
+                "
+              />
               ) : (
-                <span className="text-base font-extrabold tracking-[0.08em]">
+                <span className="text-base font-extrabold tracking-[0.08em] text-zinc-950">
                   {storeName}
                 </span>
               )}
             </Link>
 
-            <p className="mx-auto mt-5 max-w-[360px] text-[13px] leading-6 text-zinc-700 md:mx-0">
+            <p className="mx-auto mt-5 max-w-[360px] text-[13px] leading-6 text-zinc-300 md:mx-0">
               {store?.aboutContent ||
                 "Premium sneaker kolleksiyaları və minimalist seçim təcrübəsi."}
             </p>
 
-            <div className="mt-6 flex items-center justify-center gap-5 text-[19px] md:justify-start">
+            <div className="mt-6 flex items-center justify-center gap-5 text-[19px] text-white md:justify-start">
               {socials
                 .filter((x) => x.url)
                 .map((item) => (
@@ -199,35 +213,35 @@ export default function Footer() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label={item.label}
-                    className="transition duration-300 hover:-translate-y-1 hover:text-zinc-500"
+                    className="text-white transition duration-300 hover:-translate-y-1 hover:text-zinc-300"
                   >
                     {item.icon}
                   </a>
                 ))}
             </div>
 
-            <div className="mt-5 space-y-2 text-[13px] text-zinc-700">
+            <div className="mt-5 space-y-2 text-[13px] text-zinc-300">
               {store?.phoneNumber && (
                 <a
                   href={`tel:${store.phoneNumber}`}
-                  className="flex items-center justify-center gap-2 md:justify-start"
+                  className="flex items-center justify-center gap-2 transition duration-300 hover:text-white md:justify-start"
                 >
-                  <FiPhone /> {store.phoneNumber}
+                  <FiPhone className="text-white" /> {store.phoneNumber}
                 </a>
               )}
 
               {store?.email && (
                 <a
                   href={`mailto:${store.email}`}
-                  className="flex items-center justify-center gap-2 md:justify-start"
+                  className="flex items-center justify-center gap-2 transition duration-300 hover:text-white md:justify-start"
                 >
-                  <FiMail /> {store.email}
+                  <FiMail className="text-white" /> {store.email}
                 </a>
               )}
 
               {store?.address && store.address !== "string" && (
                 <div className="flex items-center justify-center gap-2 md:justify-start">
-                  <FiMapPin /> {store.address}
+                  <FiMapPin className="text-white" /> {store.address}
                 </div>
               )}
             </div>
@@ -235,7 +249,7 @@ export default function Footer() {
 
           <div className="grid grid-cols-2 gap-8 md:contents">
             <div className="animate-[footerFade_0.65s_ease_both]">
-              <h3 className="text-sm font-extrabold uppercase tracking-[0.04em]">
+              <h3 className="text-sm font-extrabold uppercase tracking-[0.04em] text-white">
                 {t.customer}
               </h3>
 
@@ -247,7 +261,7 @@ export default function Footer() {
             </div>
 
             <div className="animate-[footerFade_0.75s_ease_both]">
-              <h3 className="text-sm font-extrabold uppercase tracking-[0.04em]">
+              <h3 className="text-sm font-extrabold uppercase tracking-[0.04em] text-white">
                 {t.company}
               </h3>
 
@@ -260,29 +274,29 @@ export default function Footer() {
           </div>
 
           <div className="animate-[footerFade_0.85s_ease_both]">
-            <h3 className="text-sm font-extrabold md:text-base">
+            <h3 className="text-sm font-extrabold text-white md:text-base">
               {t.subscribeTitle}
             </h3>
 
-            <p className="mt-5 text-[13px] leading-6 text-zinc-700">
+            <p className="mt-5 text-[13px] leading-6 text-zinc-300">
               {t.subscribeText}
             </p>
 
             <form
               onSubmit={handleSubscribe}
-              className="mt-4 flex w-full items-center gap-2 rounded-2xl bg-white p-1.5 shadow-[0_12px_30px_rgba(15,15,15,0.07)]"
+              className="mt-4 flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/10 p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.35)] backdrop-blur"
             >
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder={t.emailPlaceholder}
-                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-[13px] text-zinc-950 outline-none placeholder:text-zinc-500"
+                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-[13px] text-white outline-none placeholder:text-zinc-400"
               />
 
               <button
                 type="submit"
-                className="h-11 shrink-0 rounded-xl bg-[#120d09] px-4 text-[10px] font-extrabold uppercase leading-4 text-white transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-800 sm:px-6"
+                className="h-11 shrink-0 rounded-xl bg-white px-4 text-[10px] font-extrabold uppercase leading-4 text-zinc-950 transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-200 sm:px-6"
               >
                 {t.subscribe}
               </button>
@@ -290,8 +304,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-9 border-t border-zinc-200 pt-6 text-center">
-          <p className="text-[12px] text-zinc-700">
+        <div className="mt-9 border-t border-white/10 pt-6 text-center">
+          <p className="text-[12px] text-zinc-300">
             © 2026 {storeName}. {t.rights}
           </p>
 
@@ -299,7 +313,7 @@ export default function Footer() {
             href="https://www.linkedin.com/in/ibadulla-huseynzade/"
             target="_blank"
             rel="noreferrer"
-            className="mt-2 inline-block text-[9px] font-extrabold uppercase tracking-[0.26em] text-zinc-500 transition duration-300 hover:text-zinc-950"
+            className="mt-2 inline-block text-[9px] font-extrabold uppercase tracking-[0.26em] text-zinc-400 transition duration-300 hover:text-white"
           >
             {t.siteBy}
           </a>

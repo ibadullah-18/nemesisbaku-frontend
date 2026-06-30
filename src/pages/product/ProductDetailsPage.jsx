@@ -562,7 +562,7 @@ export default function ProductDetailsPage() {
                     />
                   ) : (
                     <div className="grid h-full place-items-center text-zinc-300">
-                      NemesisBaku
+                      nemesisbaku
                     </div>
                   )}
                 </button>

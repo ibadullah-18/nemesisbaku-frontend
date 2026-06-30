@@ -14,7 +14,7 @@ const text = {
   az: {
     badge: "ƏLAQƏ & MAĞAZA",
     title: "Əlaqələr və mağazamız",
-    desc: "NemesisBaku ilə əlaqə saxlayın, mağaza məlumatlarına baxın və ünvanı xəritədə görüntüləyin.",
+    desc: "nemesisbaku ilə əlaqə saxlayın, mağaza məlumatlarına baxın və ünvanı xəritədə görüntüləyin.",
     contacts: "Əlaqələr",
     store: "Mağazamız",
     phone: "Telefon",
@@ -31,7 +31,7 @@ const text = {
   en: {
     badge: "CONTACT & STORE",
     title: "Contacts and our store",
-    desc: "Contact NemesisBaku, view store information and see the address on the map.",
+    desc: "Contact nemesisbaku, view store information and see the address on the map.",
     contacts: "Contacts",
     store: "Our store",
     phone: "Phone",
@@ -48,7 +48,7 @@ const text = {
   ru: {
     badge: "КОНТАКТЫ И МАГАЗИН",
     title: "Контакты и наш магазин",
-    desc: "Свяжитесь с NemesisBaku, посмотрите информацию о магазине и адрес на карте.",
+    desc: "Свяжитесь с nemesisbaku, посмотрите информацию о магазине и адрес на карте.",
     contacts: "Контакты",
     store: "Наш магазин",
     phone: "Телефон",
@@ -177,7 +177,7 @@ export default function InfoAddressPage() {
   const openMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
 
   return (
-    <section className="min-h-screen overflow-hidden bg-[#f8f5f0] px-3 py-8 text-zinc-950 sm:px-5 sm:py-10 md:px-7 md:py-12 lg:px-10 lg:py-14">
+    <section className="min-h-screen overflow-hidden bg-[#fafafa] px-3 py-8 text-zinc-950 sm:px-5 sm:py-10 md:px-7 md:py-12 lg:px-10 lg:py-14">
       <div className="mx-auto max-w-[1320px]">
         <div className="mx-auto max-w-[860px] text-center">
           <span className="inline-flex max-w-full rounded-full border border-zinc-300 bg-white px-3 py-2 text-center text-[9px] font-extrabold uppercase tracking-[0.22em] text-zinc-600 sm:px-4 sm:text-[10px] sm:tracking-[0.28em]">

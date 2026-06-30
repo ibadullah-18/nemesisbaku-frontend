@@ -11,7 +11,7 @@ import { API_BASE_URL } from "../../Api/config";
 const text = {
   az: {
     badge: "MAĞAZAMIZ",
-    title: "NemesisBaku mağazası",
+    title: "nemesisbaku mağazası",
     desc: "Mağazamızın ünvanı, iş saatları və xəritədə dəqiq yeri.",
     mainStore: "Əsas mağaza",
     address: "Ünvan",
@@ -23,7 +23,7 @@ const text = {
   },
   en: {
     badge: "OUR STORE",
-    title: "NemesisBaku store",
+    title: "nemesisbaku store",
     desc: "Store address, working hours and exact location on the map.",
     mainStore: "Main store",
     address: "Address",
@@ -35,7 +35,7 @@ const text = {
   },
   ru: {
     badge: "МАГАЗИН",
-    title: "Магазин NemesisBaku",
+    title: "Магазин nemesisbaku",
     desc: "Адрес магазина, часы работы и точное местоположение на карте.",
     mainStore: "Основной магазин",
     address: "Адрес",
@@ -144,7 +144,7 @@ export default function StoresPage() {
   const mapUrl = `https://www.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
 
   return (
-    <section className="min-h-screen bg-[#f8f5f0] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
+    <section className="min-h-screen bg-[#fafafa] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
         <div className="mx-auto max-w-[820px] text-center">
           <span className="inline-flex rounded-full border border-zinc-300 bg-white px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.28em] text-zinc-600">
@@ -173,8 +173,8 @@ export default function StoresPage() {
                   <FiMapPin />
                 </div>
 
-                <p className="mt-6 text-[10px] font-extrabold uppercase tracking-[0.28em] text-white/60">
-                  NemesisBaku
+                <p className="mt-6 text-[15px] font-extrabold tracking-[0.17em] text-white/60">
+                  nemesisbaku
                 </p>
 
                 <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.05em]">
@@ -231,7 +231,7 @@ export default function StoresPage() {
             </div>
 
             <iframe
-              title="NemesisBaku store map"
+              title="nemesisbaku store map"
               src={mapUrl}
               className="h-[430px] w-full rounded-[30px] border-0 sm:h-[500px] lg:h-[620px]"
               loading="lazy"

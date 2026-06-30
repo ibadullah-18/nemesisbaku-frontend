@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { FiChevronRight, FiImage, FiX } from "react-icons/fi";
@@ -35,9 +35,11 @@ function unwrap(res) {
 
 function uniqueById(list) {
   const map = new Map();
+
   (list || []).forEach((item) => {
     if (item?.id) map.set(item.id, item);
   });
+
   return [...map.values()];
 }
 
@@ -52,11 +54,15 @@ function money(value) {
 export default function HomePage() {
   const { text } = useLanguage();
 
+  const allProductsRef = useRef(null);
+
   const [campaigns, setCampaigns] = useState([]);
   const [banners, setBanners] = useState([]);
   const [bannerDetail, setBannerDetail] = useState(null);
   const [homeSections, setHomeSections] = useState([]);
   const [products, setProducts] = useState([]);
+
+  const [allProductsVisible, setAllProductsVisible] = useState(false);
 
   const [showBannerPopup, setShowBannerPopup] = useState(false);
   const [closingBannerPopup, setClosingBannerPopup] = useState(false);
@@ -119,10 +125,33 @@ export default function HomePage() {
     };
   }, [showBannerPopup]);
 
+  useEffect(() => {
+    const node = allProductsRef.current;
+    if (!node || products.length === 0 || allProductsVisible) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setAllProductsVisible(true);
+          observer.disconnect();
+        }
+      },
+      {
+        threshold: 0.16,
+        rootMargin: "0px 0px -70px 0px",
+      }
+    );
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [products.length, allProductsVisible]);
+
   async function loadHome() {
     try {
       setLoading(true);
       setPage(1);
+      setAllProductsVisible(false);
 
       const [campaignRes, bannerRes, homeSectionsRes, productsRes] =
         await Promise.all([
@@ -161,6 +190,19 @@ export default function HomePage() {
   function handleFilteredProducts(list) {
     setProducts(uniqueById(list));
     setPage(1);
+    setAllProductsVisible(false);
+
+    setTimeout(() => {
+      const node = allProductsRef.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+
+      if (isVisible) {
+        setAllProductsVisible(true);
+      }
+    }, 80);
   }
 
   function closeBannerPopup() {
@@ -211,14 +253,13 @@ export default function HomePage() {
         `}
       </style>
 
-      <div className="animate-[softHomeIn_0.45s_ease_both]">
+      <div className="relative z-30 animate-[softHomeIn_0.45s_ease_both]">
         <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
       </div>
 
-      <div className="animate-[softHomeIn_0.55s_ease_both]">
+      <div className="relative z-10 animate-[softHomeIn_0.55s_ease_both]">
         <HomePromoSlider promos={campaigns} />
       </div>
-
       <div className="space-y-2">
         {homeSections
           .slice()
@@ -243,11 +284,24 @@ export default function HomePage() {
       </div>
 
       {products.length > 0 && (
-        <section className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11">
-          <div className="mb-5 flex items-end justify-between gap-4">
+        <section
+          ref={allProductsRef}
+          className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11"
+        >
+          <div
+            className="mb-5 flex items-end justify-between gap-4"
+            style={{
+              opacity: allProductsVisible ? 1 : 0,
+              transform: allProductsVisible
+                ? "translateY(0) scale(1)"
+                : "translateY(20px) scale(0.985)",
+              transition:
+                "opacity 0.65s ease, transform 0.65s cubic-bezier(0.22,1,0.36,1)",
+            }}
+          >
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-zinc-500">
-                NemesisBaku
+              <p className="text-[16px] font-extrabold tracking-[0.22em] text-zinc-500">
+                nemesisbaku
               </p>
 
               <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-zinc-950 md:text-3xl">
@@ -261,16 +315,38 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {products.map((product, index) => (
-              <ProductCard
-                key={product.id || `product-${index}`}
-                product={product}
-              />
-            ))}
+            {products.map((product, index) => {
+              const delay = Math.min(index, 11) * 0.045;
+
+              return (
+                <div
+                  key={product.id || `product-wrap-${index}`}
+                  style={{
+                    opacity: allProductsVisible ? 1 : 0,
+                    transform: allProductsVisible
+                      ? "translateY(0) scale(1)"
+                      : "translateY(22px) scale(0.985)",
+                    transition: `opacity 0.58s ease ${delay}s, transform 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
+                  }}
+                >
+                  <ProductCard product={product} />
+                </div>
+              );
+            })}
           </div>
 
           {products.length >= 6 && (
-            <div className="mt-8 flex justify-center">
+            <div
+              className="mt-8 flex justify-center"
+              style={{
+                opacity: allProductsVisible ? 1 : 0,
+                transform: allProductsVisible
+                  ? "translateY(0)"
+                  : "translateY(18px)",
+                transition:
+                  "opacity 0.6s ease 0.5s, transform 0.6s cubic-bezier(0.22,1,0.36,1) 0.5s",
+              }}
+            >
               <button
                 type="button"
                 onClick={loadMore}
@@ -353,7 +429,7 @@ function BannerPopup({ banner, closing, onClose }) {
           <div className="relative z-10 flex min-h-[560px] flex-col justify-end p-4 md:p-8">
             <div className="max-w-[270px] text-left md:max-w-[430px]">
               <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.34em] text-zinc-700 md:text-xs">
-                NemesisBaku
+                nemesisbaku
               </p>
 
               <h2 className="text-[42px] font-extrabold leading-[0.92] tracking-[-0.065em] text-zinc-950 md:text-[72px]">

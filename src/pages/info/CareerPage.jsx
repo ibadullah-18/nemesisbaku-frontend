@@ -3,7 +3,7 @@ import { FiArrowRight, FiBriefcase, FiHeart, FiMail, FiUsers } from "react-icons
 const text = {
   az: {
     badge: "KARYERA",
-    title: "NemesisBaku komandamıza qoşul",
+    title: "nemesisbaku komandamıza qoşul",
     desc: "Premium sneaker mədəniyyətini sevən, detallara önəm verən və müştəri təcrübəsini yüksəltmək istəyən insanlarla işləməyə açığıq.",
     culture: "Komanda mədəniyyəti",
     cultureText: "Minimalist düşüncə, məsuliyyətli yanaşma və premium xidmət standartı.",
@@ -18,7 +18,7 @@ const text = {
   },
   en: {
     badge: "CAREER",
-    title: "Join the NemesisBaku team",
+    title: "Join the nemesisbaku team",
     desc: "We are open to people who love premium sneaker culture, care about details and want to improve customer experience.",
     culture: "Team culture",
     cultureText: "Minimal thinking, responsible approach and premium service standards.",
@@ -33,8 +33,8 @@ const text = {
   },
   ru: {
     badge: "КАРЬЕРА",
-    title: "Присоединяйтесь к команде NemesisBaku",
-    desc: "Мы открыты для людей, которые любят premium sneaker-культуру, ценят детали и хотят улучшать клиентский опыт.",
+    title: "Присоединяйтесь к команде nemesisbaku",
+    desc: "Мы открыты для людей, которые любят premium sneaker-культура, ценят детали и хотят улучшать клиентский опыт.",
     culture: "Командная культура",
     cultureText: "Минималистичное мышление, ответственность и высокий стандарт сервиса.",
     growth: "Возможность роста",
@@ -81,7 +81,7 @@ export default function CareerPage() {
   const t = text[lang] || text.az;
 
   return (
-    <section className="min-h-screen bg-[#f8f5f0] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
+    <section className="min-h-screen bg-[#fafafa] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
         <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-end">
           <div className="animate-[careerFade_0.55s_ease_both]">

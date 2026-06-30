@@ -331,12 +331,23 @@ export const adminAuditLogsApi = {
 export const adminPromoPagesApi = {
   list: (type) => {
     const query = type ? `?type=${type}` : "";
-
     return adminFetch(`/api/AdminPromoPages${query}`);
   },
 
-  detail: (id) => {
-    return adminFetch(`/api/AdminPromoPages/${id}`);
+  detail: async (id) => {
+    const res = await adminFetch("/api/AdminPromoPages");
+    const items = listAdmin(res);
+
+    const promo = items.find((x) => String(x.id) === String(id));
+
+    if (!promo) {
+      throw new Error("Promo tapılmadı.");
+    }
+
+    return {
+      success: true,
+      data: promo,
+    };
   },
 
   create: (body) => {
@@ -349,9 +360,7 @@ export const adminPromoPagesApi = {
     formData.append("EndDate", body.endDate || "");
     formData.append("IsActive", String(Boolean(body.isActive)));
 
-    if (body.file) {
-      formData.append("File", body.file);
-    }
+    if (body.file) formData.append("File", body.file);
 
     (body.productIds || []).forEach((productId) => {
       formData.append("ProductIds", productId);
@@ -363,28 +372,28 @@ export const adminPromoPagesApi = {
     });
   },
 
-  update: (id, body) => {
-    const formData = new FormData();
+update: (id, body) => {
+  const formData = new FormData();
 
-    formData.append("Title", body.title || "");
-    formData.append("Description", body.description || "");
-    formData.append("StartDate", body.startDate || "");
-    formData.append("EndDate", body.endDate || "");
-    formData.append("IsActive", String(Boolean(body.isActive)));
+  formData.append("Title", body.title ?? "");
+  formData.append("Description", body.description ?? "");
+  formData.append("StartDate", body.startDate ?? "");
+  formData.append("EndDate", body.endDate ?? "");
+  formData.append("IsActive", String(Boolean(body.isActive)));
 
-    if (body.file) {
-      formData.append("File", body.file);
-    }
+  // Şəkil yalnız yenisi seçilərsə göndərilir
+  if (body.file instanceof File) {
+    formData.append("File", body.file);
+  }
 
-    (body.productIds || []).forEach((productId) => {
-      formData.append("ProductIds", productId);
-    });
+  // EDIT zamanı ProductIds göndərmirik.
+  // Backend Swagger-də də bu şəkildə uğurla işləyir.
 
-    return adminFetch(`/api/AdminPromoPages/${id}`, {
-      method: "PUT",
-      body: formData,
-    });
-  },
+  return adminFetch(`/api/AdminPromoPages/${id}`, {
+    method: "PUT",
+    body: formData,
+  });
+},
 
   delete: (id) => {
     return adminFetch(`/api/AdminPromoPages/${id}`, {
@@ -446,4 +455,19 @@ export const adminCampaignsApi = {
   update: (id, body) => adminPromoPagesApi.update(id, body),
 
   delete: (id) => adminPromoPagesApi.delete(id),
+};
+
+export const adminPromoCodesApi = {
+  list: () => adminFetch("/api/AdminPromoCodes"),
+
+  create: (body) =>
+    adminFetch("/api/AdminPromoCodes", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminPromoCodes/${id}`, {
+      method: "DELETE",
+    }),
 };

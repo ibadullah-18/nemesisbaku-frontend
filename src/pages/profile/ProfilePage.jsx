@@ -85,8 +85,8 @@ export default function ProfilePage() {
 
           <div className="relative p-5 md:p-8">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs font-medium uppercase tracking-[0.28em] text-white/45">
-                NemesisBaku
+              <p className="text-[15px] font-medium tracking-[0.17em] text-white/45">
+                nemesisbaku
               </p>
 
               <button

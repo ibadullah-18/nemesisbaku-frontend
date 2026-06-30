@@ -27,8 +27,8 @@ export default function ProfileSettingsPage() {
           </button>
 
           <div className="text-center">
-            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-400">
-              NemesisBaku
+            <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
+              nemesisbaku
             </p>
             <h1 className="mt-1 text-lg font-medium tracking-[-0.025em] text-zinc-950">
               {text.profileSettings}

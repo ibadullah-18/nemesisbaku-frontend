@@ -141,7 +141,7 @@ export default function SearchPage() {
                     />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-sm font-bold text-zinc-300">
-                      NemesisBaku
+                      nemesisbaku
                     </div>
                   )}
                 </div>

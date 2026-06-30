@@ -197,16 +197,16 @@ export default function AdminPromoForm({ mode }) {
       return setError("Ən azı 1 məhsul seçilməlidir.");
     }
 
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      type: Number(form.type),
-      startDate: form.startDate,
-      endDate: form.endDate,
-      isActive: Boolean(form.isActive),
-      file: form.file,
-      productIds: form.productIds,
-    };
+   const payload = {
+    title: form.title.trim(),
+    description: form.description.trim(),
+    type: Number(form.type),
+    startDate: new Date(form.startDate).toISOString(),
+    endDate: new Date(form.endDate).toISOString(),
+    isActive: Boolean(form.isActive),
+    file: form.file,
+    productIds: form.productIds,
+  };
 
     try {
       setSaving(true);

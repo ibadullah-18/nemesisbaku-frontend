@@ -113,7 +113,7 @@ export default function DeliveryPage() {
   }, []);
 
   return (
-    <section className="min-h-screen bg-[#f8f5f0] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
+    <section className="min-h-screen bg-[#fafafa] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
         <div className="mx-auto max-w-[790px] text-center">
           <span className="inline-flex rounded-full border border-zinc-300 bg-white px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.28em] text-zinc-600">

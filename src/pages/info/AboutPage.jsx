@@ -10,45 +10,47 @@ import {
 import { API_BASE_URL } from "../../Api/config";
 
 const text = {
-  az: {
-    badge: "HAQQIMIZDA",
-    title: "NemesisBaku haqqında",
-    desc: "Premium sneaker mədəniyyəti, minimalist seçim və yüksək xidmət standartı.",
-    mission: "Missiyamız",
-    vision: "Vizyonumuz",
-    why: "Niyə NemesisBaku?",
-    premium: "Premium kolleksiya",
-    original: "Seçilmiş məhsullar",
-    delivery: "Sürətli çatdırılma",
-    support: "Fərdi yanaşma",
-    notAdded: "Əlavə edilməyib",
-  },
-  en: {
-    badge: "ABOUT US",
-    title: "About NemesisBaku",
-    desc: "Premium sneaker culture, minimalist selection and high service standards.",
-    mission: "Our Mission",
-    vision: "Our Vision",
-    why: "Why NemesisBaku?",
-    premium: "Premium collection",
-    original: "Selected products",
-    delivery: "Fast delivery",
-    support: "Personal approach",
-    notAdded: "Not added",
-  },
-  ru: {
-    badge: "О НАС",
-    title: "О NemesisBaku",
-    desc: "Премиальная sneaker-культура, минималистичный выбор и высокий уровень сервиса.",
-    mission: "Наша миссия",
-    vision: "Наше видение",
-    why: "Почему NemesisBaku?",
-    premium: "Премиальная коллекция",
-    original: "Избранные товары",
-    delivery: "Быстрая доставка",
-    support: "Индивидуальный подход",
-    notAdded: "Не добавлено",
-  },
+az: {
+  badge: "HAQQIMIZDA",
+  title: "nemesisbaku haqqında",
+  desc: "Premium sneaker mədəniyyəti, minimalist seçim və yüksək xidmət standartı.",
+  mission: "Missiyamız",
+  vision: "Vizyonumuz",
+  why: "Niyə nemesisbaku?",
+  premium: "Premium kolleksiya",
+  original: "Seçilmiş məhsullar",
+  delivery: "Sürətli çatdırılma",
+  support: "Fərdi yanaşma",
+  notAdded: "Əlavə edilməyib",
+},
+
+en: {
+  badge: "ABOUT US",
+  title: "About nemesisbaku",
+  desc: "Premium sneaker culture, minimalist selection and high service standards.",
+  mission: "Our Mission",
+  vision: "Our Vision",
+  why: "Why nemesisbaku?",
+  premium: "Premium collection",
+  original: "Selected products",
+  delivery: "Fast delivery",
+  support: "Personal approach",
+  notAdded: "Not added",
+},
+
+ru: {
+  badge: "О НАС",
+  title: "О nemesisbaku",
+  desc: "Премиальная sneaker-культура, минималистичный выбор и высокий уровень сервиса.",
+  mission: "Наша миссия",
+  vision: "Наше видение",
+  why: "Почему nemesisbaku?",
+  premium: "Премиальная коллекция",
+  original: "Избранные товары",
+  delivery: "Быстрая доставка",
+  support: "Индивидуальный подход",
+  notAdded: "Не добавлено",
+},
 };
 
 function getLang() {
@@ -66,7 +68,7 @@ function BigInfoCard({ icon, title, content, delay }) {
       className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-[0_22px_60px_rgba(15,15,15,0.06)] transition duration-500 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(15,15,15,0.1)] sm:p-7"
       style={{ animation: `aboutFade 0.65s ease ${delay}s both` }}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3eee7] text-xl">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fafafa] text-xl">
         {icon}
       </div>
 
@@ -141,7 +143,7 @@ export default function AboutPage() {
   }, []);
 
   return (
-    <section className="min-h-screen bg-[#f8f5f0] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
+    <section className="min-h-screen bg-[#fafafa] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
         <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
           <div className="animate-[aboutFade_0.55s_ease_both]">

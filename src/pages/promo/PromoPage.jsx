@@ -99,8 +99,8 @@ export default function PromoPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
 
           <div className="absolute bottom-0 left-0 right-0 p-6 text-center text-white md:p-10">
-            <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.22em] text-white/70">
-              NemesisBaku
+            <p className="mb-2 text-[15px] font-extrabold tracking-[0.17em] text-white/70">
+              nemesisbaku
             </p>
 
             <h1 className="mx-auto max-w-[760px] text-[34px] font-extrabold leading-[1.05] tracking-[-0.045em] md:text-[60px]">

@@ -340,8 +340,8 @@ function PromoCard({ promo, text }) {
 
       <div className="absolute left-0 top-0 z-10 flex h-full w-full items-center p-6 md:p-10">
         <div className="max-w-[300px] text-left md:max-w-[430px]">
-          <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.32em] text-zinc-700 md:text-xs">
-            NemesisBaku
+          <p className="mb-3 text-[20px] font-extrabold  tracking-[0.22em] text-zinc-700 md:text-xs">
+            nemesisbaku
           </p>
 
           <h1 className="text-[42px] font-extrabold leading-[0.92] tracking-[-0.065em] text-zinc-950 md:text-[72px]">

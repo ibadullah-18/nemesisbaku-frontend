@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import Navbar from "../components/layout/Navbar";
@@ -26,6 +27,7 @@ import AdminSizes from "../pages/admin/AdminSizes";
 import AdminColors from "../pages/admin/AdminColors";
 import AdminHomeSections from "../pages/admin/AdminHomeSections";
 import AdminHomeSectionForm from "../pages/admin/AdminHomeSectionForm";
+import AdminPromoCodes from "../pages/admin/AdminPromoCodes";
 
 import ProfilePage from "../pages/profile/ProfilePage";
 import ProductDetailsPage from "../pages/product/ProductDetailsPage";
@@ -48,8 +50,19 @@ import ReturnPolicyPage from "../pages/info/ReturnPolicyPage";
 import AboutPage from "../pages/info/AboutPage";
 import CareerPage from "../pages/info/CareerPage";
 import StoresPage from "../pages/info/StoresPage";
+import RegisterPage from "../pages/auth/RegisterPage";
 
 function PageShell({ children }) {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+  }, [pathname]);
+
   return (
     <div className="animate-[pageSlideIn_0.38s_cubic-bezier(0.22,1,0.36,1)_both]">
       {children}
@@ -270,6 +283,15 @@ export default function AppRoutes() {
         }
       />
 
+      <Route
+        path="/register"
+        element={
+          <Layout>
+            <RegisterPage />
+          </Layout>
+        }
+      />
+
       <Route path="/SuperAdmin" element={<SuperAdminLogin />} />
 
       <Route
@@ -303,9 +325,17 @@ export default function AppRoutes() {
 
         <Route path="users" element={<AdminUsers />} />
 
+        <Route path="promo-codes" element={<AdminPromoCodes />} />
+
         <Route path="home-sections" element={<AdminHomeSections />} />
-        <Route path="home-sections/create" element={<AdminHomeSectionForm mode="create" />} />
-        <Route path="home-sections/:id" element={<AdminHomeSectionForm mode="edit" />} />
+        <Route
+          path="home-sections/create"
+          element={<AdminHomeSectionForm mode="create" />}
+        />
+        <Route
+          path="home-sections/:id"
+          element={<AdminHomeSectionForm mode="edit" />}
+        />
       </Route>
 
       <Route

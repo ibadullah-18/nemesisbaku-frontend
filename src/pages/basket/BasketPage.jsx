@@ -396,8 +396,8 @@ export default function BasketPage() {
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
       <div className="mx-auto max-w-[1180px]">
         <div className="mb-7 animate-[basketUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-400">
-            NemesisBaku
+          <p className="text-[15px] font-medium  tracking-[0.17em] text-zinc-400">
+            nemesisbaku
           </p>
 
           <h1 className="mt-2 text-[34px] font-medium tracking-[-0.045em] text-zinc-950 md:text-[46px]">
@@ -849,7 +849,7 @@ function SwipeImage({ images, name, className }) {
               key={index}
               className="grid h-full min-w-full place-items-center text-xs font-medium text-zinc-300"
             >
-              NemesisBaku
+              nemesisbaku
             </div>
           )
         )}
