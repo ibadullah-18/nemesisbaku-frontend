@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   FiEdit3,
   FiImage,
@@ -35,6 +36,11 @@ export default function AdminCampaigns() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const location = useLocation();
+
+  const basePath = location.pathname.startsWith("/Admin")
+    ? "/Admin"
+    : "/SuperAdmin";
 
   useEffect(() => {
     loadPromos();
@@ -102,7 +108,7 @@ export default function AdminCampaigns() {
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <NavLink
-            to="/SuperAdmin/campaigns/create"
+            to={`${basePath}/campaigns/create`}
             className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white transition active:scale-[0.97]"
           >
             <FiPlus />
@@ -221,7 +227,7 @@ export default function AdminCampaigns() {
 
                 <div className="mt-4 flex gap-2">
                   <NavLink
-                    to={`/SuperAdmin/campaigns/${promo.id}`}
+                    to={`${basePath}/campaigns/${promo.id}`}
                     className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-white text-sm font-extrabold text-zinc-800 ring-1 ring-zinc-100 transition active:scale-[0.97]"
                   >
                     <FiEdit3 />

@@ -19,6 +19,7 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { useLocation } from "react-router-dom";
 
 const emptyForm = {
   title: "",
@@ -88,6 +89,12 @@ export default function AdminPromoForm({ mode }) {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const location = useLocation();
+
+  const basePath = location.pathname.startsWith("/Admin")
+      ? "/Admin"
+      : "/SuperAdmin";
 
   useEffect(() => {
     loadAll();
@@ -216,7 +223,7 @@ export default function AdminPromoForm({ mode }) {
         setSuccess("Promo səhifə yeniləndi.");
       } else {
         await adminPromoPagesApi.create(payload);
-        navigate("/SuperAdmin/campaigns");
+        navigate(`${basePath}/campaigns`);
       }
     } catch (err) {
       setError(err.message || "Promo yadda saxlanmadı.");
@@ -262,7 +269,7 @@ export default function AdminPromoForm({ mode }) {
 
       <button
         type="button"
-        onClick={() => navigate("/SuperAdmin/campaigns")}
+        onClick={() => navigate(`${basePath}/campaigns`)}
         className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition active:scale-[0.97]"
       >
         <FiArrowLeft />

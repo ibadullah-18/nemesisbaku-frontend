@@ -277,6 +277,39 @@ export const translations = {
     loyaltyPlaceholder: "Kod varsa daxil edin",
     otpTemporaryInfo: "OTP sistemi hazırda aktiv deyil. Hesab yaradıldıqdan sonra login səhifəsinə yönləndiriləcəksiniz.",
     registerError: "Qeydiyyat zamanı xəta baş verdi.",
+
+    emailOrPhone: "Email və ya telefon",
+    emailOrPhonePlaceholder: "Email və ya telefon daxil edin",
+    emailOrPhoneError: "Email və ya telefon nömrəsini düzgün daxil edin.",
+
+    registerStepOtpTitle: "Email təsdiqi",
+    registerStepOtpShort: "OTP",
+    registerStepOtpDesc: "Email ünvanınıza göndərilən 6 rəqəmli təsdiq kodunu daxil edin.",
+    otpCode: "OTP kodu",
+    otpPlaceholder: "6 rəqəmli kod",
+    otpRequired: "6 rəqəmli OTP kodunu daxil edin.",
+    otpSending: "OTP göndərilir",
+    otpSendError: "OTP kodu göndərilərkən xəta baş verdi.",
+    otpSentInfo: "Təsdiq kodu email ünvanınıza göndərildi.",
+    resendOtp: "OTP-ni yenidən göndər",
+    resendOtpIn: "Yenidən göndər",
+    sendOtp: "OTP göndər",
+
+    forgotHeroTitle: "Hesabınızı təhlükəsiz bərpa edin.",
+    forgotHeroDesc: "Email təsdiqi ilə şifrənizi yeniləyin və hesabınıza yenidən daxil olun.",
+    forgotTitle: "Şifrəni bərpa et",
+    forgotDesc: "Qeydiyyatdan keçdiyiniz email ünvanını daxil edin. Hesab tapılarsa OTP kod göndəriləcək.",
+    forgotEmailNotFound: "Bu email ilə qeydiyyatdan keçmiş hesab tapılmadı.",
+    forgotOtpTitle: "Email təsdiqi",
+    forgotOtpDesc: "Email ünvanınıza göndərilən 6 rəqəmli kodu daxil edin.",
+    newPasswordTitle: "Yeni şifrə",
+    newPasswordDesc: "Hesabınız üçün yeni və təhlükəsiz şifrə yaradın.",
+    newPassword: "Yeni şifrə",
+    confirmNewPassword: "Yeni şifrə təkrar",
+    resetPasswordError: "Şifrə yenilənərkən xəta baş verdi. OTP kodunu yoxlayın.",
+    savePassword: "Şifrəni yenilə",
+    rememberPassword: "Şifrənizi xatırladınız?",
+    saving: "Yadda saxlanılır...",
   },
 
   ru: {
@@ -553,6 +586,46 @@ export const translations = {
     loyaltyPlaceholder: "Введите код, если есть",
     otpTemporaryInfo: "OTP система пока не активна. После создания аккаунта вы будете перенаправлены на страницу входа.",
     registerError: "Ошибка при регистрации.",
+
+    emailOrPhone: "Email или телефон",
+    emailOrPhonePlaceholder: "Введите email или телефон",
+    emailOrPhoneError: "Введите корректный email или номер телефона.",
+
+    registerStepOtpTitle: "Подтверждение email",
+    registerStepOtpShort: "OTP",
+    registerStepOtpDesc: "Введите 6-значный код подтверждения, отправленный на ваш email.",
+    otpCode: "OTP код",
+    otpPlaceholder: "6-значный код",
+    otpRequired: "Введите 6-значный OTP код.",
+    otpSending: "OTP отправляется",
+    otpSendError: "Произошла ошибка при отправке OTP кода.",
+    otpSentInfo: "Код подтверждения отправлен на ваш email.",
+    resendOtp: "Отправить OTP повторно",
+    resendOtpIn: "Повторно отправить",
+    sendOtp: "Отправить OTP",
+
+    forgotHeroTitle: "Безопасное восстановление аккаунта.",
+    forgotHeroDesc:
+      "Подтвердите email, создайте новый пароль и снова войдите в аккаунт.",
+    forgotTitle: "Восстановление пароля",
+    forgotDesc:
+      "Введите email, который вы использовали при регистрации. Если аккаунт существует, мы отправим код подтверждения.",
+    forgotEmailNotFound:
+      "Аккаунт с таким email не найден.",
+    forgotOtpTitle: "Подтверждение Email",
+    forgotOtpDesc:
+    "Введите 6-значный код подтверждения, отправленный на ваш email.",
+    newPasswordTitle: "Новый пароль",
+    newPasswordDesc:
+      "Создайте надежный пароль для защиты вашего аккаунта.",
+    newPassword: "Новый пароль",
+    confirmNewPassword: "Подтвердите новый пароль",
+    resetPasswordError:
+      "Не удалось изменить пароль. Проверьте код подтверждения и попробуйте снова.",
+    savePassword: "Обновить пароль",
+    rememberPassword: "Вспомнили пароль?",
+    saving: "Сохранение...",
+
   },
 
   en: {
@@ -827,5 +900,43 @@ export const translations = {
     loyaltyPlaceholder: "Enter code if you have one",
     otpTemporaryInfo: "OTP is not active yet. After account creation, you will be redirected to the login page.",
     registerError: "Registration failed.",
+
+    emailOrPhone: "Email or phone",
+    emailOrPhonePlaceholder: "Enter email or phone",
+    emailOrPhoneError: "Please enter a valid email or phone number.",
+
+    registerStepOtpTitle: "Email verification",
+    registerStepOtpShort: "OTP",
+    registerStepOtpDesc: "Enter the 6-digit verification code sent to your email.",
+    otpCode: "OTP code",
+    otpPlaceholder: "6-digit code",
+    otpRequired: "Enter the 6-digit OTP code.",
+    otpSending: "Sending OTP",
+    otpSendError: "An error occurred while sending the OTP code.",
+    otpSentInfo: "The verification code was sent to your email.",
+    resendOtp: "Resend OTP",
+    resendOtpIn: "Resend",
+    sendOtp: "Send OTP",
+
+    forgotHeroTitle: "Recover your account securely.",
+    forgotHeroDesc: "Verify your email, create a new password and sign in again.",
+    forgotTitle: "Forgot Password",
+    forgotDesc:
+      "Enter the email address you used during registration. If an account exists, we'll send you a verification code.",
+    forgotEmailNotFound:
+      "No account was found with this email address.",
+    forgotOtpTitle: "Email Verification",
+    forgotOtpDesc:
+      "Enter the 6-digit verification code sent to your email address.",
+    newPasswordTitle: "Create New Password",
+    newPasswordDesc:
+      "Choose a strong password to secure your account.",
+    newPassword: "New Password",
+    confirmNewPassword: "Confirm New Password",
+    resetPasswordError:
+      "Failed to reset your password. Please check the verification code and try again.",
+    savePassword: "Update Password",
+    rememberPassword: "Remember your password?",
+    saving: "Saving...",
   },
 };

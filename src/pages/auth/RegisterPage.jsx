@@ -17,6 +17,7 @@ import {
   FiUser,
   FiX,
   FiClock,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { apiFetch } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -31,12 +32,23 @@ export default function RegisterPage() {
   const [store, setStore] = useState(null);
   const [storeLoading, setStoreLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState("next");
+
   const [toastError, setToastError] = useState("");
-  const [toastClosing, setToastClosing] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
+
+  const [otpSent, setOtpSent] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
+
+  const toastTimerRef = useRef(null);
+  const toastCloseTimerRef = useRef(null);
+  const toastStartTimerRef = useRef(null);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -46,13 +58,29 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
     loyaltyCardCode: "",
-    code: "000000",
+    code: "",
     profileImage: null,
   });
 
   useEffect(() => {
     loadStoreInfo();
+
+    return () => {
+      clearTimeout(toastTimerRef.current);
+      clearTimeout(toastCloseTimerRef.current);
+      clearTimeout(toastStartTimerRef.current);
+    };
   }, []);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setResendSeconds((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resendSeconds]);
 
   async function loadStoreInfo() {
     try {
@@ -112,6 +140,13 @@ export default function RegisterPage() {
           text.registerStepFinishDesc ||
           "Profil şəkli və loyalty kod istəyə bağlıdır.",
       },
+      {
+        title: text.registerStepOtpTitle || "Email təsdiqi",
+        short: text.registerStepOtpShort || "OTP",
+        desc:
+          text.registerStepOtpDesc ||
+          "Email ünvanınıza göndərilən 6 rəqəmli təsdiq kodunu daxil edin.",
+      },
     ],
     [text]
   );
@@ -147,21 +182,49 @@ export default function RegisterPage() {
   }
 
   function handlePhoneChange(e) {
-    updateField("phone", e.target.value.replace(/\D/g, "").slice(0, 9));
+    let digits = e.target.value.replace(/\D/g, "");
+
+    if (digits.startsWith("994")) digits = digits.slice(3);
+    if (digits.startsWith("0")) digits = digits.slice(1);
+
+    updateField("phone", digits.slice(0, 9));
   }
 
   function showToast(message) {
-    setToastClosing(false);
+    clearTimeout(toastTimerRef.current);
+    clearTimeout(toastCloseTimerRef.current);
+    clearTimeout(toastStartTimerRef.current);
+
+    setToastVisible(false);
     setToastError(message);
 
-    window.clearTimeout(showToast.closeTimer);
-    window.clearTimeout(showToast.hideTimer);
+    toastStartTimerRef.current = setTimeout(() => {
+      setToastVisible(true);
+    }, 20);
 
-    showToast.closeTimer = window.setTimeout(() => setToastClosing(true), 2800);
-    showToast.hideTimer = window.setTimeout(() => {
-      setToastError("");
-      setToastClosing(false);
-    }, 3150);
+    toastTimerRef.current = setTimeout(() => {
+      setToastVisible(false);
+
+      toastCloseTimerRef.current = setTimeout(() => {
+        setToastError("");
+      }, 300);
+    }, 5000);
+  }
+
+  function getCleanError(err, fallback) {
+    const message = err?.message;
+
+    if (
+      !message ||
+      message === "Əməliyyat uğursuz oldu" ||
+      message === "Unauthorized" ||
+      message === "Unauthorized." ||
+      message === "Serverlə əlaqə qurulmadı."
+    ) {
+      return fallback;
+    }
+
+    return message;
   }
 
   function validateCurrentStep() {
@@ -200,11 +263,67 @@ export default function RegisterPage() {
       }
     }
 
+    if (step === 6) {
+      if (form.code.trim().length !== 6) {
+        showToast(text.otpRequired || "6 rəqəmli OTP kodunu daxil edin.");
+        return false;
+      }
+    }
+
     return true;
   }
 
-  function nextStep() {
+  async function sendRegisterOtp() {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+
+    if (!emailOk) {
+      showToast(text.emailRequired || "Düzgün email daxil edilməlidir.");
+      return false;
+    }
+
+    try {
+      setOtpLoading(true);
+
+      await apiFetch(
+        "/api/Auth/send-register-otp",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: form.email.trim(),
+          }),
+        },
+        false
+      );
+
+      setOtpSent(true);
+      setResendSeconds(60);
+      return true;
+    } catch (err) {
+      showToast(
+        getCleanError(
+          err,
+          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi."
+        )
+      );
+      return false;
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function resendOtp() {
+    if (resendSeconds > 0 || otpLoading) return;
+    await sendRegisterOtp();
+  }
+
+  async function nextStep() {
     if (!validateCurrentStep()) return;
+
+    if (step === 5 && !otpSent) {
+      const sent = await sendRegisterOtp();
+      if (!sent) return;
+    }
+
     if (step < steps.length - 1) {
       setDirection("next");
       setStep((prev) => prev + 1);
@@ -233,19 +352,27 @@ export default function RegisterPage() {
       fd.append("Password", form.password);
       fd.append("ConfirmPassword", form.confirmPassword);
       fd.append("LoyaltyCardCode", form.loyaltyCardCode.trim());
-      fd.append("Code", form.code || "000000");
+      fd.append("Code", form.code.trim());
+      fd.append("TermsAccepted", "true");
 
       if (form.profileImage) fd.append("ProfileImage", form.profileImage);
 
-      await apiFetch("/api/Auth/verify-register-otp", {
-        method: "POST",
-        body: fd,
-      });
+      await apiFetch(
+        "/api/Auth/verify-register-otp",
+        {
+          method: "POST",
+          body: fd,
+        },
+        false
+      );
 
       navigate("/login", { replace: true });
     } catch (err) {
       showToast(
-        err.message || text.registerError || "Qeydiyyat zamanı xəta baş verdi."
+        getCleanError(
+          err,
+          text.registerError || "Qeydiyyat zamanı xəta baş verdi."
+        )
       );
     } finally {
       setLoading(false);
@@ -265,16 +392,6 @@ export default function RegisterPage() {
     <>
       <style>
         {`
-          @keyframes registerToastIn {
-            from { opacity: 0; transform: translateY(18px) scale(.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-          }
-
-          @keyframes registerToastOut {
-            from { opacity: 1; transform: translateY(0) scale(1); }
-            to { opacity: 0; transform: translateY(18px) scale(.98); }
-          }
-
           @keyframes registerStepNext {
             from { opacity: 0; transform: translateX(24px) scale(.985); filter: blur(4px); }
             to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
@@ -298,11 +415,13 @@ export default function RegisterPage() {
       </style>
 
       <main className="min-h-screen bg-[#f5f3f5] px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
-        {(loading || storeLoading) && (
+        {(loading || storeLoading || otpLoading) && (
           <AppLoader
             text={
               loading
                 ? text.registering || "Qeydiyyat yaradılır"
+                : otpLoading
+                ? text.otpSending || "OTP göndərilir"
                 : text.loading
             }
           />
@@ -311,10 +430,10 @@ export default function RegisterPage() {
         {toastError &&
           createPortal(
             <div
-              className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
-                toastClosing
-                  ? "animate-[registerToastOut_.28s_cubic-bezier(.22,1,.36,1)_both]"
-                  : "animate-[registerToastIn_.32s_cubic-bezier(.22,1,.36,1)_both]"
+              className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
+                toastVisible
+                  ? "translate-y-0 scale-100 opacity-100"
+                  : "translate-y-5 scale-95 opacity-0"
               }`}
             >
               {toastError}
@@ -325,8 +444,6 @@ export default function RegisterPage() {
         <section className="mx-auto flex w-full max-w-[1180px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px] animate-[registerCardIn_.45s_cubic-bezier(.22,1,.36,1)_both]">
           <div className="hidden flex-1 bg-[#f5f3f5] p-8 md:flex md:flex-col md:justify-between lg:p-11">
             <div>
-
-
               <div className="animate-[registerHeroIn_.45s_cubic-bezier(.22,1,.36,1)_both]">
                 <h1 className="max-w-[470px] text-[42px] font-extrabold leading-[1.05] tracking-[-0.045em] text-zinc-950 lg:text-[56px]">
                   {text.premiumTitle || "Addımlarınızda premium stil."}
@@ -607,11 +724,47 @@ export default function RegisterPage() {
                           text.loyaltyPlaceholder || "Kod varsa daxil edin"
                         }
                       />
+                    </div>
+                  )}
+
+                  {step === 6 && (
+                    <div className="space-y-4">
+                      <AnimatedInput
+                        label={text.otpCode || "OTP kodu"}
+                        icon={<FiShield />}
+                        value={form.code}
+                        onChange={(e) =>
+                          updateField(
+                            "code",
+                            e.target.value.replace(/\D/g, "").slice(0, 6)
+                          )
+                        }
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder={text.otpPlaceholder || "6 rəqəmli kod"}
+                      />
 
                       <div className="rounded-[16px] border border-zinc-100 bg-zinc-50 p-4 text-sm leading-6 text-zinc-500">
-                        {text.otpTemporaryInfo ||
-                          "OTP sistemi hazırda aktiv deyil. Hesab yaradıldıqdan sonra login səhifəsinə yönləndiriləcəksiniz."}
+                        {text.otpSentInfo ||
+                          "Təsdiq kodu email ünvanınıza göndərildi."}{" "}
+                        <span className="font-bold text-zinc-950">
+                          {form.email}
+                        </span>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={resendOtp}
+                        disabled={resendSeconds > 0 || otpLoading}
+                        className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-zinc-200 bg-white text-sm font-bold text-zinc-950 transition hover:border-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <FiRefreshCw />
+                        {resendSeconds > 0
+                          ? `${
+                              text.resendOtpIn || "Yenidən göndər"
+                            } (${resendSeconds}s)`
+                          : text.resendOtp || "OTP-ni yenidən göndər"}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -621,7 +774,7 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={prevStep}
-                      disabled={loading}
+                      disabled={loading || otpLoading}
                       className="grid h-14 w-14 shrink-0 place-items-center rounded-[14px] border border-zinc-200 bg-white text-xl text-zinc-950 transition hover:border-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <FiArrowLeft />
@@ -632,16 +785,18 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={nextStep}
-                      disabled={loading}
+                      disabled={loading || otpLoading}
                       className="flex h-14 flex-1 items-center justify-center gap-3 rounded-[14px] bg-black text-[16px] font-bold text-white transition-all duration-300 hover:translate-y-[-1px] hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
                     >
-                      {text.next || "İrəli"}
+                      {step === 5
+                        ? text.sendOtp || "OTP göndər"
+                        : text.next || "İrəli"}
                       <FiArrowRight className="text-xl" />
                     </button>
                   ) : (
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || otpLoading}
                       className="flex h-14 flex-1 items-center justify-center gap-3 rounded-[14px] bg-black text-[16px] font-bold text-white transition-all duration-300 hover:translate-y-[-1px] hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
                     >
                       {loading

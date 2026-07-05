@@ -16,6 +16,7 @@ import {
   adminSizesApi,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { isSuperAdmin } from "../../api/admin/adminAuth";
 
 const emptyForm = {
   name: "",
@@ -113,6 +114,7 @@ function getColorText(item) {
 export default function AdminAddProduct() {
   const navigate = useNavigate();
 
+  const basePath = isSuperAdmin() ? "/SuperAdmin" : "/Admin";
   const [form, setForm] = useState(emptyForm);
   const [variants, setVariants] = useState([{ ...emptyVariant }]);
   const [images, setImages] = useState([]);
@@ -293,7 +295,7 @@ export default function AdminAddProduct() {
         await uploadImages(productId);
       }
 
-      navigate("/SuperAdmin/products");
+      navigate(`${basePath}/products`);
     } catch (err) {
       setError(err.message || "Məhsul yaradılmadı.");
     } finally {

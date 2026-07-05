@@ -9,6 +9,15 @@ function unwrap(res) {
   return res?.data?.data || res?.data || res;
 }
 
+function normalizePhone(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+
+  if (digits.startsWith("994")) digits = digits.slice(3);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+
+  return digits.slice(0, 9);
+}
+
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
@@ -17,6 +26,7 @@ export default function AccountSettingsPage() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({
     fullName: "",
+    phoneNumber: "",
     email: "",
     dateOfBirth: "",
     loyaltyCardCode: "",
@@ -26,12 +36,41 @@ export default function AccountSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+
+  const [toast, setToast] = useState("");
+  const [toastType, setToastType] = useState("error");
+  const [toastVisible, setToastVisible] = useState(false);
+
+  const toastTimer = useRef(null);
+  const toastCloseTimer = useRef(null);
+  const toastStartTimer = useRef(null);
 
   useEffect(() => {
     loadProfile();
+
+    return () => {
+      clearTimeout(toastTimer.current);
+      clearTimeout(toastCloseTimer.current);
+      clearTimeout(toastStartTimer.current);
+    };
   }, []);
+
+  function showToast(message, type = "error") {
+    clearTimeout(toastTimer.current);
+    clearTimeout(toastCloseTimer.current);
+    clearTimeout(toastStartTimer.current);
+
+    setToastVisible(false);
+    setToastType(type);
+    setToast(message);
+
+    toastStartTimer.current = setTimeout(() => setToastVisible(true), 20);
+
+    toastTimer.current = setTimeout(() => {
+      setToastVisible(false);
+      toastCloseTimer.current = setTimeout(() => setToast(""), 300);
+    }, 5000);
+  }
 
   async function loadProfile() {
     try {
@@ -42,6 +81,7 @@ export default function AccountSettingsPage() {
 
       setForm({
         fullName: data?.fullName || "",
+        phoneNumber: normalizePhone(data?.phoneNumber || ""),
         email: data?.email || "",
         dateOfBirth: data?.dateOfBirth ? data.dateOfBirth.slice(0, 10) : "",
         loyaltyCardCode: data?.loyaltyCardCode || "",
@@ -49,7 +89,7 @@ export default function AccountSettingsPage() {
         preview: data?.profileImageUrl || "",
       });
     } catch (err) {
-      setError(err.message || text.profileLoadError);
+      showToast(err.message || text.profileLoadError || "Profil yüklənmədi.");
     } finally {
       setLoading(false);
     }
@@ -70,14 +110,19 @@ export default function AccountSettingsPage() {
   async function save(e) {
     e.preventDefault();
 
+    const phone = normalizePhone(form.phoneNumber);
+
+    if (phone.length !== 9) {
+      showToast(text.phoneError || "Telefon nömrəsi 9 rəqəm olmalıdır.");
+      return;
+    }
+
     try {
       setSaving(true);
-      setError("");
-      setMessage("");
 
       await profileApi.update({
         fullName: form.fullName,
-        email: form.email,
+        phoneNumber: `994${phone}`,
         dateOfBirth: form.dateOfBirth
           ? new Date(form.dateOfBirth).toISOString()
           : "",
@@ -85,11 +130,11 @@ export default function AccountSettingsPage() {
         profileImage: form.profileImage,
       });
 
-      setMessage(text.profileSaved);
+      showToast(text.profileSaved || "Profil məlumatları yadda saxlanıldı.", "success");
       await loadProfile();
       window.dispatchEvent(new Event("nemesis_auth_changed"));
     } catch (err) {
-      setError(err.message || text.profileSaveError);
+      showToast(err.message || text.profileSaveError || "Profil yadda saxlanmadı.");
     } finally {
       setSaving(false);
     }
@@ -101,8 +146,25 @@ export default function AccountSettingsPage() {
     <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       {saving && <AppLoader text={text.saving} />}
 
+      {toast && (
+        <div
+          className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
+            toastType === "success" ? "bg-green-600" : "bg-red-600"
+          } ${
+            toastVisible
+              ? "translate-y-0 scale-100 opacity-100"
+              : "translate-y-5 scale-95 opacity-0"
+          }`}
+        >
+          {toast}
+        </div>
+      )}
+
       <div className="mx-auto max-w-[920px]">
-        <TopBar title={text.accountInfo} onBack={() => navigate("/profile/settings")} />
+        <TopBar
+          title={text.accountInfo}
+          onBack={() => navigate("/profile/settings")}
+        />
 
         <section className="mt-7 animate-[accountUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[24px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
           <p className="text-[15px] font-medium tracking-[0.17em] text-white/45">
@@ -115,18 +177,6 @@ export default function AccountSettingsPage() {
             {text.accountInfoDesc}
           </p>
         </section>
-
-        {message && (
-          <div className="mt-5 rounded-[16px] bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-5 rounded-[16px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
-          </div>
-        )}
 
         <form
           onSubmit={save}
@@ -172,17 +222,29 @@ export default function AccountSettingsPage() {
               value={form.fullName}
               onChange={(v) => update("fullName", v)}
             />
-            <Input
+
+            <PhoneInput
+              label={text.phoneNumber}
+              value={form.phoneNumber}
+              onChange={(v) => update("phoneNumber", normalizePhone(v))}
+            />
+
+            <ReadOnlyInput
               label={text.email}
               value={form.email}
-              onChange={(v) => update("email", v)}
+              hint={
+                text.emailChangeOnlySecurity ||
+                "Email yalnız təhlükəsizlik bölməsindən OTP ilə dəyişir."
+              }
             />
+
             <Input
               label={text.dateOfBirth}
               type="date"
               value={form.dateOfBirth}
               onChange={(v) => update("dateOfBirth", v)}
             />
+
             <Input
               label={text.loyaltyCard}
               value={form.loyaltyCardCode}
@@ -242,6 +304,45 @@ function Input({ label, value, onChange, type = "text" }) {
         onChange={(e) => onChange(e.target.value)}
         className="h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
       />
+    </label>
+  );
+}
+
+function PhoneInput({ label, value, onChange }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-zinc-800">
+        {label}
+      </span>
+      <div className="flex h-12 items-center rounded-[15px] border border-zinc-100 bg-zinc-50 transition focus-within:border-zinc-400">
+        <span className="border-r border-zinc-200 px-4 text-sm font-bold text-zinc-950">
+          +994
+        </span>
+        <input
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          inputMode="numeric"
+          maxLength={9}
+          placeholder="50 123 45 67"
+          className="h-full min-w-0 flex-1 bg-transparent px-4 text-sm font-medium text-zinc-950 outline-none placeholder:text-zinc-400"
+        />
+      </div>
+    </label>
+  );
+}
+
+function ReadOnlyInput({ label, value, hint }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-zinc-800">
+        {label}
+      </span>
+      <input
+        value={value || ""}
+        readOnly
+        className="h-12 w-full cursor-not-allowed rounded-[15px] border border-zinc-100 bg-zinc-100 px-4 text-sm font-medium text-zinc-500 outline-none"
+      />
+      {hint && <p className="mt-2 text-xs leading-5 text-zinc-400">{hint}</p>}
     </label>
   );
 }

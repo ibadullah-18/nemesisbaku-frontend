@@ -1,4 +1,4 @@
-export default function AppLoader({ text = "NemesisBaku" }) {
+export default function AppLoader({ text = "nemesisbaku" }) {
   return (
     <div className="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-[#fafafa]/90 backdrop-blur-md">
       <div className="flex -translate-y-[3vh] flex-col items-center gap-5">
@@ -10,7 +10,7 @@ export default function AppLoader({ text = "NemesisBaku" }) {
           </div>
         </div>
 
-        <p className="text-center text-xs font-extrabold tracking-[0.28em] text-zinc-700 [font-family:'Stack_Sans_Headline',Inter,sans-serif]">
+        <p className="text-center text-xs font-extrabold tracking-[0.28em] text-zinc-700 [font-family:]">
           {text}
         </p>
       </div>

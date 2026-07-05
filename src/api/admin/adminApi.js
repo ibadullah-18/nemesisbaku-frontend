@@ -1,8 +1,11 @@
 import { API_BASE_URL } from "../config";
-import { clearAdminAuth, getAdminAccessToken } from "./adminAuth";
+import {
+    clearAllAdminAuth,
+    getCurrentAccessToken,
+} from "./adminAuth";
 
 export async function adminFetch(endpoint, options = {}) {
-  const token = getAdminAccessToken();
+const token = getCurrentAccessToken();
   const isFormData = options.body instanceof FormData;
 
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -24,8 +27,9 @@ export async function adminFetch(endpoint, options = {}) {
   }
 
   if (res.status === 401 || res.status === 403) {
-    clearAdminAuth();
-    window.location.href = "/SuperAdmin";
+    clearAllAdminAuth();
+
+    window.location.href="/";
     return null;
   }
 
@@ -292,6 +296,16 @@ export const adminOrdersApi = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+
+  statusWhatsappLink: (id, status) =>
+    adminFetch(`/api/AdminOrders/${id}/status-whatsapp-link?status=${status}`),
+
+  courierWhatsappLink: (id, courierPhoneNumber) =>
+    adminFetch(
+      `/api/AdminOrders/${id}/courier-whatsapp-link?courierPhoneNumber=${encodeURIComponent(
+        courierPhoneNumber
+      )}`
+    ),
 };
 
 export const adminUsersApi = {
@@ -335,19 +349,15 @@ export const adminPromoPagesApi = {
   },
 
   detail: async (id) => {
-    const res = await adminFetch("/api/AdminPromoPages");
-    const items = listAdmin(res);
+    const res1 = await adminFetch("/api/AdminPromoPages?type=1").catch(() => null);
+    const res2 = await adminFetch("/api/AdminPromoPages?type=2").catch(() => null);
 
+    const items = [...listAdmin(res1), ...listAdmin(res2)];
     const promo = items.find((x) => String(x.id) === String(id));
 
-    if (!promo) {
-      throw new Error("Promo tapılmadı.");
-    }
+    if (!promo) throw new Error("Promo tapılmadı.");
 
-    return {
-      success: true,
-      data: promo,
-    };
+    return { success: true, data: promo };
   },
 
   create: (body) => {
@@ -355,15 +365,17 @@ export const adminPromoPagesApi = {
 
     formData.append("Title", body.title || "");
     formData.append("Description", body.description || "");
-    formData.append("Type", String(body.type || 1));
+    formData.append("Type", String(Number(body.type || 1)));
     formData.append("StartDate", body.startDate || "");
     formData.append("EndDate", body.endDate || "");
     formData.append("IsActive", String(Boolean(body.isActive)));
 
-    if (body.file) formData.append("File", body.file);
+    if (body.file instanceof File) {
+      formData.append("File", body.file);
+    }
 
-    (body.productIds || []).forEach((productId) => {
-      formData.append("ProductIds", productId);
+    (body.productIds || []).forEach((id) => {
+      if (id) formData.append("ProductIds", id);
     });
 
     return adminFetch("/api/AdminPromoPages", {
@@ -372,34 +384,33 @@ export const adminPromoPagesApi = {
     });
   },
 
-update: (id, body) => {
-  const formData = new FormData();
+  update: (id, body) => {
+    const formData = new FormData();
 
-  formData.append("Title", body.title ?? "");
-  formData.append("Description", body.description ?? "");
-  formData.append("StartDate", body.startDate ?? "");
-  formData.append("EndDate", body.endDate ?? "");
-  formData.append("IsActive", String(Boolean(body.isActive)));
+    formData.append("Title", body.title || "");
+    formData.append("Description", body.description || "");
+    formData.append("StartDate", body.startDate || "");
+    formData.append("EndDate", body.endDate || "");
+    formData.append("IsActive", String(Boolean(body.isActive)));
 
-  // Şəkil yalnız yenisi seçilərsə göndərilir
-  if (body.file instanceof File) {
-    formData.append("File", body.file);
-  }
+    if (body.file instanceof File) {
+      formData.append("File", body.file);
+    }
 
-  // EDIT zamanı ProductIds göndərmirik.
-  // Backend Swagger-də də bu şəkildə uğurla işləyir.
+    (body.productIds || []).forEach((productId) => {
+      if (productId) formData.append("ProductIds", productId);
+    });
 
-  return adminFetch(`/api/AdminPromoPages/${id}`, {
-    method: "PUT",
-    body: formData,
-  });
-},
-
-  delete: (id) => {
     return adminFetch(`/api/AdminPromoPages/${id}`, {
-      method: "DELETE",
+      method: "PUT",
+      body: formData,
     });
   },
+
+  delete: (id) =>
+    adminFetch(`/api/AdminPromoPages/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const adminHomeSectionsApi = {
@@ -468,6 +479,42 @@ export const adminPromoCodesApi = {
 
   delete: (id) =>
     adminFetch(`/api/AdminPromoCodes/${id}`, {
+      method: "DELETE",
+    }),
+};
+
+export const adminEmailAnnouncementsApi = {
+  list: () => adminFetch("/api/AdminEmailAnnouncements"),
+
+  create: (body) =>
+    adminFetch("/api/AdminEmailAnnouncements", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
+
+export const adminCouriersApi = {
+  list: () => adminFetch("/api/AdminCouriers"),
+
+  create: (body) =>
+    adminFetch("/api/AdminCouriers", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  update: (id, body) =>
+    adminFetch(`/api/AdminCouriers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  setDefault: (id) =>
+    adminFetch(`/api/AdminCouriers/${id}/default`, {
+      method: "PUT",
+    }),
+
+  delete: (id) =>
+    adminFetch(`/api/AdminCouriers/${id}`, {
       method: "DELETE",
     }),
 };

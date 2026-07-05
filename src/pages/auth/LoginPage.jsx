@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
-import { FiEye, FiEyeOff, FiLock, FiPhone } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiLock, FiUser } from "react-icons/fi";
 import { apiFetch, saveTokens } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
 import AppLoader from "../../components/common/AppLoader";
@@ -25,20 +26,60 @@ function BrandLogo({ logoUrl, brandName }) {
   );
 }
 
+function normalizeEmailOrPhone(value) {
+  const raw = value.trim();
+
+  if (raw.includes("@")) return raw.toLowerCase();
+
+  let digits = raw.replace(/\D/g, "");
+
+  if (digits.startsWith("994")) return digits;
+
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  return `994${digits}`;
+}
+
+function isValidEmailOrPhone(value) {
+  const raw = value.trim();
+
+  if (!raw) return false;
+
+  if (raw.includes("@")) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+  }
+
+  return /^994\d{9}$/.test(normalizeEmailOrPhone(raw));
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
 
   const [store, setStore] = useState(null);
-  const [phone, setPhone] = useState("");
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [storeLoading, setStoreLoading] = useState(true);
-  const [error, setError] = useState("");
+
+  const [toastError, setToastError] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
+
+  const toastTimerRef = useRef(null);
+  const toastCloseTimerRef = useRef(null);
+  const toastStartTimerRef = useRef(null);
 
   useEffect(() => {
     loadStoreInfo();
+
+    return () => {
+      clearTimeout(toastTimerRef.current);
+      clearTimeout(toastCloseTimerRef.current);
+      clearTimeout(toastStartTimerRef.current);
+    };
   }, []);
 
   async function loadStoreInfo() {
@@ -53,35 +94,73 @@ export default function LoginPage() {
     }
   }
 
-  function handlePhoneChange(e) {
-    const onlyNumbers = e.target.value.replace(/\D/g, "").slice(0, 9);
-    setPhone(onlyNumbers);
+  function showToast(message) {
+    clearTimeout(toastTimerRef.current);
+    clearTimeout(toastCloseTimerRef.current);
+    clearTimeout(toastStartTimerRef.current);
+
+    setToastVisible(false);
+    setToastError(message);
+
+    toastStartTimerRef.current = setTimeout(() => {
+      setToastVisible(true);
+    }, 20);
+
+    toastTimerRef.current = setTimeout(() => {
+      setToastVisible(false);
+
+      toastCloseTimerRef.current = setTimeout(() => {
+        setToastError("");
+      }, 300);
+    }, 5000);
+  }
+
+  function getLoginErrorMessage(err) {
+    const message = err?.message;
+
+    if (
+      !message ||
+      message === "Əməliyyat uğursuz oldu" ||
+      message === "Unauthorized" ||
+      message === "Unauthorized." ||
+      message === "Serverlə əlaqə qurulmadı."
+    ) {
+      return text.loginError || "Email, telefon və ya şifrə yanlışdır.";
+    }
+
+    return message;
   }
 
   async function handleLogin(e) {
     e.preventDefault();
-    setError("");
 
-    if (phone.length !== 9) {
-      setError(text.phoneError);
+    if (!isValidEmailOrPhone(emailOrPhone)) {
+      showToast(
+        text.emailOrPhoneError ||
+          "Email və ya telefon nömrəsini düzgün daxil edin."
+      );
       return;
     }
 
     if (!password.trim()) {
-      setError(text.passwordError);
+      showToast(text.passwordError || "Şifrə daxil edin.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const res = await apiFetch("/api/Auth/login", {
-        method: "POST",
-        body: JSON.stringify({
-          phoneNumber: `994${phone}`,
-          password,
-        }),
-      });
+      const res = await apiFetch(
+        "/api/Auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            emailOrPhoneNumber: normalizeEmailOrPhone(emailOrPhone),
+            password,
+          }),
+        },
+        false
+      );
 
       const accessToken =
         res?.accessToken ||
@@ -92,13 +171,15 @@ export default function LoginPage() {
       const refreshToken = res?.refreshToken || res?.data?.refreshToken;
 
       if (!accessToken) {
-        throw new Error(text.tokenError);
+        throw new Error(
+          text.loginError || "Email, telefon və ya şifrə yanlışdır."
+        );
       }
 
       saveTokens(accessToken, refreshToken);
       navigate("/");
     } catch (err) {
-      setError(err.message || text.loginError);
+      showToast(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -112,6 +193,20 @@ export default function LoginPage() {
       {(loading || storeLoading) && (
         <AppLoader text={loading ? text.loggingIn : text.loading} />
       )}
+
+      {toastError &&
+        createPortal(
+          <div
+            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
+              toastVisible
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-5 scale-95 opacity-0"
+            }`}
+          >
+            {toastError}
+          </div>,
+          document.body
+        )}
 
       <section className="mx-auto flex w-full max-w-[1120px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px]">
         <div className="hidden flex-1 bg-[#f5f3f5] p-8 md:flex md:flex-col md:justify-between lg:p-11">
@@ -152,7 +247,6 @@ export default function LoginPage() {
 
         <div className="flex w-full items-center justify-center px-5 py-9 sm:px-8 sm:py-10 md:w-[500px] lg:w-[480px]">
           <div className="w-full max-w-[390px]">
-
             <div className="mb-7">
               <h2 className="text-[34px] font-extrabold tracking-[-0.045em] text-zinc-950">
                 {text.loginTitle}
@@ -162,34 +256,18 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {error && (
-              <div className="mb-5 rounded-[16px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-                {error}
-              </div>
-            )}
-
             <form onSubmit={handleLogin} className="space-y-4">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-zinc-800">
-                  {text.phoneNumber}
-                </span>
-
-                <div className="flex h-14 items-center rounded-[14px] border-[1.5px] border-zinc-300 bg-white transition-all duration-300 focus-within:border-zinc-950 focus-within:shadow-[0_0_0_4px_rgba(36,73,137,0.08)]">
-                  <div className="flex h-full items-center gap-2 border-r border-zinc-100 px-4 text-sm font-bold text-zinc-900">
-                    <FiPhone />
-                    +994
-                  </div>
-
-                  <input
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    inputMode="numeric"
-                    maxLength={9}
-                    placeholder={text.phonePlaceholder}
-                    className="h-full min-w-0 flex-1 bg-transparent px-4 text-[15px] font-medium outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-              </label>
+              <AnimatedInput
+                label={text.emailOrPhone || "Email və ya telefon"}
+                icon={<FiUser />}
+                value={emailOrPhone}
+                onChange={(e) => setEmailOrPhone(e.target.value)}
+                type="text"
+                placeholder={
+                  text.emailOrPhonePlaceholder ||
+                  "Email və ya telefon daxil edin"
+                }
+              />
 
               <AnimatedInput
                 label={text.password}

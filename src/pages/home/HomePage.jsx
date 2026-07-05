@@ -75,13 +75,25 @@ export default function HomePage() {
     return banners.find((banner) => banner?.imageUrl) || null;
   }, [banners]);
 
+  const sliderCampaigns = useMemo(() => {
+    if (campaigns.length !== 1) return campaigns;
+
+    return [
+      campaigns[0],
+      {
+        ...campaigns[0],
+        sliderCopyId: `${campaigns[0]?.id || "single"}-copy`,
+      },
+    ];
+  }, [campaigns]);
+
   useEffect(() => {
     loadHome();
     trackVisit("/").catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!activeBanner?.slug) return;
+    if (!activeBanner?.id) return;
 
     const alreadyShown = sessionStorage.getItem("nemesis_banner_popup_shown");
     if (alreadyShown === "true") return;
@@ -90,7 +102,7 @@ export default function HomePage() {
 
     async function loadBannerDetail() {
       try {
-        const res = await getPromoPage(activeBanner.slug);
+        const res = await getPromoPage(activeBanner.id);
         if (!alive) return;
 
         setBannerDetail(unwrap(res));
@@ -258,8 +270,9 @@ export default function HomePage() {
       </div>
 
       <div className="relative z-10 animate-[softHomeIn_0.55s_ease_both]">
-        <HomePromoSlider promos={campaigns} />
+        <HomePromoSlider promos={sliderCampaigns} />
       </div>
+
       <div className="space-y-2">
         {homeSections
           .slice()
@@ -376,12 +389,12 @@ function BannerPopup({ banner, closing, onClose }) {
   const products = uniqueById(banner?.products || []).slice(0, 4);
 
   function openBanner() {
-    if (!banner?.slug) return;
+    if (!banner?.id) return;
 
     onClose();
 
     setTimeout(() => {
-      navigate(`/${banner.slug}`);
+      navigate(`/${banner.id}`);
     }, 260);
   }
 

@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 import { adminProductsApi, unwrapAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { useLocation } from "react-router-dom";
 
 function money(value) {
   return `${Number(value || 0).toFixed(2)} ₼`;
@@ -167,7 +168,12 @@ export default function AdminProductDetails() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  
+  const location = useLocation();
 
+  const basePath = location.pathname.startsWith("/Admin")
+      ? "/Admin"
+      : "/SuperAdmin";
   useEffect(() => {
     loadProduct();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,7 +205,7 @@ export default function AdminProductDetails() {
     try {
       setSaving(true);
       await adminProductsApi.delete(id);
-      navigate("/SuperAdmin/products");
+      navigate(`${basePath}/products`);
     } catch (err) {
       setError(err.message || "Məhsul silinmədi.");
     } finally {
@@ -257,7 +263,7 @@ export default function AdminProductDetails() {
 
       <button
         type="button"
-        onClick={() => navigate("/SuperAdmin/products")}
+        onClick={() => navigate(`${basePath}/products`)}
         className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.97]"
       >
         <FiArrowLeft />
@@ -311,7 +317,7 @@ export default function AdminProductDetails() {
           </button>
 
           <NavLink
-            to={`/SuperAdmin/products/${product.id}`}
+            to={`${basePath}/products/${product.id}`}
             className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
           >
             <FiEdit3 />

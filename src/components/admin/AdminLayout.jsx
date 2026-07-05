@@ -11,66 +11,141 @@ import {
   FiLogOut,
   FiMaximize2,
   FiMenu,
+  FiMail,
   FiPackage,
   FiShoppingBag,
   FiTag,
+  FiTruck,
   FiUsers,
   FiX,
 } from "react-icons/fi";
-import { clearAdminAuth } from "../../api/admin/adminAuth";
+import { clearAllAdminAuth,isSuperAdmin } from "../../api/admin/adminAuth";
 
-const navItems = [
-  {
-    title: "Əsas",
-    items: [
-      { label: "Dashboard", to: "/SuperAdmin/dashboard", icon: <FiGrid /> },
-      { label: "Sifarişlər", to: "/SuperAdmin/orders", icon: <FiShoppingBag /> },
-      { label: "İstifadəçilər", to: "/SuperAdmin/users", icon: <FiUsers /> },
-    ],
-  },
-  {
-    title: "Məhsul idarəsi",
-    items: [
-      { label: "Məhsullar", to: "/SuperAdmin/products", icon: <FiPackage /> },
-      { label: "Məhsul əlavə et", to: "/SuperAdmin/add-product", icon: <FiBox /> },
-      { label: "Kateqoriyalar", to: "/SuperAdmin/categories", icon: <FiLayers /> },
-      { label: "Brendlər", to: "/SuperAdmin/brands", icon: <FiTag /> },
-      { label: "Ölçülər", to: "/SuperAdmin/sizes", icon: <FiMaximize2 /> },
-      { label: "Rənglər", to: "/SuperAdmin/colors", icon: <FiImage /> },
-    ],
-  },
-  {
-    title: "Marketinq",
-    items: [
-      {
-        label: "Promo Pages",
-        to: "/SuperAdmin/campaigns",
-        icon: <FiImage />,
-      },
-      {
-        label: "Home Sections",
-        to: "/SuperAdmin/home-sections",
-        icon: <FiGrid />,
-      },
-      { label: "Promo kodlar", to: "/SuperAdmin/promo-codes", icon: <FiTag /> },
-    ],
-  },
-  {
-    title: "Nəzarət",
-    items: [
-      { label: "Audit loglar", to: "/SuperAdmin/audit-logs", icon: <FiActivity /> },
-    ],
-  },
-];
-
-export default function AdminLayout() {
+export default function AdminLayout({
+  basePath = "/SuperAdmin",
+  panelTitle = "Admin Panel",
+}) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  const superAdmin = isSuperAdmin();
+
+  const navItems = [
+    {
+      title: "Əsas",
+      items: [
+        ...(superAdmin
+          ? [
+              {
+                label: "Dashboard",
+                to: `${basePath}/dashboard`,
+                icon: <FiGrid />,
+              },
+            ]
+          : []),
+        {
+          label: "Sifarişlər",
+          to: `${basePath}/orders`,
+          icon: <FiShoppingBag />,
+        },
+        {
+          label: "Kuryerlər",
+          to: `${basePath}/couriers`,
+          icon: <FiTruck />,
+        },
+        ...(superAdmin
+          ? [
+              {
+                label: "İstifadəçilər",
+                to: `${basePath}/users`,
+                icon: <FiUsers />,
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      title: "Məhsul idarəsi",
+      items: [
+        {
+          label: "Məhsullar",
+          to: `${basePath}/products`,
+          icon: <FiPackage />,
+        },
+        {
+          label: "Məhsul əlavə et",
+          to: `${basePath}/add-product`,
+          icon: <FiBox />,
+        },
+        {
+          label: "Kateqoriyalar",
+          to: `${basePath}/categories`,
+          icon: <FiLayers />,
+        },
+        {
+          label: "Brendlər",
+          to: `${basePath}/brands`,
+          icon: <FiTag />,
+        },
+        {
+          label: "Ölçülər",
+          to: `${basePath}/sizes`,
+          icon: <FiMaximize2 />,
+        },
+        {
+          label: "Rənglər",
+          to: `${basePath}/colors`,
+          icon: <FiImage />,
+        },
+      ],
+    },
+    {
+      title: "Marketinq",
+      items: [
+        {
+          label: "Promo Pages",
+          to: `${basePath}/campaigns`,
+          icon: <FiImage />,
+        },
+        {
+          label: "Home Sections",
+          to: `${basePath}/home-sections`,
+          icon: <FiGrid />,
+        },
+        {
+          label: "Promo kodlar",
+          to: `${basePath}/promo-codes`,
+          icon: <FiTag />,
+        },
+        {
+          label: "Email elanlar",
+          to: `${basePath}/email-announcements`,
+          icon: <FiMail />,
+        },
+      ],
+    },
+    ...(superAdmin
+      ? [
+          {
+            title: "Nəzarət",
+            items: [
+              {
+                label: "Audit loglar",
+                to: `${basePath}/audit-logs`,
+                icon: <FiActivity />,
+              },
+            ],
+          },
+        ]
+      : []),
+  ];
+
   function logout() {
-    clearAdminAuth();
-    navigate("/SuperAdmin", { replace: true });
+    clearAllAdminAuth();
+    navigate(basePath === "/Admin" ? "/Admin/login" : "/SuperAdmin", {
+      replace: true,
+    });
   }
 
   return (
@@ -103,8 +178,9 @@ export default function AdminLayout() {
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#244989]">
                 NemesisBaku
               </p>
+
               <h1 className="mt-1 text-xl font-extrabold tracking-[-0.04em] text-zinc-950">
-                Admin Panel
+                {panelTitle}
               </h1>
             </div>
 
@@ -174,9 +250,7 @@ export default function AdminLayout() {
             >
               <FiLogOut className="text-[20px]" />
 
-              <span className={collapsed ? "lg:hidden" : ""}>
-                Çıxış et
-              </span>
+              <span className={collapsed ? "lg:hidden" : ""}>Çıxış et</span>
             </button>
           </div>
         </div>

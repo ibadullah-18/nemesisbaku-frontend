@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheckCircle,
@@ -264,6 +265,11 @@ export default function AdminEditProduct() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const location = useLocation();
+
+  const basePath = location.pathname.startsWith("/Admin")
+      ? "/Admin"
+      : "/SuperAdmin";
 
   useEffect(() => {
     loadAll();
@@ -614,7 +620,7 @@ export default function AdminEditProduct() {
 
       <button
         type="button"
-        onClick={() => navigate("/SuperAdmin/products")}
+        onClick={() => navigate(`${basePath}/products`)}
         className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.97]"
       >
         <FiArrowLeft />

@@ -18,6 +18,7 @@ import {
   metaAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { useLocation } from "react-router-dom";
 
 const statusFilters = [
   { value: "", label: "Hamısı" },
@@ -129,6 +130,11 @@ export default function AdminOrders() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const location = useLocation();
+
+  const basePath = location.pathname.startsWith("/Admin")
+      ? "/Admin"
+      : "/SuperAdmin";
 
   useEffect(() => {
     loadOrders(1);
@@ -157,7 +163,7 @@ export default function AdminOrders() {
   }
 
   function openOrder(orderId) {
-    navigate(`/SuperAdmin/orders/${orderId}`);
+    navigate(`${basePath}/orders/${orderId}`);
   }
 
   const counters = useMemo(() => {

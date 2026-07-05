@@ -17,6 +17,7 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { useLocation } from "react-router-dom";
 
 const emptyForm = {
   title: "",
@@ -84,6 +85,11 @@ export default function AdminHomeSectionForm({ mode }) {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const location = useLocation();
+
+  const basePath = location.pathname.startsWith("/Admin")
+      ? "/Admin"
+      : "/SuperAdmin";
 
   useEffect(() => {
     loadAll();
@@ -189,7 +195,7 @@ export default function AdminHomeSectionForm({ mode }) {
         setSuccess("Home section yeniləndi.");
       } else {
         await adminHomeSectionsApi.create(payload);
-        navigate("/SuperAdmin/home-sections");
+        navigate(`${basePath}/home-sections`);
       }
     } catch (err) {
       setError(err.message || "Section yadda saxlanmadı.");
@@ -237,7 +243,7 @@ export default function AdminHomeSectionForm({ mode }) {
 
       <button
         type="button"
-        onClick={() => navigate("/SuperAdmin/home-sections")}
+        onClick={() => navigate(`${basePath}/home-sections`)}
         className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition active:scale-[0.97]"
       >
         <FiArrowLeft />

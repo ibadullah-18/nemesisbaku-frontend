@@ -7,7 +7,7 @@ export const profileApi = {
     const formData = new FormData();
 
     formData.append("FullName", body.fullName || "");
-    formData.append("Email", body.email || "");
+    formData.append("PhoneNumber", body.phoneNumber || "");
     formData.append("DateOfBirth", body.dateOfBirth || "");
     formData.append("LoyaltyCardCode", body.loyaltyCardCode || "");
 
@@ -21,17 +21,45 @@ export const profileApi = {
     });
   },
 
-  sendChangePhoneOtp: (newPhoneNumber) =>
-    apiFetch("/api/Profile/send-change-phone-otp", {
-      method: "POST",
-      body: JSON.stringify({ newPhoneNumber }),
-    }),
+  sendChangeEmailOtp: (newEmail) =>
+    apiFetch(
+      "/api/Profile/send-change-email-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ newEmail }),
+      },
+      false
+    ),
 
-  verifyChangePhone: (newPhoneNumber, code) =>
-    apiFetch("/api/Profile/verify-change-phone", {
-      method: "POST",
-      body: JSON.stringify({ newPhoneNumber, code }),
-    }),
+  verifyChangeEmail: (newEmail, code) =>
+    apiFetch(
+      "/api/Profile/verify-change-email",
+      {
+        method: "POST",
+        body: JSON.stringify({ newEmail, code }),
+      },
+      false
+    ),
+
+  sendForgotPasswordOtp: (email) =>
+    apiFetch(
+      "/api/Auth/send-forgot-password-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      },
+      false
+    ),
+
+  resetPasswordWithOtp: (body) =>
+    apiFetch(
+      "/api/Auth/reset-password-with-otp",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+      false
+    ),
 
   addresses: () => apiFetch("/api/Profile/addresses"),
 
@@ -55,10 +83,5 @@ export const profileApi = {
   setDefaultAddress: (id) =>
     apiFetch(`/api/Profile/addresses/${id}/default`, {
       method: "PUT",
-    }),
-    resetPasswordWithOtp: (body) =>
-      apiFetch("/api/Auth/reset-password-with-otp", {
-        method: "POST",
-        body: JSON.stringify(body),
     }),
 };
