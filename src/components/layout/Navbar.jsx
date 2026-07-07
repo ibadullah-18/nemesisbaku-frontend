@@ -197,6 +197,17 @@ export default function Navbar() {
       },
     ];
   }, [isLoggedIn, basketCount]);
+  function resetHomeFromLogo() {
+  closeMenu();
+
+  window.dispatchEvent(new Event("nemesis_home_reset"));
+
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: "smooth",
+  });
+}
 
   return (
     <>
@@ -280,6 +291,7 @@ export default function Navbar() {
 
             <NavLink
               to="/"
+              onClick={resetHomeFromLogo}
               className="hidden items-center transition duration-300 hover:opacity-80 md:flex"
               aria-label={brandName}
             >
@@ -297,6 +309,7 @@ export default function Navbar() {
 
           <NavLink
             to="/"
+            onClick={resetHomeFromLogo}
             className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center transition duration-300 hover:opacity-80 md:hidden"
             aria-label={brandName}
           >
@@ -394,7 +407,7 @@ export default function Navbar() {
             <div className="mb-7 flex items-center justify-between">
               <NavLink
                 to="/"
-                onClick={closeMenu}
+                onClick={resetHomeFromLogo}
                 className="flex items-center transition duration-300 hover:opacity-80"
                 aria-label={brandName}
               >

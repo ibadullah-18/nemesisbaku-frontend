@@ -68,7 +68,13 @@ export default function ProfilePage() {
     navigate("/login");
   }
 
-  if (loading) return <AppLoader text={text.profileOpening} />;
+  if (loading) {
+  return (
+    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <AppLoader text={text.loading} />
+    </main>
+  );
+}
 
   const defaultAddress =
     addresses.find((x) => x.isDefault) || addresses[0] || null;

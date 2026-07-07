@@ -71,16 +71,27 @@ function getLang() {
 }
 
 function FooterLink({ to, children }) {
+  function handleClick() {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
+  }
+
   return (
     <Link
       to={to}
+      onClick={handleClick}
       className="group relative w-fit text-[13px] text-zinc-300 transition duration-300 hover:translate-x-1 hover:text-white"
     >
       {children}
+
       <span className="absolute -bottom-1 left-0 h-px w-0 bg-white transition-all duration-300 group-hover:w-full" />
     </Link>
   );
 }
+
 
 export default function Footer() {
   const [store, setStore] = useState(null);

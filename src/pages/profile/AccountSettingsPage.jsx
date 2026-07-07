@@ -140,7 +140,13 @@ export default function AccountSettingsPage() {
     }
   }
 
-  if (loading) return <AppLoader text={text.loading} />;
+  if (loading) {
+  return (
+    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <AppLoader text={text.loading} />
+    </main>
+  );
+}
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">

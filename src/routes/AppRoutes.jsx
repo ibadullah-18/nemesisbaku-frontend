@@ -57,15 +57,21 @@ import RegisterPage from "../pages/auth/RegisterPage";
 import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 
 function PageShell({ children }) {
-  const { pathname } = useLocation();
+  const location = useLocation();
 
   useEffect(() => {
+    const shouldRestoreProduct =
+      location.pathname === "/" &&
+      sessionStorage.getItem("nemesis_return_product_id");
+
+    if (shouldRestoreProduct) return;
+
     window.scrollTo({
       top: 0,
       left: 0,
       behavior: "auto",
     });
-  }, [pathname]);
+  }, [location.pathname]);
 
   return (
     <div className="animate-[pageSlideIn_0.38s_cubic-bezier(0.22,1,0.36,1)_both]">
@@ -74,13 +80,18 @@ function PageShell({ children }) {
   );
 }
 
+
+
+
 function Layout({ children }) {
   const location = useLocation();
 
   return (
     <>
       <Navbar />
-      <PageShell key={location.pathname}>{children}</PageShell>
+       <PageShell>
+         {children}
+       </PageShell>
       <Footer />
     </>
   );
@@ -301,6 +312,14 @@ export default function AppRoutes() {
         element={
           <Layout>
             <ForgotPasswordPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/promo/:id"
+        element={
+          <Layout>
+            <PromoPage />
           </Layout>
         }
       />

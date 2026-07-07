@@ -461,24 +461,39 @@ export default function AdminEditProduct() {
     }
   }
 
-  async function setMainImage(image) {
-    if (!image.id) {
-      setError("Bu şəkil üçün ID gəlmədi. Backend yalnız URL göndəribsə əsas etmək mümkün deyil.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError("");
-
-      await adminProductImagesApi.setMain(image.id);
-      await loadAll();
-    } catch (err) {
-      setError(err.message || "Əsas şəkil dəyişdirilmədi.");
-    } finally {
-      setSaving(false);
-    }
+async function setMainImage(image) {
+  if (!image.id) {
+    setError("Bu şəkil üçün ID gəlmədi.");
+    return;
   }
+
+  try {
+    setSaving(true);
+    setError("");
+
+    await adminProductImagesApi.setMain(image.id);
+
+    setOldImages((prev) => {
+      const selected = prev.find((x) => x.id === image.id);
+      const others = prev.filter((x) => x.id !== image.id);
+
+      return [
+        { ...selected, isMain: true, displayOrder: 1 },
+        ...others.map((x, index) => ({
+          ...x,
+          isMain: false,
+          displayOrder: index + 2,
+        })),
+      ];
+    });
+
+    setSelectedImage(image.imageUrl);
+  } catch (err) {
+    setError(err.message || "Əsas şəkil dəyişdirilmədi.");
+  } finally {
+    setSaving(false);
+  }
+}
 
   function moveOldImage(from, to) {
     if (from === to || from === null || to === null) return;
@@ -512,13 +527,17 @@ export default function AdminEditProduct() {
     setNewDragIndex(null);
   }
 
-  async function saveOldImageOrder() {
-    const imagesWithId = oldImages.filter((img) => img.id);
+async function saveOldImageOrder() {
+  const imagesWithId = oldImages.filter((img) => img.id);
 
-    for (let i = 0; i < imagesWithId.length; i++) {
-      await adminProductImagesApi.updateOrder(imagesWithId[i].id, i);
-    }
+  if (imagesWithId.length === 0) return;
+
+  for (let i = 0; i < imagesWithId.length; i++) {
+    await adminProductImagesApi.updateOrder(imagesWithId[i].id, i + 1);
   }
+
+  await adminProductImagesApi.setMain(imagesWithId[0].id);
+}
 
   async function uploadNewImages() {
     for (let i = 0; i < newImages.length; i++) {

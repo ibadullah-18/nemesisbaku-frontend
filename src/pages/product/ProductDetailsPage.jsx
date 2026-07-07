@@ -180,6 +180,11 @@ export default function ProductDetailsPage() {
   }
 
   async function loadFavoriteStatus() {
+    if (!getAccessToken()) {
+      setFavorite(false);
+      return;
+    }
+
     try {
       const res = await favoritesApi.check(id);
       const result = res?.data?.data ?? res?.data ?? res;
@@ -187,7 +192,7 @@ export default function ProductDetailsPage() {
     } catch {
       setFavorite(false);
     }
-  }
+}
 
   async function loadFreshProduct() {
     const res = await apiFetch(`/api/Products/${id}`);
@@ -506,7 +511,13 @@ export default function ProductDetailsPage() {
     setModalDragX(0);
   }
 
-  if (loading) return <AppLoader text={text.loading} />;
+  if (loading) {
+  return (
+    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <AppLoader text={text.loading} />
+    </main>
+  );
+  }
 
   if (!product) {
     return (
@@ -519,9 +530,20 @@ export default function ProductDetailsPage() {
   }
 
   return (
-    <>
-      <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-        <div className="mx-auto max-w-[1180px]">
+  <>
+    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
+      <div className="mx-auto max-w-[1180px]">
+
+        <button
+          type="button"
+          onClick={() => {
+            navigate("/");
+          }}
+          aria-label="Back"
+          className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-black active:scale-95"
+        >
+          <FiChevronLeft className="text-[24px]" />
+        </button>
           <section className="grid gap-7 lg:grid-cols-[minmax(0,650px)_1fr]">
             <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both]">
               <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)]">

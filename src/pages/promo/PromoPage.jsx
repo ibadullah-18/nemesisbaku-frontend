@@ -10,33 +10,25 @@ function unwrap(res) {
 }
 
 export default function PromoPage() {
-  const { slug } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [promo, setPromo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const isPromoSlug = useMemo(() => {
-    return /^nemesisbaku(comp|ban)\d+$/i.test(slug || "");
-  }, [slug]);
 
   useEffect(() => {
     loadPromo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  }, [id]);
 
   async function loadPromo() {
-    if (!isPromoSlug) {
-      navigate("/", { replace: true });
-      return;
-    }
-
     try {
       setLoading(true);
       setError("");
 
-      const res = await getPromoPage(slug);
+      const res = await getPromoPage(id);
       setPromo(unwrap(res));
     } catch (err) {
       setError(err.message || "Promo səhifə yüklənmədi.");
@@ -45,7 +37,13 @@ export default function PromoPage() {
     }
   }
 
-  if (loading) return <AppLoader text="Promo yüklənir" />;
+  if (loading) {
+  return (
+    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <AppLoader text="Promo yüklənir" />
+    </main>
+  );
+}
 
   if (error || !promo) {
     return (
@@ -70,8 +68,44 @@ export default function PromoPage() {
   const products = promo.products || [];
 
   return (
-    <main className="min-h-screen bg-[#fafafa]">
-      <section className="mx-auto max-w-[1180px] px-5 py-5 md:px-8 md:py-8">
+  <main className="min-h-screen bg-[#fafafa]">
+    <style>
+      {`
+        @keyframes promoPageIn {
+          from {
+            opacity: 0;
+            transform: translateY(18px) scale(0.985);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes promoHeroIn {
+          from {
+            opacity: 0;
+            transform: translateY(24px) scale(0.97);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes promoCardIn {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}
+    </style>
+      <section className="mx-auto max-w-[1180px] px-5 py-5 md:px-8 md:py-8 animate-[promoPageIn_0.42s_cubic-bezier(0.22,1,0.36,1)_both]">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -81,7 +115,7 @@ export default function PromoPage() {
           Geri
         </button>
 
-        <div className="relative overflow-hidden rounded-[32px] bg-zinc-900 shadow-[0_24px_70px_rgba(0,0,0,0.14)]">
+        <div className="relative overflow-hidden rounded-[32px] bg-zinc-900 shadow-[0_24px_70px_rgba(0,0,0,0.14)] animate-[promoHeroIn_0.55s_cubic-bezier(0.22,1,0.36,1)_both]">
           <div className="h-[360px] md:h-[460px]">
             {promo.imageUrl ? (
               <img
@@ -116,7 +150,7 @@ export default function PromoPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1180px] px-5 py-7 md:px-8 md:py-10">
+      <section className="mx-auto max-w-[1180px] px-5 py-7 md:px-8 md:py-10 animate-[promoPageIn_0.5s_cubic-bezier(0.22,1,0.36,1)_0.08s_both]">
         <div className="mb-5 text-center">
           <h2 className="text-[25px] font-extrabold tracking-[-0.035em] text-zinc-950 md:text-[32px]">
             Kampaniya məhsulları
@@ -129,8 +163,16 @@ export default function PromoPage() {
 
         {products.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {products.map((product, index) => (
+              <div
+                key={product.id}
+                className="animate-[promoCardIn_0.45s_cubic-bezier(0.22,1,0.36,1)_both]"
+                style={{
+                  animationDelay: `${Math.min(index * 45, 360)}ms`,
+                }}
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         ) : (

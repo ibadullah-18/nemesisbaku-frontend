@@ -63,7 +63,13 @@ export default function OrderDetailsPage() {
     }
   }
 
-  if (loading) return <AppLoader text={text.loading} />;
+  if (loading) {
+  return (
+    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <AppLoader text={text.loading} />
+    </main>
+  );
+  }
 
   if (!order) {
     return (

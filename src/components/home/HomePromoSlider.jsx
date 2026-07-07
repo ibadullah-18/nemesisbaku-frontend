@@ -9,8 +9,8 @@ const TRANSITION_MS = 650;
 const SWIPE_LIMIT = 45;
 
 function getPromoLink(promo) {
-  if (!promo?.slug) return "/";
-  return `/${promo.slug}`;
+  if (!promo?.id) return "/";
+  return `/promo/${promo.id}`;
 }
 
 function mod(index, length) {
@@ -30,7 +30,7 @@ export default function HomePromoSlider({ promos = [] }) {
   const pointerCurrentX = useRef(0);
   const pointerIdRef = useRef(null);
 
-  const [activeIndex, setActiveIndex] = useState(1);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [realIndex, setRealIndex] = useState(0);
   const [withTransition, setWithTransition] = useState(true);
   const [pausedByUser, setPausedByUser] = useState(false);
@@ -242,7 +242,7 @@ function handlePointerUp(e) {
 
   if (count === 0) return null;
 
-  const translatePercent = -activeIndex * 100;
+  const translatePercent = count > 1 ? -activeIndex * 100 : 0;
 
   return (
     <section className="mx-auto max-w-[1180px] overflow-hidden px-5 py-5 md:px-8 md:py-8">

@@ -271,49 +271,56 @@ export default function ProductCard({ product }) {
     if (!productId || didSwipe) {
       e.preventDefault();
       e.stopPropagation();
+      window.setTimeout(() => setDidSwipe(false), 80);
+      return;
     }
+
+    sessionStorage.setItem("nemesis_return_product_id", String(productId));
+    sessionStorage.setItem("nemesis_return_scroll_y", String(window.scrollY));
 
     window.setTimeout(() => setDidSwipe(false), 80);
   }
 
-  async function handleFavorite(e) {
-    e.preventDefault();
-    e.stopPropagation();
+async function handleFavorite(e) {
+  e.preventDefault();
+  e.stopPropagation();
 
-    if (!productId) return;
+  if (!productId) return;
 
-    if (!getAccessToken()) {
-      navigate("/login");
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-
-      const nextFavorite = !favorite;
-
-      if (favorite) {
-        await favoritesApi.remove(productId);
-      } else {
-        await favoritesApi.add(productId);
-      }
-
-      setFavorite(nextFavorite);
-
-      window.dispatchEvent(
-        new CustomEvent("favorite_changed", {
-          detail: {
-            productId,
-            isFavorite: nextFavorite,
-          },
-        })
-      );
-
-      window.dispatchEvent(new Event("nemesis_auth_changed"));
-    } finally {
-      setActionLoading(false);
-    }
+  if (!getAccessToken()) {
+    navigate("/login", {
+      state: {
+        returnUrl: window.location.pathname,
+      },
+    });
+    return;
   }
+
+  try {
+    setActionLoading(true);
+
+    const nextFavorite = !favorite;
+
+    if (favorite) {
+      await favoritesApi.remove(productId);
+    } else {
+      await favoritesApi.add(productId);
+    }
+
+    setFavorite(nextFavorite);
+
+    window.dispatchEvent(
+      new CustomEvent("favorite_changed", {
+        detail: {
+          productId,
+          isFavorite: nextFavorite,
+        },
+      })
+    );
+  } finally {
+    setActionLoading(false);
+  }
+}
 
   return (
     <NavLink

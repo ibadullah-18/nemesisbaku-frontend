@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   FiCheck,
@@ -17,6 +18,7 @@ import { favoritesApi } from "../../api/favoritesApi";
 import { getProducts } from "../../api/homeApi";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
+
 
 const STORE_WHATSAPP_NUMBER = "994514349829";
 const SWIPE_LIMIT = 45;
@@ -85,6 +87,9 @@ export default function BasketPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
 
+  const toastTimerRef = useRef(null);
+  const toastCloseTimerRef = useRef(null);
+
   const [basket, setBasket] = useState({
     items: [],
     totalQuantity: 0,
@@ -108,6 +113,7 @@ export default function BasketPage() {
   const [actionId, setActionId] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [error, setError] = useState("");
+  const [toastClosing, setToastClosing] = useState(false);
 
   const items = basket.items || [];
 
@@ -146,7 +152,29 @@ export default function BasketPage() {
   useEffect(() => {
     loadBasket();
     loadRelatedProducts(1, true);
+
+    return () => {
+      window.clearTimeout(toastTimerRef.current);
+      window.clearTimeout(toastCloseTimerRef.current);
+    };
   }, []);
+
+  function showError(message) {
+    window.clearTimeout(toastTimerRef.current);
+    window.clearTimeout(toastCloseTimerRef.current);
+
+    setToastClosing(false);
+    setError(message);
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastClosing(true);
+
+      toastCloseTimerRef.current = window.setTimeout(() => {
+        setError("");
+        setToastClosing(false);
+      }, 280);
+    }, 4200);
+  }
 
   async function loadBasket() {
     try {
@@ -173,7 +201,7 @@ export default function BasketPage() {
 
       loadProductDetails(nextItems);
     } catch (err) {
-      setError(err.message || text.basketLoadError);
+      showError(err.message || text.basketLoadError);
     } finally {
       setLoading(false);
     }
@@ -275,7 +303,7 @@ export default function BasketPage() {
       window.dispatchEvent(new Event("nemesis_auth_changed"));
     } catch (err) {
       setBasket(oldBasket);
-      setError(err.message || text.basketUpdateError);
+      showError(err.message || text.basketUpdateError);
     } finally {
       setActionId("");
     }
@@ -300,7 +328,7 @@ export default function BasketPage() {
       window.dispatchEvent(new Event("nemesis_auth_changed"));
     } catch (err) {
       setBasket(oldBasket);
-      setError(err.message || text.basketRemoveError);
+      showError(err.message || text.basketRemoveError);
     } finally {
       setActionId("");
     }
@@ -332,7 +360,8 @@ export default function BasketPage() {
     } catch (err) {
       setPromoDiscount(0);
       setPromoMessage("");
-      setError(err.message || text.promoError);
+      setPromoCode("");
+      showError(err.message || text.promoError || "Promo kod yanlışdır.");
     } finally {
       setPromoLoading(false);
     }
@@ -340,7 +369,7 @@ export default function BasketPage() {
 
   function goCheckout() {
     if (selectedItems.length === 0) {
-      setError(text.selectBasketItems);
+      showError(text.selectBasketItems);
       return;
     }
 
@@ -362,7 +391,7 @@ export default function BasketPage() {
 
   function orderWithWhatsapp() {
     if (selectedItems.length === 0) {
-      setError(text.selectBasketItems);
+      showError(text.selectBasketItems);
       return;
     }
 
@@ -390,27 +419,27 @@ export default function BasketPage() {
     );
   }
 
-  if (loading) return <AppLoader text={text.loading} />;
+if (loading) {
+  return createPortal(
+    <div className="fixed inset-0 z-[9999999999] grid min-h-screen w-screen place-items-center bg-[#fafafa]">
+      <AppLoader text={text.loading} />
+    </div>,
+    document.body
+  );
+}
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
       <div className="mx-auto max-w-[1180px]">
         <div className="mb-7 animate-[basketUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
-          <p className="text-[15px] font-medium  tracking-[0.17em] text-zinc-400">
+          <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
             nemesisbaku
           </p>
 
           <h1 className="mt-2 text-[34px] font-medium tracking-[-0.045em] text-zinc-950 md:text-[46px]">
             {text.basket}
           </h1>
-
         </div>
-
-        {error && (
-          <div className="mb-5 animate-[basketUp_.3s_ease_both] rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
-          </div>
-        )}
 
         {items.length === 0 ? (
           <div className="grid min-h-[380px] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
@@ -604,27 +633,10 @@ export default function BasketPage() {
               </h2>
 
               <div className="mt-5 space-y-3">
-                <SummaryRow
-                  label={text.selectedProducts}
-                  value={selectedItems.length}
-                />
-
-                <SummaryRow
-                  label={text.productsTotal}
-                  value={`${money(selectedOriginalTotal)} ₼`}
-                />
-
-                <SummaryRow
-                  label={text.discount}
-                  value={`-${money(selectedDiscountTotal)} ₼`}
-                  valueClass="text-red-500"
-                />
-
-                <SummaryRow
-                  label={text.promoCode}
-                  value={`-${money(promoDiscount)} ₼`}
-                  valueClass="text-red-500"
-                />
+                <SummaryRow label={text.selectedProducts} value={selectedItems.length} />
+                <SummaryRow label={text.productsTotal} value={`${money(selectedOriginalTotal)} ₼`} />
+                <SummaryRow label={text.discount} value={`-${money(selectedDiscountTotal)} ₼`} valueClass="text-red-500" />
+                <SummaryRow label={text.promoCode} value={`-${money(promoDiscount)} ₼`} valueClass="text-red-500" />
               </div>
 
               <div className="mt-5 flex gap-2">
@@ -731,16 +743,70 @@ export default function BasketPage() {
         )}
       </div>
 
-      <style>{`
-        @keyframes basketUp {
-          from { opacity: 0; transform: translateY(18px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
+{error &&
+  createPortal(
+    <div
+      className={`fixed z-[999999999] rounded-2xl bg-red-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_24px_70px_rgba(220,38,38,0.28)]
+        bottom-[calc(env(safe-area-inset-bottom)+20px)]
+        left-1/2 w-[calc(100vw-32px)] max-w-[420px]
+        md:left-6 md:w-auto md:min-w-[320px] md:max-w-[420px]
+        ${
+          toastClosing
+            ? "animate-[toastOut_0.28s_cubic-bezier(0.22,1,0.36,1)_both]"
+            : "animate-[toastIn_0.32s_cubic-bezier(0.22,1,0.36,1)_both]"
+        }`}
+    >
+      {error}
+    </div>,
+    document.body
+  )}
 
-        @keyframes basketCard {
-          from { opacity: 0; transform: translateY(14px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+      <style>{`
+         @keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 26px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, 26px) scale(0.96);
+  }
+}
+
+@media (min-width: 768px) {
+  @keyframes toastIn {
+    from {
+      opacity: 0;
+      transform: translateY(26px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes toastOut {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(26px) scale(0.96);
+    }
+  }
+}
       `}</style>
     </main>
   );
@@ -888,9 +954,7 @@ function RelatedProductRow({ product, index, text }) {
 
       try {
         const [favRes, detailRes] = await Promise.all([
-          getAccessToken()
-            ? favoritesApi.check(productId).catch(() => false)
-            : false,
+          getAccessToken() ? favoritesApi.check(productId).catch(() => false) : false,
           apiFetch(`/api/Products/${productId}`).catch(() => null),
         ]);
 
