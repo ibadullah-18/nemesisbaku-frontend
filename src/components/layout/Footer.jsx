@@ -8,8 +8,7 @@ import {
   FiPhone,
 } from "react-icons/fi";
 import { FaTiktok, FaWhatsapp } from "react-icons/fa";
-import { API_BASE_URL } from "../../Api/config";
-
+import { API_BASE_URL } from "../../api/config";
 const footerText = {
   az: {
     customer: "MÜŞTƏRİ",

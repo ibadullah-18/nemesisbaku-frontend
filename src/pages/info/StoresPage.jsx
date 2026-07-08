@@ -6,7 +6,7 @@ import {
   FiNavigation,
   FiPhone,
 } from "react-icons/fi";
-import { API_BASE_URL } from "../../Api/config";
+import { API_BASE_URL } from "../../api/config";
 
 const text = {
   az: {
