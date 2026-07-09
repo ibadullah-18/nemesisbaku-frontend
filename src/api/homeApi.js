@@ -48,12 +48,19 @@ export function getProducts(params = {}) {
 export function getStoreInfo() {
   return apiFetch("/api/StoreInfo");
 }
+function generateId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export function trackVisit(pageUrl = "/") {
   let visitorId = localStorage.getItem("nemesis_visitor_id");
 
   if (!visitorId) {
-    visitorId = crypto.randomUUID();
+    visitorId = generateId();
     localStorage.setItem("nemesis_visitor_id", visitorId);
   }
 

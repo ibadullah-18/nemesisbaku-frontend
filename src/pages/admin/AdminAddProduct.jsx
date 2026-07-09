@@ -180,7 +180,7 @@ export default function AdminAddProduct() {
     const files = Array.from(e.target.files || []);
 
     const mapped = files.map((file) => ({
-      id: crypto.randomUUID(),
+      id: generateId(),
       file,
       preview: URL.createObjectURL(file),
     }));
