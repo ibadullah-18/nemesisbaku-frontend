@@ -24,6 +24,7 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { generateId } from "../../utils/generateId";
 
 const emptyForm = {
   name: "",

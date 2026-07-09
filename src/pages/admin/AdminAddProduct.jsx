@@ -17,6 +17,7 @@ import {
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 import { isSuperAdmin } from "../../api/admin/adminAuth";
+import { generateId } from "../../utils/generateId";
 
 const emptyForm = {
   name: "",
