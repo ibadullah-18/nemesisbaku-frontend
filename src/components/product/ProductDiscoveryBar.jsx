@@ -380,7 +380,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
           }}
           className={`z-[70] grid h-[46px] w-[46px] place-items-center rounded-full border border-zinc-100 bg-white text-[21px] text-zinc-950 shadow-[0_12px_30px_rgba(0,0,0,0.14)] transition-all duration-300 md:h-[54px] md:w-[54px] md:text-[25px] md:shadow-[0_14px_38px_rgba(0,0,0,0.16)] ${
             filterOpen
-              ? "scale-[1.14] bg-[#244989] text-white shadow-[0_18px_48px_rgba(36,73,137,0.28)]"
+              ? "scale-[1.14] bg-black text-white shadow-[0_18px_48px_rgba(36,73,137,0.28)]"
               : ""
           } ${isDragging ? "cursor-grabbing scale-105" : "cursor-grab"}`}
           aria-label="Filter"
@@ -508,7 +508,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
                   }
                   className={`flex h-12 w-full items-center justify-between rounded-[16px] border px-4 text-sm font-bold transition ${
                     draftFilters.isDiscounted
-                      ? "border-[#244989] bg-[#244989]/8 text-[#244989]"
+                      ? "border-black bg-black/8 text-white"
                       : "border-zinc-100 bg-zinc-50 text-zinc-700"
                   }`}
                 >
@@ -529,7 +529,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
                 <button
                   type="button"
                   onClick={applyFilter}
-                  className="h-[52px] rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98]"
+                  className="h-[52px] rounded-[16px] bg-black text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98]"
                 >
                   {text.applyFilter}
                 </button>
