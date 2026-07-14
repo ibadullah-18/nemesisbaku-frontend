@@ -508,7 +508,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
                   }
                   className={`flex h-12 w-full items-center justify-between rounded-[16px] border px-4 text-sm font-bold transition ${
                     draftFilters.isDiscounted
-                      ? "border-black bg-black/8 text-white"
+                      ? "border-black bg-black/8 text-black"
                       : "border-zinc-100 bg-zinc-50 text-zinc-700"
                   }`}
                 >
