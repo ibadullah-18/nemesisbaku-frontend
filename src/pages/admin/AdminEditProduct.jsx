@@ -768,7 +768,7 @@ async function saveOldImageOrder() {
                 </p>
               </div>
 
-              <button type="button" onClick={addVariant} className="flex h-11 items-center gap-2 rounded-[15px] bg-[#244989] px-4 text-sm font-extrabold text-white">
+              <button type="button" onClick={addVariant} className="flex h-11 items-center gap-2 rounded-[15px] bg-black px-4 text-sm font-extrabold text-white">
                 <FiPlus />
                 Variant
               </button>
