@@ -35,9 +35,10 @@ const emptyForm = {
   discountPrice: "",
   isDiscounted: false,
   isFeatured: false,
+  isActive: true,
   categoryId: "",
   brandId: "",
-};
+};;
 
 const emptyVariant = {
   id: "",
@@ -345,6 +346,10 @@ export default function AdminEditProduct() {
         discountPrice: product?.discountPrice ?? "",
         isDiscounted: Boolean(product?.isDiscounted),
         isFeatured: Boolean(product?.isFeatured),
+        isActive:
+          product?.isActive === undefined
+            ? true
+            : Boolean(product.isActive),
         categoryId: categoryId || "",
         brandId: brandId || "",
       });
@@ -595,9 +600,12 @@ async function saveOldImageOrder() {
         productCode: form.productCode.trim(),
         model: form.model.trim(),
         price: Number(form.price),
-        discountPrice: form.discountPrice ? Number(form.discountPrice) : 0,
+        discountPrice: form.discountPrice
+          ? Number(form.discountPrice)
+          : 0,
         isDiscounted: Boolean(form.isDiscounted),
         isFeatured: Boolean(form.isFeatured),
+        isActive: Boolean(form.isActive),
         categoryId: form.categoryId,
         brandId: form.brandId,
       };
@@ -739,6 +747,11 @@ async function saveOldImageOrder() {
             </h2>
 
             <div className="space-y-4">
+                <ToggleRow
+                  title="Aktiv məhsul"
+                  checked={form.isActive}
+                  onChange={() => updateForm("isActive", !form.isActive)}
+                />
               <ToggleRow title="Endirimli məhsul" checked={form.isDiscounted} onChange={() => updateForm("isDiscounted", !form.isDiscounted)} />
               <ToggleRow title="Önə çıxan məhsul" checked={form.isFeatured} onChange={() => updateForm("isFeatured", !form.isFeatured)} />
             </div>
