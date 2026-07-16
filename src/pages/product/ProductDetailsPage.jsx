@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -20,33 +20,52 @@ import { createPortal } from "react-dom";
 import { favoritesApi } from "../../api/favoritesApi";
 
 const LOW_STOCK_LIMIT = 3;
-const RELATED_PAGE_SIZE = 15;
+const RELATED_DESKTOP_BATCH = 12;
+const RELATED_PHONE_BATCH = 6;
 const STORE_WHATSAPP_NUMBER = "994514349829";
+
+function getRelatedBatchSize() {
+  return window.innerWidth < 768 ? RELATED_PHONE_BATCH : RELATED_DESKTOP_BATCH;
+}
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
 }
 
 function normalizeList(res) {
-  const data = res?.data || res;
+  const data = res?.data ?? res;
+  const nestedData = data?.data ?? data;
+
   return (
     data?.items ||
     data?.products ||
     data?.result ||
-    data?.data ||
-    (Array.isArray(data) ? data : [])
+    nestedData?.items ||
+    nestedData?.products ||
+    nestedData?.result ||
+    (Array.isArray(nestedData) ? nestedData : [])
   );
 }
 
 function getImageUrl(x) {
   if (!x) return null;
   if (typeof x === "string") return x;
-  return x.imageUrl || x.url || x.mainImageUrl || x.secureUrl || x.src || x.path || null;
+  return (
+    x.imageUrl ||
+    x.url ||
+    x.mainImageUrl ||
+    x.secureUrl ||
+    x.src ||
+    x.path ||
+    null
+  );
 }
 
 function getFavoriteCache() {
   try {
-    return JSON.parse(localStorage.getItem("nemesis_favorite_products") || "[]");
+    return JSON.parse(
+      localStorage.getItem("nemesis_favorite_products") || "[]",
+    );
   } catch {
     return [];
   }
@@ -64,6 +83,7 @@ function setFavoriteCache(productId, value) {
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { text } = useLanguage();
 
   const relatedRef = useRef(null);
@@ -90,6 +110,7 @@ export default function ProductDetailsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedPage, setRelatedPage] = useState(1);
+  const [relatedHasMore, setRelatedHasMore] = useState(true);
 
   const [error, setError] = useState("");
   const [toastError, setToastError] = useState("");
@@ -159,6 +180,9 @@ export default function ProductDetailsPage() {
       setModalOpen(false);
       setActiveImage(0);
       setDescriptionOpen(false);
+      setRelatedProducts([]);
+      setRelatedPage(1);
+      setRelatedHasMore(true);
 
       const res = await apiFetch(`/api/Products/${id}`);
       const data = unwrap(res);
@@ -171,7 +195,7 @@ export default function ProductDetailsPage() {
       setSelectedSize("");
       setQuantity(1);
 
-      await loadRelated(data, 1, true);
+      await loadRelated(data, 1);
     } catch (err) {
       setError(err.message || text.productLoadError);
     } finally {
@@ -192,7 +216,7 @@ export default function ProductDetailsPage() {
     } catch {
       setFavorite(false);
     }
-}
+  }
 
   async function loadFreshProduct() {
     const res = await apiFetch(`/api/Products/${id}`);
@@ -201,13 +225,27 @@ export default function ProductDetailsPage() {
     return data;
   }
 
-  async function loadRelated(currentProduct = product, page = relatedPage + 1, replace = false) {
+  async function loadRelated(
+    currentProduct = product,
+    batchPage = relatedPage + 1,
+  ) {
+    if (relatedLoading) return;
+
     try {
       setRelatedLoading(true);
 
-      const res = await getProducts({ page, pageSize: RELATED_PAGE_SIZE });
+      const batchSize = getRelatedBatchSize();
+      const targetCount = batchSize * batchPage;
 
-      const list = normalizeList(res)
+      // Həmişə birinci səhifədən lazım olan ümumi sayı götürürük.
+      // Beləliklə cari məhsul siyahıdan çıxarılanda və ya dublikat gələndə
+      // hər "Daha çox" basışında dəqiq 6/12 yeni məhsul əlavə olunur.
+      const res = await getProducts({
+        page: 1,
+        pageSize: targetCount + 2,
+      });
+
+      const sortedList = normalizeList(res)
         .filter((x) => x.id !== id)
         .sort((a, b) => {
           const aScore =
@@ -221,18 +259,17 @@ export default function ProductDetailsPage() {
           return bScore - aScore;
         });
 
-      setRelatedProducts((prev) => {
-        const merged = replace ? list : [...prev, ...list];
-        const map = new Map();
+      const uniqueMap = new Map();
 
-        merged.forEach((item) => {
-          if (item?.id) map.set(item.id, item);
-        });
-
-        return [...map.values()];
+      sortedList.forEach((item) => {
+        if (item?.id) uniqueMap.set(item.id, item);
       });
 
-      setRelatedPage(page);
+      const uniqueList = [...uniqueMap.values()];
+
+      setRelatedProducts(uniqueList.slice(0, targetCount));
+      setRelatedHasMore(uniqueList.length > targetCount);
+      setRelatedPage(batchPage);
     } finally {
       setRelatedLoading(false);
     }
@@ -272,7 +309,8 @@ export default function ProductDetailsPage() {
   const availableSizes = useMemo(() => {
     return (product?.variants || [])
       .filter((v) => {
-        if (colors.length > 0 && selectedColor) return v.colorName === selectedColor;
+        if (colors.length > 0 && selectedColor)
+          return v.colorName === selectedColor;
         return true;
       })
       .filter((v) => Number(v.stockCount || 0) > 0)
@@ -339,6 +377,15 @@ export default function ProductDetailsPage() {
       left: direction === "right" ? cardWidth + 16 : -(cardWidth + 16),
       behavior: "smooth",
     });
+  }
+
+  function handleBack() {
+    if (location.state?.fromSearch) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/");
   }
 
   function modalPrev() {
@@ -409,11 +456,13 @@ export default function ProductDetailsPage() {
         (v) =>
           v.id === selectedVariantId &&
           Number(v.stockCount || 0) > 0 &&
-          (!selectedColor || v.colorName === selectedColor)
+          (!selectedColor || v.colorName === selectedColor),
       );
 
       if (!freshVariant?.id) {
-        showToast(text.variantUnavailable || "Seçilən variant artıq mövcud deyil.");
+        showToast(
+          text.variantUnavailable || "Seçilən variant artıq mövcud deyil.",
+        );
         return;
       }
 
@@ -468,7 +517,7 @@ export default function ProductDetailsPage() {
       window.open(
         validUrl ? url : buildWhatsappFallback(),
         "_blank",
-        "noopener,noreferrer"
+        "noopener,noreferrer",
       );
     } catch {
       window.open(buildWhatsappFallback(), "_blank", "noopener,noreferrer");
@@ -512,11 +561,11 @@ export default function ProductDetailsPage() {
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
   }
 
   if (!product) {
@@ -530,20 +579,17 @@ export default function ProductDetailsPage() {
   }
 
   return (
-  <>
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
-
-        <button
-          type="button"
-          onClick={() => {
-            navigate("/");
-          }}
-          aria-label="Back"
-          className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-black active:scale-95"
-        >
-          <FiChevronLeft className="text-[24px]" />
-        </button>
+    <>
+      <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
+        <div className="mx-auto max-w-[1180px]">
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Back"
+            className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-black active:scale-95"
+          >
+            <FiChevronLeft className="text-[24px]" />
+          </button>
           <section className="grid gap-7 lg:grid-cols-[minmax(0,650px)_1fr]">
             <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both]">
               <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)]">
@@ -559,7 +605,11 @@ export default function ProductDetailsPage() {
                           : "border-zinc-100 opacity-70 hover:opacity-100"
                       }`}
                     >
-                      <img src={img} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={img}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
                     </button>
                   ))}
                 </div>
@@ -603,7 +653,11 @@ export default function ProductDetailsPage() {
                   disabled={actionLoading}
                   className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-zinc-50 text-xl text-zinc-950 transition duration-300 hover:bg-zinc-100 hover:scale-105 active:scale-95"
                 >
-                  {favorite ? <FaHeart className="text-red-600" /> : <FiHeart />}
+                  {favorite ? (
+                    <FaHeart className="text-red-600" />
+                  ) : (
+                    <FiHeart />
+                  )}
                 </button>
               </div>
 
@@ -620,7 +674,8 @@ export default function ProductDetailsPage() {
                       </p>
 
                       {shouldClampDescription && (
-                        +<div className="absolute bottom-0 right-0 flex h-7 w-[42%] items-center justify-end bg-gradient-to-l from-white via-white/95 to-transparent">                          <button
+                        <div className="absolute bottom-0 right-0 flex h-7 w-[42%] items-center justify-end bg-gradient-to-l from-white via-white/95 to-transparent">
+                          <button
                             type="button"
                             onClick={() => setDescriptionOpen(true)}
                             className="bg-white pl-2 text-[15px] font-medium text-zinc-950"
@@ -697,7 +752,8 @@ export default function ProductDetailsPage() {
                 <div className="flex min-h-[52px] flex-wrap items-center gap-2">
                   {availableSizes.map((item) => {
                     const active = selectedVariantId === item.variantId;
-                    const lowStock = item.stock > 0 && item.stock <= LOW_STOCK_LIMIT;
+                    const lowStock =
+                      item.stock > 0 && item.stock <= LOW_STOCK_LIMIT;
 
                     return (
                       <button
@@ -740,7 +796,9 @@ export default function ProductDetailsPage() {
 
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.min(stock || 99, q + 1))}
+                    onClick={() =>
+                      setQuantity((q) => Math.min(stock || 99, q + 1))
+                    }
                     className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
                   >
                     <FiPlus />
@@ -753,12 +811,16 @@ export default function ProductDetailsPage() {
                 onClick={addBasket}
                 disabled={actionLoading}
                 className={`group relative mt-7 inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-[14px] text-sm font-medium text-white transition duration-300 active:scale-[0.98] disabled:opacity-50 ${
-                  basketSuccess ? "bg-emerald-600" : "bg-zinc-950 hover:bg-zinc-800"
+                  basketSuccess
+                    ? "bg-emerald-600"
+                    : "bg-zinc-950 hover:bg-zinc-800"
                 }`}
               >
                 <span
                   className={`absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-zinc-950 transition-all duration-500 ${
-                    basketSuccess ? "scale-[9] opacity-100" : "scale-0 opacity-0"
+                    basketSuccess
+                      ? "scale-[9] opacity-100"
+                      : "scale-0 opacity-0"
                   }`}
                 />
 
@@ -822,16 +884,18 @@ export default function ProductDetailsPage() {
                       </div>
                     ))}
 
-                    <div className="grid w-[47%] min-w-[47%] place-items-center sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]">
-                      <button
-                        type="button"
-                        onClick={() => loadRelated(product)}
-                        disabled={relatedLoading}
-                        className="h-14 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
-                      >
-                        {relatedLoading ? text.loading : text.more}
-                      </button>
-                    </div>
+                    {relatedHasMore && (
+                      <div className="grid w-[47%] min-w-[47%] place-items-center sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]">
+                        <button
+                          type="button"
+                          onClick={() => loadRelated(product, relatedPage + 1)}
+                          disabled={relatedLoading}
+                          className="h-14 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
+                        >
+                          {relatedLoading ? text.loading : text.more}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -851,7 +915,7 @@ export default function ProductDetailsPage() {
           >
             {toastError}
           </div>,
-          document.body
+          document.body,
         )}
 
       {modalOpen &&
@@ -885,7 +949,7 @@ export default function ProductDetailsPage() {
               }}
             />
           </div>,
-          document.body
+          document.body,
         )}
 
       <style>{`
