@@ -45,20 +45,10 @@ function normalizeFilterOptions(res) {
       data?.filterOptions?.categories ||
       [],
     brands:
-      data?.brands ||
-      data?.brandOptions ||
-      data?.filterOptions?.brands ||
-      [],
-    sizes:
-      data?.sizes ||
-      data?.sizeOptions ||
-      data?.filterOptions?.sizes ||
-      [],
+      data?.brands || data?.brandOptions || data?.filterOptions?.brands || [],
+    sizes: data?.sizes || data?.sizeOptions || data?.filterOptions?.sizes || [],
     colors:
-      data?.colors ||
-      data?.colorOptions ||
-      data?.filterOptions?.colors ||
-      [],
+      data?.colors || data?.colorOptions || data?.filterOptions?.colors || [],
   };
 }
 
@@ -125,7 +115,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
         x: Math.min(Math.max(prev.x, 12), window.innerWidth - FILTER_SIZE - 12),
         y: Math.min(
           Math.max(prev.y, 82),
-          window.innerHeight - FILTER_SIZE - 14
+          window.innerHeight - FILTER_SIZE - 14,
         ),
       }));
     }
@@ -133,6 +123,92 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
     window.addEventListener("resize", keepInsideScreen);
     return () => window.removeEventListener("resize", keepInsideScreen);
   }, []);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+
+    const body = document.body;
+    const root = document.documentElement;
+    const savedScrollY = window.scrollY;
+    const scrollbarWidth = window.innerWidth - root.clientWidth;
+
+    const previousBodyStyles = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+      overscrollBehaviorY: body.style.overscrollBehaviorY,
+      paddingRight: body.style.paddingRight,
+    };
+
+    const previousRootStyles = {
+      overflow: root.style.overflow,
+      overscrollBehaviorY: root.style.overscrollBehaviorY,
+    };
+
+    const previousFilterOpenFlag = body.dataset.nemesisFilterOpen;
+
+    body.dataset.nemesisFilterOpen = "true";
+    body.style.position = "fixed";
+    body.style.top = `-${savedScrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehaviorY = "none";
+
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    root.style.overflow = "hidden";
+    root.style.overscrollBehaviorY = "none";
+
+    function blockBackgroundScroll(event) {
+      const target = event.target;
+      const isInsideFilter =
+        target instanceof Element &&
+        Boolean(target.closest('[data-filter-scroll-area="true"]'));
+
+      if (!isInsideFilter) {
+        event.preventDefault();
+      }
+    }
+
+    document.addEventListener("wheel", blockBackgroundScroll, {
+      passive: false,
+    });
+    document.addEventListener("touchmove", blockBackgroundScroll, {
+      passive: false,
+    });
+
+    return () => {
+      document.removeEventListener("wheel", blockBackgroundScroll);
+      document.removeEventListener("touchmove", blockBackgroundScroll);
+
+      body.style.position = previousBodyStyles.position;
+      body.style.top = previousBodyStyles.top;
+      body.style.left = previousBodyStyles.left;
+      body.style.right = previousBodyStyles.right;
+      body.style.width = previousBodyStyles.width;
+      body.style.overflow = previousBodyStyles.overflow;
+      body.style.overscrollBehaviorY = previousBodyStyles.overscrollBehaviorY;
+      body.style.paddingRight = previousBodyStyles.paddingRight;
+
+      root.style.overflow = previousRootStyles.overflow;
+      root.style.overscrollBehaviorY = previousRootStyles.overscrollBehaviorY;
+
+      if (previousFilterOpenFlag === undefined) {
+        delete body.dataset.nemesisFilterOpen;
+      } else {
+        body.dataset.nemesisFilterOpen = previousFilterOpenFlag;
+      }
+
+      window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
+    };
+  }, [filterOpen]);
 
   async function loadInitialData() {
     try {
@@ -282,12 +358,12 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
     const nextX = Math.min(
       Math.max(data.startLeft + diffX, 12),
-      window.innerWidth - FILTER_SIZE - 12
+      window.innerWidth - FILTER_SIZE - 12,
     );
 
     const nextY = Math.min(
       Math.max(data.startTop + diffY, 82),
-      window.innerHeight - FILTER_SIZE - 14
+      window.innerHeight - FILTER_SIZE - 14,
     );
 
     setFilterPos({ x: nextX, y: nextY });
@@ -409,8 +485,13 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
             />
 
             <div
+              data-filter-scroll-area="true"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
+              style={{
+                WebkitOverflowScrolling: "touch",
+                overscrollBehaviorY: "contain",
+              }}
               className={`relative z-[91] max-h-[calc(100vh-40px)] w-full max-w-[430px] overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] ${
                 filterClosing
                   ? "animate-[filterClose_0.30s_ease_both]"
@@ -538,7 +619,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
           </div>
         )}
       </>,
-      document.body
+      document.body,
     );
 
   return (

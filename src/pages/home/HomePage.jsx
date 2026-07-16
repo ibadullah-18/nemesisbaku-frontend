@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { FiChevronRight, FiChevronUp, FiImage, FiX } from "react-icons/fi";
+import {
+  FiChevronRight,
+  FiChevronUp,
+  FiImage,
+  FiRefreshCw,
+  FiX,
+} from "react-icons/fi";
 import ProductDiscoveryBar from "../../components/product/ProductDiscoveryBar";
 import ProductCard from "../../components/product/ProductCard";
 import ProductSection from "../../components/home/ProductSection";
@@ -66,6 +72,18 @@ export default function HomePage() {
   const allProductsRef = useRef(null);
   const errorTimerRef = useRef(null);
   const ignoreDiscoveryChangesRef = useRef(true);
+  const rubberSurfaceRef = useRef(null);
+  const rubberOffsetRef = useRef(0);
+  const rubberGestureRef = useRef({
+    active: false,
+    mode: null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+  });
+  const rubberReleaseTimerRef = useRef(null);
+  const refreshTimerRef = useRef(null);
 
   const [campaigns, setCampaigns] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -81,8 +99,8 @@ export default function HomePage() {
 
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(
-  !sessionStorage.getItem("nemesis_home_loaded_once")
-);
+    !sessionStorage.getItem("nemesis_home_loaded_once"),
+  );
   const [moreLoading, setMoreLoading] = useState(false);
 
   const [descLines, setDescLines] = useState(3);
@@ -92,6 +110,11 @@ export default function HomePage() {
 
   const [toast, setToast] = useState("");
   const [toastClosing, setToastClosing] = useState(false);
+  const [rubberOffset, setRubberOffset] = useState(0);
+  const [rubberDragging, setRubberDragging] = useState(false);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const [pullRefreshEnabled, setPullRefreshEnabled] = useState(false);
+  const [pullIndicatorTop, setPullIndicatorTop] = useState(82);
   const activeBanner = useMemo(() => {
     return banners.find((banner) => banner?.imageUrl) || null;
   }, [banners]);
@@ -103,7 +126,7 @@ export default function HomePage() {
   const descCanExpand = descHasText && descLines < 30;
   const HOME_LOADED_KEY = "nemesis_home_loaded_once";
   const MIN_LOADER_TIME = 750;
-
+  const PULL_REFRESH_TRIGGER = 74;
 
   useEffect(() => {
     loadHome();
@@ -133,6 +156,261 @@ export default function HomePage() {
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const surface = rubberSurfaceRef.current;
+    if (!surface || loading) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootOverscroll = root.style.overscrollBehaviorY;
+    const previousBodyOverscroll = body.style.overscrollBehaviorY;
+    const navbarSelector =
+      "header, nav, [data-navbar], [data-nemesis-navbar], [data-brand-bar], .navbar";
+
+    root.style.overscrollBehaviorY = "none";
+    body.style.overscrollBehaviorY = "none";
+
+    function updateRubberOffset(value) {
+      rubberOffsetRef.current = value;
+      setRubberOffset(value);
+    }
+
+    function pageIsAtTop() {
+      return window.scrollY <= 1;
+    }
+
+    function pageIsAtBottom() {
+      const pageHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+      );
+
+      return Math.ceil(window.scrollY + window.innerHeight) >= pageHeight - 1;
+    }
+
+    function filterModalIsOpen() {
+      return document.body.dataset.nemesisFilterOpen === "true";
+    }
+
+    function getNavbarBottom() {
+      const elements = [...document.querySelectorAll(navbarSelector)];
+      const visibleBottoms = elements
+        .map((element) => element.getBoundingClientRect())
+        .filter(
+          (rect) =>
+            rect.height > 0 &&
+            rect.bottom > 0 &&
+            rect.top < window.innerHeight * 0.45,
+        )
+        .map((rect) => rect.bottom);
+
+      return visibleBottoms.length > 0 ? Math.max(64, ...visibleBottoms) : 72;
+    }
+
+    function touchStartedFromNavbar(target, clientY, navbarBottom) {
+      const targetIsInsideNavbar =
+        target instanceof Element && Boolean(target.closest(navbarSelector));
+
+      return targetIsInsideNavbar || clientY <= navbarBottom + 8;
+    }
+
+    function handleTouchStart(event) {
+      if (
+        window.innerWidth >= 768 ||
+        showBannerPopup ||
+        filterModalIsOpen() ||
+        refreshTimerRef.current
+      ) {
+        return;
+      }
+
+      const touch = event.touches[0];
+      if (!touch) return;
+
+      const atTop = pageIsAtTop();
+      const atBottom = pageIsAtBottom();
+      const navbarBottom = getNavbarBottom();
+      const fromNavbar = touchStartedFromNavbar(
+        event.target,
+        touch.clientY,
+        navbarBottom,
+      );
+
+      rubberGestureRef.current = {
+        active: true,
+        mode: atTop
+          ? fromNavbar
+            ? "top-refresh"
+            : "top-rubber"
+          : atBottom
+            ? "bottom"
+            : "watch",
+        startX: touch.clientX,
+        startY: touch.clientY,
+        lastX: touch.clientX,
+        lastY: touch.clientY,
+      };
+
+      setPullRefreshEnabled(atTop && fromNavbar);
+      setPullIndicatorTop(Math.max(72, navbarBottom + 10));
+    }
+
+    function handleTouchMove(event) {
+      const gesture = rubberGestureRef.current;
+      const touch = event.touches[0];
+
+      if (!gesture.active || !touch) return;
+
+      if (filterModalIsOpen()) {
+        rubberGestureRef.current.active = false;
+        setRubberDragging(false);
+        setPullRefreshEnabled(false);
+        updateRubberOffset(0);
+        return;
+      }
+
+      if (gesture.mode === "watch") {
+        const movingDown = touch.clientY > gesture.lastY;
+        const movingUp = touch.clientY < gesture.lastY;
+
+        gesture.lastX = touch.clientX;
+        gesture.lastY = touch.clientY;
+
+        if (pageIsAtTop() && movingDown) {
+          gesture.mode = "top-rubber";
+          gesture.startX = touch.clientX;
+          gesture.startY = touch.clientY;
+          setPullRefreshEnabled(false);
+        } else if (pageIsAtBottom() && movingUp) {
+          gesture.mode = "bottom";
+          gesture.startX = touch.clientX;
+          gesture.startY = touch.clientY;
+        }
+
+        return;
+      }
+
+      const deltaX = touch.clientX - gesture.startX;
+      const deltaY = touch.clientY - gesture.startY;
+      const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (isHorizontal) {
+        rubberGestureRef.current.active = false;
+        setRubberDragging(false);
+        setPullRefreshEnabled(false);
+        updateRubberOffset(0);
+        return;
+      }
+
+      const isTopPull = gesture.mode.startsWith("top-") && deltaY > 0;
+      const isBottomPull = gesture.mode === "bottom" && deltaY < 0;
+
+      if (!isTopPull && !isBottomPull) return;
+
+      event.preventDefault();
+      setRubberDragging(true);
+
+      const rawDistance = Math.abs(deltaY);
+      const resistedDistance = Math.min(
+        gesture.mode.startsWith("top-") ? 116 : 48,
+        rawDistance * 0.4 + Math.sqrt(rawDistance) * 1.1,
+      );
+
+      updateRubberOffset(
+        gesture.mode.startsWith("top-") ? resistedDistance : -resistedDistance,
+      );
+    }
+
+    function finishTouchGesture() {
+      const gesture = rubberGestureRef.current;
+      if (!gesture.active) return;
+
+      const shouldRefresh =
+        gesture.mode === "top-refresh" &&
+        rubberOffsetRef.current >= PULL_REFRESH_TRIGGER;
+
+      rubberGestureRef.current = {
+        active: false,
+        mode: null,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0,
+      };
+
+      setRubberDragging(false);
+
+      if (shouldRefresh) {
+        setPullRefreshing(true);
+        updateRubberOffset(58);
+
+        refreshTimerRef.current = window.setTimeout(() => {
+          window.location.reload();
+        }, 520);
+
+        return;
+      }
+
+      setPullRefreshEnabled(false);
+      updateRubberOffset(0);
+    }
+
+    function handleWheel(event) {
+      if (window.innerWidth < 768 || showBannerPopup || filterModalIsOpen()) {
+        return;
+      }
+
+      const pullingPastTop = pageIsAtTop() && event.deltaY < 0;
+      const pullingPastBottom = pageIsAtBottom() && event.deltaY > 0;
+
+      if (!pullingPastTop && !pullingPastBottom) return;
+
+      const strength = Math.min(
+        34,
+        8 + Math.sqrt(Math.abs(event.deltaY)) * 2.2,
+      );
+
+      setRubberDragging(false);
+      updateRubberOffset(pullingPastTop ? strength : -strength);
+
+      window.clearTimeout(rubberReleaseTimerRef.current);
+      rubberReleaseTimerRef.current = window.setTimeout(() => {
+        updateRubberOffset(0);
+      }, 90);
+    }
+
+    function resetRubberOnResize() {
+      rubberGestureRef.current.active = false;
+      setRubberDragging(false);
+      setPullRefreshEnabled(false);
+      updateRubberOffset(0);
+    }
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", finishTouchGesture, { passive: true });
+    window.addEventListener("touchcancel", finishTouchGesture, {
+      passive: true,
+    });
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    window.addEventListener("resize", resetRubberOnResize);
+
+    return () => {
+      root.style.overscrollBehaviorY = previousRootOverscroll;
+      body.style.overscrollBehaviorY = previousBodyOverscroll;
+
+      window.clearTimeout(rubberReleaseTimerRef.current);
+      window.clearTimeout(refreshTimerRef.current);
+
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", finishTouchGesture);
+      window.removeEventListener("touchcancel", finishTouchGesture);
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("resize", resetRubberOnResize);
+    };
+  }, [loading, showBannerPopup]);
 
   useEffect(() => {
     if (!activeBanner?.id) return;
@@ -193,7 +471,7 @@ export default function HomePage() {
       {
         threshold: 0.16,
         rootMargin: "0px 0px -70px 0px",
-      }
+      },
     );
 
     observer.observe(node);
@@ -202,56 +480,56 @@ export default function HomePage() {
   }, [products.length, allProductsVisible]);
 
   useEffect(() => {
-  function resetHomeFilters() {
-  setFilterActive(false);
-  ignoreDiscoveryChangesRef.current = true;
-  loadHome();
+    function resetHomeFilters() {
+      setFilterActive(false);
+      ignoreDiscoveryChangesRef.current = true;
+      loadHome();
 
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "smooth",
-    });
-  }
-
-  window.addEventListener("nemesis_home_reset", resetHomeFilters);
-
-  return () => {
-    window.removeEventListener("nemesis_home_reset", resetHomeFilters);
-  };
-}, []);
-useEffect(() => {
-  if (loading || products.length === 0) return;
-
-  const productId = sessionStorage.getItem("nemesis_return_product_id");
-  const scrollY = sessionStorage.getItem("nemesis_return_scroll_y");
-
-  if (!productId && !scrollY) return;
-
-  const timer = window.setTimeout(() => {
-    const card = productId
-      ? document.querySelector(`[data-home-product-id="${productId}"]`)
-      : null;
-
-    if (card) {
-      card.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    } else if (scrollY) {
       window.scrollTo({
-        top: Number(scrollY),
+        top: 0,
         left: 0,
         behavior: "smooth",
       });
     }
 
-    sessionStorage.removeItem("nemesis_return_product_id");
-    sessionStorage.removeItem("nemesis_return_scroll_y");
-  }, 900);
+    window.addEventListener("nemesis_home_reset", resetHomeFilters);
 
-  return () => window.clearTimeout(timer);
-}, [loading, products.length]);
+    return () => {
+      window.removeEventListener("nemesis_home_reset", resetHomeFilters);
+    };
+  }, []);
+  useEffect(() => {
+    if (loading || products.length === 0) return;
+
+    const productId = sessionStorage.getItem("nemesis_return_product_id");
+    const scrollY = sessionStorage.getItem("nemesis_return_scroll_y");
+
+    if (!productId && !scrollY) return;
+
+    const timer = window.setTimeout(() => {
+      const card = productId
+        ? document.querySelector(`[data-home-product-id="${productId}"]`)
+        : null;
+
+      if (card) {
+        card.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      } else if (scrollY) {
+        window.scrollTo({
+          top: Number(scrollY),
+          left: 0,
+          behavior: "smooth",
+        });
+      }
+
+      sessionStorage.removeItem("nemesis_return_product_id");
+      sessionStorage.removeItem("nemesis_return_scroll_y");
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [loading, products.length]);
 
   function showError(message) {
     clearTimeout(errorTimerRef.current);
@@ -269,57 +547,57 @@ useEffect(() => {
     }, 4200);
   }
 
-async function loadHome() {
-  const shouldShowLoader = !sessionStorage.getItem(HOME_LOADED_KEY);
-  const startedAt = Date.now();
+  async function loadHome() {
+    const shouldShowLoader = !sessionStorage.getItem(HOME_LOADED_KEY);
+    const startedAt = Date.now();
 
-  try {
-    if (shouldShowLoader) {
-      setLoading(true);
-    }
-
-    setPage(1);
-    setAllProductsVisible(false);
-
-    const [campaignRes, bannerRes, homeSectionsRes, productsRes] =
-      await Promise.all([
-        getActiveCampaigns().catch(() => []),
-        getActiveBanners().catch(() => []),
-        getActiveHomeSections().catch(() => []),
-        getProducts({
-          page: 1,
-          pageSize: sessionStorage.getItem("nemesis_return_product_id")
-            ? 60
-            : getProductPageSize(),
-        }).catch(() => []),
-      ]);
-
-    setCampaigns(uniqueById(normalizeList(campaignRes)));
-    setBanners(uniqueById(normalizeList(bannerRes)));
-    setHomeSections(uniqueById(normalizeList(homeSectionsRes)));
-    setProducts(uniqueById(normalizeList(productsRes)));
-    setFilterActive(false);
-    ignoreDiscoveryChangesRef.current = true;
-
-    setTimeout(() => {
-      ignoreDiscoveryChangesRef.current = false;
-    }, 1200);
-    sessionStorage.setItem(HOME_LOADED_KEY, "true");
-
-    if (shouldShowLoader) {
-      const elapsed = Date.now() - startedAt;
-      const wait = Math.max(0, MIN_LOADER_TIME - elapsed);
-
-      if (wait > 0) {
-        await new Promise((resolve) => setTimeout(resolve, wait));
+    try {
+      if (shouldShowLoader) {
+        setLoading(true);
       }
+
+      setPage(1);
+      setAllProductsVisible(false);
+
+      const [campaignRes, bannerRes, homeSectionsRes, productsRes] =
+        await Promise.all([
+          getActiveCampaigns().catch(() => []),
+          getActiveBanners().catch(() => []),
+          getActiveHomeSections().catch(() => []),
+          getProducts({
+            page: 1,
+            pageSize: sessionStorage.getItem("nemesis_return_product_id")
+              ? 60
+              : getProductPageSize(),
+          }).catch(() => []),
+        ]);
+
+      setCampaigns(uniqueById(normalizeList(campaignRes)));
+      setBanners(uniqueById(normalizeList(bannerRes)));
+      setHomeSections(uniqueById(normalizeList(homeSectionsRes)));
+      setProducts(uniqueById(normalizeList(productsRes)));
+      setFilterActive(false);
+      ignoreDiscoveryChangesRef.current = true;
+
+      setTimeout(() => {
+        ignoreDiscoveryChangesRef.current = false;
+      }, 1200);
+      sessionStorage.setItem(HOME_LOADED_KEY, "true");
+
+      if (shouldShowLoader) {
+        const elapsed = Date.now() - startedAt;
+        const wait = Math.max(0, MIN_LOADER_TIME - elapsed);
+
+        if (wait > 0) {
+          await new Promise((resolve) => setTimeout(resolve, wait));
+        }
+      }
+    } catch (err) {
+      showError(getErrorMessage(err, "Ana səhifə yüklənmədi."));
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    showError(getErrorMessage(err, "Ana səhifə yüklənmədi."));
-  } finally {
-  setLoading(false);
-    }
-}
+  }
 
   async function loadMore() {
     if (moreLoading) return;
@@ -347,25 +625,25 @@ async function loadHome() {
     }
   }
 
-function handleFilteredProducts(list) {
-  if (ignoreDiscoveryChangesRef.current) {
-    return;
+  function handleFilteredProducts(list) {
+    if (ignoreDiscoveryChangesRef.current) {
+      return;
+    }
+
+    setFilterActive(true);
+    setProducts(uniqueById(list));
+    setPage(1);
+    setAllProductsVisible(false);
+
+    setTimeout(() => {
+      setAllProductsVisible(true);
+
+      allProductsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
   }
-
-  setFilterActive(true);
-  setProducts(uniqueById(list));
-  setPage(1);
-  setAllProductsVisible(false);
-
-  setTimeout(() => {
-    setAllProductsVisible(true);
-
-    allProductsRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 80);
-}
   function increaseDescLines() {
     setDescLines((prev) => prev + descStep);
   }
@@ -378,12 +656,12 @@ function handleFilteredProducts(list) {
   }
 
   function getProductPageSize() {
-  if (typeof window !== "undefined" && window.innerWidth < 768) {
-    return 10; // telefon: 5 sıra x 2 məhsul
-  }
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      return 10; // telefon: 5 sıra x 2 məhsul
+    }
 
-  return 12; // komputer/planset: 3 sıra x 4 məhsul
-}
+    return 12; // komputer/planset: 3 sıra x 4 məhsul
+  }
 
   function closeBannerPopup() {
     setClosingBannerPopup(true);
@@ -477,144 +755,186 @@ function handleFilteredProducts(list) {
         `}
       </style>
 
-      <div className="relative z-30 animate-[softHomeIn_0.45s_ease_both]">
-  <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
-</div>
-
-{!filterActive && (
-  <>
-    <div className="relative z-10 animate-[softHomeIn_0.55s_ease_both]">
-      <HomePromoSlider promos={sliderCampaigns} />
-    </div>
-
-    <div className="space-y-2">
-      {homeSections
-        .slice()
-        .sort(
-          (a, b) =>
-            Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-        )
-        .map((section, index) => (
+      {isPhone &&
+        pullRefreshEnabled &&
+        (rubberOffset > 2 || pullRefreshing) && (
           <div
-            key={section.id || `section-wrap-${index}`}
+            className="pointer-events-none fixed left-1/2 z-[99980] flex items-center gap-2 rounded-full bg-zinc-950 px-4 py-2.5 text-xs font-extrabold text-white shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
             style={{
-              animation: `softHomeIn 0.55s ease ${index * 0.06}s both`,
+              top: `${pullIndicatorTop}px`,
+              opacity: pullRefreshing
+                ? 1
+                : Math.min(1, Math.max(0.25, rubberOffset / 48)),
+              transform: `translate(-50%, ${Math.min(
+                12,
+                Math.max(0, rubberOffset * 0.1),
+              )}px) scale(${pullRefreshing ? 1 : 0.94 + Math.min(0.06, rubberOffset / 900)})`,
+              transition: rubberDragging
+                ? "opacity 80ms linear"
+                : "opacity 260ms ease, transform 420ms cubic-bezier(0.22,1,0.36,1)",
             }}
           >
-            <ProductSection
-              title={section.title}
-              subtitle={section.subtitle}
-              products={uniqueById(section.products || [])}
+            <FiRefreshCw
+              className={
+                pullRefreshing ? "animate-spin text-base" : "text-base"
+              }
+              style={
+                pullRefreshing
+                  ? undefined
+                  : {
+                      transform: `rotate(${Math.min(
+                        260,
+                        (rubberOffset / PULL_REFRESH_TRIGGER) * 260,
+                      )}deg)`,
+                    }
+              }
             />
+
+            <span>
+              {pullRefreshing
+                ? "Yenilənir..."
+                : rubberOffset >= PULL_REFRESH_TRIGGER
+                  ? "Burax, yenilə"
+                  : "Yeniləmək üçün aşağı dart"}
+            </span>
           </div>
-        ))}
-    </div>
-  </>
-)}
+        )}
 
-      {products.length > 0 && (
-        <section
-          ref={allProductsRef}
-          className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11"
-        >
-          <div
-            className="mb-5 flex items-end justify-between gap-4"
-            style={{
-              opacity: allProductsVisible ? 1 : 0,
-              transform: allProductsVisible
-                ? "translateY(0) scale(1)"
-                : "translateY(20px) scale(0.985)",
-              transition:
-                "opacity 0.65s ease, transform 0.65s cubic-bezier(0.22,1,0.36,1)",
-            }}
-          >
-            <div className="w-full">
-              <p className="text-[16px] font-extrabold tracking-[0.22em] text-zinc-500">
-                nemesisbaku
-              </p>
+      <div
+        ref={rubberSurfaceRef}
+        className="relative min-h-screen bg-[#fafafa]"
+        style={{
+          transform: `translate3d(0, ${rubberOffset}px, 0)`,
+          transition: rubberDragging
+            ? "none"
+            : "transform 520ms cubic-bezier(0.22,1,0.36,1)",
+          willChange: rubberOffset !== 0 ? "transform" : "auto",
+        }}
+      >
+        <div className="relative z-30 animate-[softHomeIn_0.45s_ease_both]">
+          <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
+        </div>
 
-              <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-zinc-950 md:text-3xl">
-                {text.allProducts}
-              </h2>
-
-              {descHasText && (
-                <div className="mt-2 max-w-[620px]">
-                  <div className="relative overflow-hidden">
-                    <p
-                      className="text-sm leading-6 text-zinc-600 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                      style={{
-                        maxHeight: `${descLines * 24}px`,
-                      }}
-                    >
-                      {text.allProductsDesc}
-                    </p>
-
-                    {descCanExpand && (
-                      <div className="pointer-events-none absolute bottom-0 left-0 h-8 w-full bg-gradient-to-t from-[#fafafa] to-transparent" />
-                    )}
-                  </div>
-
-                  {descCanExpand && (
-                    <button
-                      type="button"
-                      onClick={increaseDescLines}
-                      className="mt-2 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-extrabold text-zinc-950 shadow-[0_12px_30px_rgba(15,15,15,0.08)] ring-1 ring-black/5 transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-950 hover:text-white active:scale-[0.97]"
-                    >
-                      Daha çox
-                      <FiChevronRight className="text-sm" />
-                    </button>
-                  )}
-                </div>
-              )}
+        {!filterActive && (
+          <>
+            <div className="relative z-10 animate-[softHomeIn_0.55s_ease_both]">
+              <HomePromoSlider promos={sliderCampaigns} />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {products.map((product, index) => {
-              const delay = Math.min(index, 11) * 0.045;
+            <div className="space-y-2">
+              {homeSections
+                .slice()
+                .sort(
+                  (a, b) =>
+                    Number(a.displayOrder || 0) - Number(b.displayOrder || 0),
+                )
+                .map((section, index) => (
+                  <div
+                    key={section.id || `section-wrap-${index}`}
+                    style={{
+                      animation: `softHomeIn 0.55s ease ${index * 0.06}s both`,
+                    }}
+                  >
+                    <ProductSection
+                      title={section.title}
+                      subtitle={section.subtitle}
+                      products={uniqueById(section.products || [])}
+                    />
+                  </div>
+                ))}
+            </div>
+          </>
+        )}
 
-              return (
-                <div
-                  key={product.id || `product-wrap-${index}`}
-                  data-home-product-id={product.id}
-                  style={{
-                    opacity: allProductsVisible ? 1 : 0,
-                    transform: allProductsVisible
-                      ? "translateY(0) scale(1)"
-                      : "translateY(22px) scale(0.985)",
-                    transition: `opacity 0.58s ease ${delay}s, transform 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
-                  }}
-                >
-                  <ProductCard product={product} />
-                </div>
-              );
-            })}
-          </div>
-
-          {products.length >= getProductPageSize() && (
+        {products.length > 0 && (
+          <section
+            ref={allProductsRef}
+            className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11"
+          >
             <div
-              className="mt-8 flex justify-center"
+              className="mb-5 flex items-end justify-between gap-4"
               style={{
                 opacity: allProductsVisible ? 1 : 0,
                 transform: allProductsVisible
-                  ? "translateY(0)"
-                  : "translateY(18px)",
+                  ? "translateY(0) scale(1)"
+                  : "translateY(20px) scale(0.985)",
                 transition:
-                  "opacity 0.6s ease 0.5s, transform 0.6s cubic-bezier(0.22,1,0.36,1) 0.5s",
+                  "opacity 0.65s ease, transform 0.65s cubic-bezier(0.22,1,0.36,1)",
               }}
             >
-              <button
-                type="button"
-                onClick={loadMore}
-                disabled={moreLoading}
-                className="rounded-full bg-[#120d09] px-8 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(15,15,15,0.16)] transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
-              >
-                {moreLoading ? text.loading : text.loadMore}
-              </button>
+              <div className="w-full">
+                <p className="text-[16px] font-extrabold tracking-[0.22em] text-zinc-500">
+                  nemesisbaku
+                </p>
+
+                <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-zinc-950 md:text-3xl">
+                  {text.allProducts}
+                </h2>
+
+                {descHasText && (
+                  <div className="mt-2 max-w-[620px]">
+                    <div className="relative overflow-hidden">
+                      <p
+                        className="text-sm leading-6 text-zinc-600 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{
+                          maxHeight: `${descLines * 24}px`,
+                        }}
+                      >
+                        {text.allProductsDesc}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </section>
-      )}
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {products.map((product, index) => {
+                const delay = Math.min(index, 11) * 0.045;
+
+                return (
+                  <div
+                    key={product.id || `product-wrap-${index}`}
+                    data-home-product-id={product.id}
+                    style={{
+                      opacity: allProductsVisible ? 1 : 0,
+                      transform: allProductsVisible
+                        ? "translateY(0) scale(1)"
+                        : "translateY(22px) scale(0.985)",
+                      transition: `opacity 0.58s ease ${delay}s, transform 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
+                    }}
+                  >
+                    <ProductCard product={product} />
+                  </div>
+                );
+              })}
+            </div>
+
+            {products.length >= getProductPageSize() && (
+              <div
+                className="mt-8 flex justify-center"
+                style={{
+                  opacity: allProductsVisible ? 1 : 0,
+                  transform: allProductsVisible
+                    ? "translateY(0)"
+                    : "translateY(18px)",
+                  transition:
+                    "opacity 0.6s ease 0.5s, transform 0.6s cubic-bezier(0.22,1,0.36,1) 0.5s",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={moreLoading}
+                  className="rounded-full bg-[#120d09] px-8 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(15,15,15,0.16)] transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
+                >
+                  {moreLoading ? text.loading : text.loadMore}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
 
       {showScrollTop && (
         <button
