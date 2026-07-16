@@ -24,31 +24,105 @@ const emptyFilters = {
 const FILTER_SIZE = window.innerWidth < 768 ? 46 : 54;
 
 function normalizeProducts(res) {
-  const data = res?.data || res;
+  const data = res?.data ?? res;
+  const nestedData = data?.data ?? data;
 
   return (
     data?.items ||
     data?.products ||
     data?.result ||
-    data?.data ||
-    (Array.isArray(data) ? data : [])
+    nestedData?.items ||
+    nestedData?.products ||
+    nestedData?.result ||
+    (Array.isArray(nestedData) ? nestedData : [])
   );
 }
 
+function pickOptionList(...candidates) {
+  const nonEmptyList = candidates.find(
+    (candidate) => Array.isArray(candidate) && candidate.length > 0,
+  );
+
+  if (nonEmptyList) return nonEmptyList;
+
+  return candidates.find(Array.isArray) || [];
+}
+
+function uniqueOptions(list) {
+  const map = new Map();
+
+  (list || []).forEach((item) => {
+    const id =
+      item?.id ??
+      item?.brandId ??
+      item?.categoryId ??
+      item?.sizeId ??
+      item?.colorId ??
+      item?.value;
+    if (id === undefined || id === null || id === "") return;
+
+    map.set(String(id), {
+      ...item,
+      id,
+      name:
+        item?.name ||
+        item?.brandName ||
+        item?.categoryName ||
+        item?.sizeValue ||
+        item?.colorName ||
+        item?.label ||
+        item?.title ||
+        item?.text ||
+        "",
+    });
+  });
+
+  return [...map.values()];
+}
+
 function normalizeFilterOptions(res) {
-  const data = res?.data || res;
+  const data = res?.data ?? res;
+  const nestedData = data?.data ?? data;
+  const filterOptions =
+    nestedData?.filterOptions || data?.filterOptions || nestedData;
 
   return {
-    categories:
-      data?.categories ||
-      data?.categoryOptions ||
-      data?.filterOptions?.categories ||
-      [],
-    brands:
-      data?.brands || data?.brandOptions || data?.filterOptions?.brands || [],
-    sizes: data?.sizes || data?.sizeOptions || data?.filterOptions?.sizes || [],
-    colors:
-      data?.colors || data?.colorOptions || data?.filterOptions?.colors || [],
+    categories: uniqueOptions(
+      pickOptionList(
+        nestedData?.categories,
+        nestedData?.categoryOptions,
+        filterOptions?.categories,
+        data?.categories,
+        data?.categoryOptions,
+      ),
+    ),
+    brands: uniqueOptions(
+      pickOptionList(
+        nestedData?.brands,
+        nestedData?.brandOptions,
+        filterOptions?.brands,
+        data?.brands,
+        data?.brandOptions,
+      ),
+    ),
+    sizes: uniqueOptions(
+      pickOptionList(
+        nestedData?.sizes,
+        nestedData?.sizeOptions,
+        filterOptions?.sizes,
+        data?.sizes,
+        data?.sizeOptions,
+      ),
+    ),
+    colors: uniqueOptions(
+      pickOptionList(
+        nestedData?.colors,
+        nestedData?.colorOptions,
+        filterOptions?.colors,
+        data?.colors,
+        data?.colorOptions,
+      ),
+    ),
   };
 }
 
@@ -106,6 +180,25 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
     return () => {
       window.removeEventListener("nemesis_nav_visibility", handleNavVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    function refreshWhenPageBecomesActive() {
+      if (document.visibilityState === "visible") {
+        refreshFilterOptions().catch(() => {});
+      }
+    }
+
+    window.addEventListener("focus", refreshWhenPageBecomesActive);
+    document.addEventListener("visibilitychange", refreshWhenPageBecomesActive);
+
+    return () => {
+      window.removeEventListener("focus", refreshWhenPageBecomesActive);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenPageBecomesActive,
+      );
     };
   }, []);
 
@@ -210,6 +303,21 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
     };
   }, [filterOpen]);
 
+  function applyFilterOptions(options) {
+    setCategories(options.categories);
+    setBrands(options.brands);
+    setSizes(options.sizes);
+    setColors(options.colors);
+  }
+
+  async function refreshFilterOptions() {
+    const optionsRes = await getFilterOptions();
+    const options = normalizeFilterOptions(optionsRes);
+
+    applyFilterOptions(options);
+    return options;
+  }
+
   async function loadInitialData() {
     try {
       setLoading(true);
@@ -221,10 +329,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
       const options = normalizeFilterOptions(optionsRes);
 
-      setCategories(options.categories);
-      setBrands(options.brands);
-      setSizes(options.sizes);
-      setColors(options.colors);
+      applyFilterOptions(options);
 
       onProductsChange?.(normalizeProducts(productsRes));
     } finally {
@@ -243,6 +348,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   }
 
   function openBrands() {
+    refreshFilterOptions().catch(() => {});
     setBrandClosing(false);
     setBrandMounted(true);
   }
@@ -274,6 +380,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   }
 
   function openFilter() {
+    refreshFilterOptions().catch(() => {});
     openedAtRef.current = Date.now();
     setDraftFilters(filters);
     setFilterClosing(false);
