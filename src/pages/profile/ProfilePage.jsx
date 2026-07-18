@@ -9,7 +9,6 @@ import {
   FiPackage,
   FiPhone,
   FiSettings,
-  FiShield,
   FiUser,
 } from "react-icons/fi";
 import AppLoader from "../../components/common/AppLoader";
@@ -69,12 +68,12 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
-}
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
+  }
 
   const defaultAddress =
     addresses.find((x) => x.isDefault) || addresses[0] || null;
@@ -180,8 +179,8 @@ export default function ProfilePage() {
               defaultAddress
                 ? defaultAddress.addressText
                 : addressError
-                ? text.addressesUnavailable
-                : text.addressesEmptyShort
+                  ? text.addressesUnavailable
+                  : text.addressesEmptyShort
             }
             onClick={() => navigate("/profile/settings/addresses")}
           />
@@ -207,9 +206,7 @@ export default function ProfilePage() {
                 <h2 className="text-base font-medium text-zinc-950">
                   {text.logout}
                 </h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  {text.logoutDesc}
-                </p>
+                <p className="mt-1 text-sm text-zinc-400">{text.logoutDesc}</p>
               </div>
             </div>
 
@@ -281,9 +278,7 @@ function ProfileMiniStat({ label, value }) {
         {label}
       </p>
 
-      <p className="mt-1 truncate text-sm font-medium text-white/85">
-        {value}
-      </p>
+      <p className="mt-1 truncate text-sm font-medium text-white/85">{value}</p>
     </div>
   );
 }

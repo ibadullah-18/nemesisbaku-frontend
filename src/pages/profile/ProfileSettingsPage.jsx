@@ -5,7 +5,6 @@ import {
   FiLock,
   FiMapPin,
   FiPackage,
-  FiSettings,
   FiUser,
 } from "react-icons/fi";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -22,6 +21,7 @@ export default function ProfileSettingsPage() {
             type="button"
             onClick={() => navigate("/profile")}
             className="grid h-11 w-11 place-items-center rounded-full bg-white text-zinc-950 shadow-sm transition active:scale-95"
+            aria-label={text.back || "Geri"}
           >
             <FiArrowLeft />
           </button>
@@ -34,7 +34,6 @@ export default function ProfileSettingsPage() {
               {text.profileSettings}
             </h1>
           </div>
-
           <div />
         </header>
 
@@ -42,11 +41,9 @@ export default function ProfileSettingsPage() {
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/45">
             Account
           </p>
-
           <h2 className="mt-3 text-[34px] font-medium tracking-[-0.055em] md:text-[52px]">
             {text.profileSettings}
           </h2>
-
           <p className="mt-3 max-w-[560px] text-sm leading-6 text-white/55">
             {text.profileSettingsPageDesc}
           </p>
@@ -59,21 +56,18 @@ export default function ProfileSettingsPage() {
             desc={text.accountInfoDesc}
             onClick={() => navigate("/profile/settings/account")}
           />
-
           <SettingsRow
             icon={<FiLock />}
             title={text.security}
             desc={text.securityDesc}
             onClick={() => navigate("/profile/settings/security")}
           />
-
           <SettingsRow
             icon={<FiMapPin />}
             title={text.myAddresses}
             desc={text.addressesSettingsDesc}
             onClick={() => navigate("/profile/settings/addresses")}
           />
-
           <SettingsRow
             icon={<FiPackage />}
             title={text.myOrders}
@@ -104,13 +98,11 @@ function SettingsRow({ icon, title, desc, onClick }) {
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950 transition group-hover:bg-white">
           {icon}
         </div>
-
         <div className="min-w-0">
           <h3 className="text-base font-medium text-zinc-950">{title}</h3>
           <p className="mt-1 line-clamp-1 text-sm text-zinc-400">{desc}</p>
         </div>
       </div>
-
       <FiChevronRight className="shrink-0 text-xl text-zinc-300 transition group-hover:translate-x-1 group-hover:text-zinc-950" />
     </button>
   );

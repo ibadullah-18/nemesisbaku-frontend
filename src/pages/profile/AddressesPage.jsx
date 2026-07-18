@@ -21,7 +21,8 @@ const BAKU_CENTER = [40.4093, 49.8671];
 
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -29,6 +30,11 @@ const markerIcon = new L.Icon({
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
+}
+
+function validCoordinate(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 const emptyForm = {
@@ -88,8 +94,8 @@ export default function AddressesPage() {
       id: address.id,
       title: address.title || "",
       addressText: address.addressText || "",
-      latitude: Number(address.latitude || BAKU_CENTER[0]),
-      longitude: Number(address.longitude || BAKU_CENTER[1]),
+      latitude: validCoordinate(address.latitude, BAKU_CENTER[0]),
+      longitude: validCoordinate(address.longitude, BAKU_CENTER[1]),
       buildingNumber: address.buildingNumber || "",
       floor: address.floor || "",
       apartment: address.apartment || "",
@@ -110,6 +116,14 @@ export default function AddressesPage() {
     if (!form.title.trim()) return setError(text.addressTitleRequired);
     if (!form.addressText.trim()) return setError(text.addressTextRequired);
 
+    const latitude = Number(form.latitude);
+    const longitude = Number(form.longitude);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setError(text.mapPointRequired || "Xəritədə düzgün nöqtə seçin.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -118,8 +132,8 @@ export default function AddressesPage() {
       const body = {
         title: form.title.trim(),
         addressText: form.addressText.trim(),
-        latitude: Number(form.latitude),
-        longitude: Number(form.longitude),
+        latitude,
+        longitude,
         buildingNumber: form.buildingNumber.trim(),
         floor: form.floor.trim(),
         apartment: form.apartment.trim(),
@@ -172,12 +186,12 @@ export default function AddressesPage() {
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
-}
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
+  }
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       {saving && <AppLoader text={text.saving} />}
@@ -278,13 +292,18 @@ export default function AddressesPage() {
                     </p>
 
                     <p className="mt-2 text-xs font-medium text-zinc-400">
-                      {[address.buildingNumber, address.floor, address.apartment]
+                      {[
+                        address.buildingNumber,
+                        address.floor,
+                        address.apartment,
+                      ]
                         .filter(Boolean)
                         .join(" • ")}
                     </p>
 
                     <p className="mt-3 text-xs font-medium text-zinc-400">
-                      {text.selectedMapPoint}: {Number(address.latitude).toFixed(6)},{" "}
+                      {text.selectedMapPoint}:{" "}
+                      {Number(address.latitude).toFixed(6)},{" "}
                       {Number(address.longitude).toFixed(6)}
                     </p>
                   </div>
@@ -454,13 +473,16 @@ function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
 
             <div className="aspect-square overflow-hidden rounded-[18px] border border-zinc-100 bg-zinc-100">
               <MapContainer
-                center={[form.latitude || BAKU_CENTER[0], form.longitude || BAKU_CENTER[1]]}
+                center={[
+                  form.latitude || BAKU_CENTER[0],
+                  form.longitude || BAKU_CENTER[1],
+                ]}
                 zoom={12}
                 scrollWheelZoom={true}
                 className="h-full w-full"
               >
                 <TileLayer
-                  attribution='&copy; OpenStreetMap'
+                  attribution="&copy; OpenStreetMap"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
@@ -481,7 +503,8 @@ function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
               </p>
 
               <p className="mt-1 text-sm font-medium text-zinc-950">
-                {Number(form.latitude).toFixed(6)}, {Number(form.longitude).toFixed(6)}
+                {Number(form.latitude).toFixed(6)},{" "}
+                {Number(form.longitude).toFixed(6)}
               </p>
 
               <p className="mt-2 text-xs leading-5 text-zinc-400">

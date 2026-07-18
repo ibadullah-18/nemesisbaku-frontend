@@ -9,10 +9,13 @@ import {
   FiMenu,
   FiLogIn,
   FiChevronDown,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { FaHeart, FaShoppingBag, FaUser } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
+import AppLoader from "../common/AppLoader";
+import PageRubberEffect from "../common/PageRubberEffect";
 
 function BrandLogo({ logoUrl, brandName, className = "" }) {
   if (!logoUrl) {
@@ -41,15 +44,154 @@ export default function Navbar() {
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuClosing, setMenuClosing] = useState(false);
   const [navbarVisible, setNavbarVisible] = useState(true);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(getAccessToken()));
   const [basketCount, setBasketCount] = useState(0);
 
   const lastScrollY = useRef(0);
+  const navbarRef = useRef(null);
+  const menuMountedRef = useRef(false);
+  const pullRefreshingRef = useRef(false);
+  const pullRefreshTimerRef = useRef(null);
+  const suppressClickUntilRef = useRef(0);
+  const pullGestureRef = useRef({
+    active: false,
+    startX: 0,
+    startY: 0,
+    distance: 0,
+  });
 
   useEffect(() => {
     loadStoreInfo();
     checkAuth();
+  }, []);
+
+  useEffect(() => {
+    menuMountedRef.current = menuMounted;
+  }, [menuMounted]);
+
+  useEffect(() => {
+    const navbar = navbarRef.current;
+    if (!navbar) return undefined;
+
+    const refreshTrigger = 74;
+
+    function resetGesture() {
+      pullGestureRef.current = {
+        active: false,
+        startX: 0,
+        startY: 0,
+        distance: 0,
+      };
+    }
+
+    function handleTouchStart(event) {
+      if (
+        window.innerWidth >= 768 ||
+        window.scrollY > 1 ||
+        menuMountedRef.current ||
+        pullRefreshingRef.current ||
+        document.body.dataset.nemesisFilterOpen === "true" ||
+        document.body.dataset.nemesisAppLoading === "true"
+      ) {
+        resetGesture();
+        return;
+      }
+
+      const touch = event.touches[0];
+      if (!touch) return;
+
+      pullGestureRef.current = {
+        active: true,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        distance: 0,
+      };
+    }
+
+    function handleTouchMove(event) {
+      const gesture = pullGestureRef.current;
+      const touch = event.touches[0];
+
+      if (!gesture.active || !touch) return;
+
+      const deltaX = touch.clientX - gesture.startX;
+      const deltaY = touch.clientY - gesture.startY;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        resetGesture();
+        setPullDistance(0);
+        return;
+      }
+
+      if (deltaY <= 0) {
+        setPullDistance(0);
+        return;
+      }
+
+      event.preventDefault();
+
+      const resistedDistance = Math.min(
+        112,
+        deltaY * 0.4 + Math.sqrt(deltaY) * 1.1,
+      );
+
+      gesture.distance = resistedDistance;
+      setPullDistance(resistedDistance);
+
+      if (resistedDistance > 7) {
+        suppressClickUntilRef.current = Date.now() + 550;
+      }
+    }
+
+    function finishGesture() {
+      const shouldRefresh =
+        pullGestureRef.current.active &&
+        pullGestureRef.current.distance >= refreshTrigger;
+
+      resetGesture();
+
+      if (!shouldRefresh) {
+        setPullDistance(0);
+        return;
+      }
+
+      pullRefreshingRef.current = true;
+      setPullDistance(0);
+      setPullRefreshing(true);
+
+      pullRefreshTimerRef.current = window.setTimeout(() => {
+        sessionStorage.removeItem("nemesis_home_loaded_once");
+        window.location.reload();
+      }, 360);
+    }
+
+    function blockAccidentalClick(event) {
+      if (Date.now() < suppressClickUntilRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+
+    navbar.addEventListener("touchstart", handleTouchStart, { passive: true });
+    navbar.addEventListener("touchmove", handleTouchMove, { passive: false });
+    navbar.addEventListener("touchend", finishGesture, { passive: true });
+    navbar.addEventListener("touchcancel", finishGesture, { passive: true });
+    navbar.addEventListener("click", blockAccidentalClick, true);
+
+    return () => {
+      navbar.removeEventListener("touchstart", handleTouchStart);
+      navbar.removeEventListener("touchmove", handleTouchMove);
+      navbar.removeEventListener("touchend", finishGesture);
+      navbar.removeEventListener("touchcancel", finishGesture);
+      navbar.removeEventListener("click", blockAccidentalClick, true);
+
+      if (pullRefreshTimerRef.current) {
+        window.clearTimeout(pullRefreshTimerRef.current);
+      }
+    };
   }, []);
 
   function updateNavbarVisibility(value) {
@@ -58,7 +200,7 @@ export default function Navbar() {
     window.dispatchEvent(
       new CustomEvent("nemesis_nav_visibility", {
         detail: { visible: value },
-      })
+      }),
     );
   }
 
@@ -198,19 +340,48 @@ export default function Navbar() {
     ];
   }, [isLoggedIn, basketCount]);
   function resetHomeFromLogo() {
-  closeMenu();
+    closeMenu();
 
-  window.dispatchEvent(new Event("nemesis_home_reset"));
+    window.dispatchEvent(new Event("nemesis_home_reset"));
 
-  window.scrollTo({
-    top: 0,
-    left: 0,
-    behavior: "smooth",
-  });
-}
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
+  }
 
   return (
     <>
+      <PageRubberEffect />
+
+      <AppLoader
+        visible={pullRefreshing}
+        text={text.loading || "nemesisbaku"}
+      />
+
+      {pullDistance > 2 && !pullRefreshing && (
+        <div
+          className="pointer-events-none fixed inset-x-0 top-[70px] z-[999999] flex justify-center px-4 text-center md:hidden"
+          style={{
+            opacity: Math.min(1, pullDistance / 28),
+            transform: `translateY(${Math.min(24, pullDistance * 0.2)}px)`,
+          }}
+        >
+          <div className="inline-flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs font-extrabold text-zinc-700 shadow-[0_14px_40px_rgba(0,0,0,0.14)]">
+            <FiRefreshCw
+              className="shrink-0 text-[15px]"
+              style={{ transform: `rotate(${pullDistance * 4}deg)` }}
+            />
+            <span className="text-center">
+              {pullDistance >= 74
+                ? "Burax, yenilə"
+                : "Yeniləmək üçün aşağı dart"}
+            </span>
+          </div>
+        </div>
+      )}
+
       <style>
         {`
           @keyframes menuOpen {
@@ -260,6 +431,8 @@ export default function Navbar() {
       </style>
 
       <header
+        ref={navbarRef}
+        data-nemesis-navbar="true"
         className={`sticky top-0 z-40 border-b border-zinc-100 bg-white/92 backdrop-blur-xl transition-all duration-500 ${
           navbarVisible
             ? "translate-y-0 opacity-100"
@@ -317,9 +490,7 @@ export default function Navbar() {
               logoUrl={logoUrl}
               brandName={brandName}
               className={
-                logoUrl
-                  ? "w-[112px] sm:w-[120px]"
-                  : "text-[20px] text-zinc-950"
+                logoUrl ? "w-[112px] sm:w-[120px]" : "text-[20px] text-zinc-950"
               }
             />
           </NavLink>
@@ -415,9 +586,7 @@ export default function Navbar() {
                   logoUrl={logoUrl}
                   brandName={brandName}
                   className={
-                    logoUrl
-                      ? "w-[122px]"
-                      : "text-[24px] text-zinc-950"
+                    logoUrl ? "w-[122px]" : "text-[24px] text-zinc-950"
                   }
                 />
               </NavLink>

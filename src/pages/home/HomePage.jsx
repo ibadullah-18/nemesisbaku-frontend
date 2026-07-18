@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import {
-  FiChevronRight,
-  FiChevronUp,
-  FiImage,
-  FiRefreshCw,
-  FiX,
-} from "react-icons/fi";
+import { FiArrowUp, FiChevronRight, FiImage, FiX } from "react-icons/fi";
 import ProductDiscoveryBar from "../../components/product/ProductDiscoveryBar";
 import ProductCard from "../../components/product/ProductCard";
 import ProductSection from "../../components/home/ProductSection";
@@ -24,14 +18,17 @@ import {
 import { useLanguage } from "../../i18n/LanguageContext";
 
 function normalizeList(res) {
-  const data = res?.data || res;
+  const data = res?.data ?? res;
+  const nestedData = data?.data ?? data;
 
   return (
     data?.items ||
     data?.products ||
     data?.result ||
-    data?.data ||
-    (Array.isArray(data) ? data : [])
+    nestedData?.items ||
+    nestedData?.products ||
+    nestedData?.result ||
+    (Array.isArray(nestedData) ? nestedData : [])
   );
 }
 
@@ -72,18 +69,6 @@ export default function HomePage() {
   const allProductsRef = useRef(null);
   const errorTimerRef = useRef(null);
   const ignoreDiscoveryChangesRef = useRef(true);
-  const rubberSurfaceRef = useRef(null);
-  const rubberOffsetRef = useRef(0);
-  const rubberGestureRef = useRef({
-    active: false,
-    mode: null,
-    startX: 0,
-    startY: 0,
-    lastX: 0,
-    lastY: 0,
-  });
-  const rubberReleaseTimerRef = useRef(null);
-  const refreshTimerRef = useRef(null);
 
   const [campaigns, setCampaigns] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -98,52 +83,29 @@ export default function HomePage() {
   const [closingBannerPopup, setClosingBannerPopup] = useState(false);
 
   const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(
     !sessionStorage.getItem("nemesis_home_loaded_once"),
   );
   const [moreLoading, setMoreLoading] = useState(false);
 
-  const [descLines, setDescLines] = useState(3);
-  const [isPhone, setIsPhone] = useState(false);
-
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const [toast, setToast] = useState("");
   const [toastClosing, setToastClosing] = useState(false);
-  const [rubberOffset, setRubberOffset] = useState(0);
-  const [rubberDragging, setRubberDragging] = useState(false);
-  const [pullRefreshing, setPullRefreshing] = useState(false);
-  const [pullRefreshEnabled, setPullRefreshEnabled] = useState(false);
-  const [pullIndicatorTop, setPullIndicatorTop] = useState(82);
   const activeBanner = useMemo(() => {
     return banners.find((banner) => banner?.imageUrl) || null;
   }, [banners]);
 
   const sliderCampaigns = campaigns;
 
-  const descStep = isPhone ? 5 : 3;
   const descHasText = Boolean(text.allProductsDesc);
-  const descCanExpand = descHasText && descLines < 30;
   const HOME_LOADED_KEY = "nemesis_home_loaded_once";
   const MIN_LOADER_TIME = 750;
-  const PULL_REFRESH_TRIGGER = 74;
 
   useEffect(() => {
     loadHome();
     trackVisit("/").catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    function syncScreen() {
-      const phone = window.innerWidth < 768;
-      setIsPhone(phone);
-      setDescLines(phone ? 5 : 3);
-    }
-
-    syncScreen();
-    window.addEventListener("resize", syncScreen);
-
-    return () => window.removeEventListener("resize", syncScreen);
   }, []);
 
   useEffect(() => {
@@ -156,261 +118,6 @@ export default function HomePage() {
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    const surface = rubberSurfaceRef.current;
-    if (!surface || loading) return;
-
-    const root = document.documentElement;
-    const body = document.body;
-    const previousRootOverscroll = root.style.overscrollBehaviorY;
-    const previousBodyOverscroll = body.style.overscrollBehaviorY;
-    const navbarSelector =
-      "header, nav, [data-navbar], [data-nemesis-navbar], [data-brand-bar], .navbar";
-
-    root.style.overscrollBehaviorY = "none";
-    body.style.overscrollBehaviorY = "none";
-
-    function updateRubberOffset(value) {
-      rubberOffsetRef.current = value;
-      setRubberOffset(value);
-    }
-
-    function pageIsAtTop() {
-      return window.scrollY <= 1;
-    }
-
-    function pageIsAtBottom() {
-      const pageHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight,
-      );
-
-      return Math.ceil(window.scrollY + window.innerHeight) >= pageHeight - 1;
-    }
-
-    function filterModalIsOpen() {
-      return document.body.dataset.nemesisFilterOpen === "true";
-    }
-
-    function getNavbarBottom() {
-      const elements = [...document.querySelectorAll(navbarSelector)];
-      const visibleBottoms = elements
-        .map((element) => element.getBoundingClientRect())
-        .filter(
-          (rect) =>
-            rect.height > 0 &&
-            rect.bottom > 0 &&
-            rect.top < window.innerHeight * 0.45,
-        )
-        .map((rect) => rect.bottom);
-
-      return visibleBottoms.length > 0 ? Math.max(64, ...visibleBottoms) : 72;
-    }
-
-    function touchStartedFromNavbar(target, clientY, navbarBottom) {
-      const targetIsInsideNavbar =
-        target instanceof Element && Boolean(target.closest(navbarSelector));
-
-      return targetIsInsideNavbar || clientY <= navbarBottom + 8;
-    }
-
-    function handleTouchStart(event) {
-      if (
-        window.innerWidth >= 768 ||
-        showBannerPopup ||
-        filterModalIsOpen() ||
-        refreshTimerRef.current
-      ) {
-        return;
-      }
-
-      const touch = event.touches[0];
-      if (!touch) return;
-
-      const atTop = pageIsAtTop();
-      const atBottom = pageIsAtBottom();
-      const navbarBottom = getNavbarBottom();
-      const fromNavbar = touchStartedFromNavbar(
-        event.target,
-        touch.clientY,
-        navbarBottom,
-      );
-
-      rubberGestureRef.current = {
-        active: true,
-        mode: atTop
-          ? fromNavbar
-            ? "top-refresh"
-            : "top-rubber"
-          : atBottom
-            ? "bottom"
-            : "watch",
-        startX: touch.clientX,
-        startY: touch.clientY,
-        lastX: touch.clientX,
-        lastY: touch.clientY,
-      };
-
-      setPullRefreshEnabled(atTop && fromNavbar);
-      setPullIndicatorTop(Math.max(72, navbarBottom + 10));
-    }
-
-    function handleTouchMove(event) {
-      const gesture = rubberGestureRef.current;
-      const touch = event.touches[0];
-
-      if (!gesture.active || !touch) return;
-
-      if (filterModalIsOpen()) {
-        rubberGestureRef.current.active = false;
-        setRubberDragging(false);
-        setPullRefreshEnabled(false);
-        updateRubberOffset(0);
-        return;
-      }
-
-      if (gesture.mode === "watch") {
-        const movingDown = touch.clientY > gesture.lastY;
-        const movingUp = touch.clientY < gesture.lastY;
-
-        gesture.lastX = touch.clientX;
-        gesture.lastY = touch.clientY;
-
-        if (pageIsAtTop() && movingDown) {
-          gesture.mode = "top-rubber";
-          gesture.startX = touch.clientX;
-          gesture.startY = touch.clientY;
-          setPullRefreshEnabled(false);
-        } else if (pageIsAtBottom() && movingUp) {
-          gesture.mode = "bottom";
-          gesture.startX = touch.clientX;
-          gesture.startY = touch.clientY;
-        }
-
-        return;
-      }
-
-      const deltaX = touch.clientX - gesture.startX;
-      const deltaY = touch.clientY - gesture.startY;
-      const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
-
-      if (isHorizontal) {
-        rubberGestureRef.current.active = false;
-        setRubberDragging(false);
-        setPullRefreshEnabled(false);
-        updateRubberOffset(0);
-        return;
-      }
-
-      const isTopPull = gesture.mode.startsWith("top-") && deltaY > 0;
-      const isBottomPull = gesture.mode === "bottom" && deltaY < 0;
-
-      if (!isTopPull && !isBottomPull) return;
-
-      event.preventDefault();
-      setRubberDragging(true);
-
-      const rawDistance = Math.abs(deltaY);
-      const resistedDistance = Math.min(
-        gesture.mode.startsWith("top-") ? 116 : 48,
-        rawDistance * 0.4 + Math.sqrt(rawDistance) * 1.1,
-      );
-
-      updateRubberOffset(
-        gesture.mode.startsWith("top-") ? resistedDistance : -resistedDistance,
-      );
-    }
-
-    function finishTouchGesture() {
-      const gesture = rubberGestureRef.current;
-      if (!gesture.active) return;
-
-      const shouldRefresh =
-        gesture.mode === "top-refresh" &&
-        rubberOffsetRef.current >= PULL_REFRESH_TRIGGER;
-
-      rubberGestureRef.current = {
-        active: false,
-        mode: null,
-        startX: 0,
-        startY: 0,
-        lastX: 0,
-        lastY: 0,
-      };
-
-      setRubberDragging(false);
-
-      if (shouldRefresh) {
-        setPullRefreshing(true);
-        updateRubberOffset(58);
-
-        refreshTimerRef.current = window.setTimeout(() => {
-          window.location.reload();
-        }, 520);
-
-        return;
-      }
-
-      setPullRefreshEnabled(false);
-      updateRubberOffset(0);
-    }
-
-    function handleWheel(event) {
-      if (window.innerWidth < 768 || showBannerPopup || filterModalIsOpen()) {
-        return;
-      }
-
-      const pullingPastTop = pageIsAtTop() && event.deltaY < 0;
-      const pullingPastBottom = pageIsAtBottom() && event.deltaY > 0;
-
-      if (!pullingPastTop && !pullingPastBottom) return;
-
-      const strength = Math.min(
-        34,
-        8 + Math.sqrt(Math.abs(event.deltaY)) * 2.2,
-      );
-
-      setRubberDragging(false);
-      updateRubberOffset(pullingPastTop ? strength : -strength);
-
-      window.clearTimeout(rubberReleaseTimerRef.current);
-      rubberReleaseTimerRef.current = window.setTimeout(() => {
-        updateRubberOffset(0);
-      }, 90);
-    }
-
-    function resetRubberOnResize() {
-      rubberGestureRef.current.active = false;
-      setRubberDragging(false);
-      setPullRefreshEnabled(false);
-      updateRubberOffset(0);
-    }
-
-    window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", finishTouchGesture, { passive: true });
-    window.addEventListener("touchcancel", finishTouchGesture, {
-      passive: true,
-    });
-    window.addEventListener("wheel", handleWheel, { passive: true });
-    window.addEventListener("resize", resetRubberOnResize);
-
-    return () => {
-      root.style.overscrollBehaviorY = previousRootOverscroll;
-      body.style.overscrollBehaviorY = previousBodyOverscroll;
-
-      window.clearTimeout(rubberReleaseTimerRef.current);
-      window.clearTimeout(refreshTimerRef.current);
-
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", finishTouchGesture);
-      window.removeEventListener("touchcancel", finishTouchGesture);
-      window.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("resize", resetRubberOnResize);
-    };
-  }, [loading, showBannerPopup]);
 
   useEffect(() => {
     if (!activeBanner?.id) return;
@@ -458,25 +165,15 @@ export default function HomePage() {
   }, [showBannerPopup]);
 
   useEffect(() => {
-    const node = allProductsRef.current;
-    if (!node || products.length === 0 || allProductsVisible) return;
+    if (products.length === 0 || allProductsVisible) return undefined;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setAllProductsVisible(true);
-          observer.disconnect();
-        }
-      },
-      {
-        threshold: 0.16,
-        rootMargin: "0px 0px -70px 0px",
-      },
-    );
+    // Kartların görünməsi IntersectionObserver-dən asılı qalmır. Bəzi mobil
+    // brauzerlərdə observer gecikəndə link yaranır, amma kart opacity: 0 qalırdı.
+    const revealTimer = window.setTimeout(() => {
+      setAllProductsVisible(true);
+    }, 40);
 
-    observer.observe(node);
-
-    return () => observer.disconnect();
+    return () => window.clearTimeout(revealTimer);
   }, [products.length, allProductsVisible]);
 
   useEffect(() => {
@@ -550,6 +247,11 @@ export default function HomePage() {
   async function loadHome() {
     const shouldShowLoader = !sessionStorage.getItem(HOME_LOADED_KEY);
     const startedAt = Date.now();
+    const standardPageSize = getProductPageSize();
+    const restoringProduct = Boolean(
+      sessionStorage.getItem("nemesis_return_product_id"),
+    );
+    const initialPageSize = restoringProduct ? 60 : standardPageSize;
 
     try {
       if (shouldShowLoader) {
@@ -566,16 +268,22 @@ export default function HomePage() {
           getActiveHomeSections().catch(() => []),
           getProducts({
             page: 1,
-            pageSize: sessionStorage.getItem("nemesis_return_product_id")
-              ? 60
-              : getProductPageSize(),
+            pageSize: initialPageSize,
           }).catch(() => []),
         ]);
+
+      const initialProducts = uniqueById(normalizeList(productsRes));
 
       setCampaigns(uniqueById(normalizeList(campaignRes)));
       setBanners(uniqueById(normalizeList(bannerRes)));
       setHomeSections(uniqueById(normalizeList(homeSectionsRes)));
-      setProducts(uniqueById(normalizeList(productsRes)));
+      setProducts(initialProducts);
+      setPage(
+        restoringProduct
+          ? Math.max(1, Math.ceil(initialProducts.length / standardPageSize))
+          : 1,
+      );
+      setHasMore(initialProducts.length >= initialPageSize);
       setFilterActive(false);
       ignoreDiscoveryChangesRef.current = true;
 
@@ -606,14 +314,16 @@ export default function HomePage() {
       setMoreLoading(true);
 
       const nextPage = page + 1;
+      const pageSize = getProductPageSize();
       const res = await getProducts({
         page: nextPage,
-        pageSize: getProductPageSize(),
+        pageSize,
       });
       const newProducts = normalizeList(res);
 
       setProducts((prev) => uniqueById([...prev, ...newProducts]));
       setPage(nextPage);
+      setHasMore(newProducts.length >= pageSize);
 
       setTimeout(() => {
         setAllProductsVisible(true);
@@ -633,6 +343,7 @@ export default function HomePage() {
     setFilterActive(true);
     setProducts(uniqueById(list));
     setPage(1);
+    setHasMore(false);
     setAllProductsVisible(false);
 
     setTimeout(() => {
@@ -644,10 +355,6 @@ export default function HomePage() {
       });
     }, 80);
   }
-  function increaseDescLines() {
-    setDescLines((prev) => prev + descStep);
-  }
-
   function scrollToTop() {
     window.scrollTo({
       top: 0,
@@ -657,7 +364,7 @@ export default function HomePage() {
 
   function getProductPageSize() {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
-      return 10; // telefon: 5 sıra x 2 məhsul
+      return 6; // telefon: 3 sıra x 2 məhsul
     }
 
     return 12; // komputer/planset: 3 sıra x 4 məhsul
@@ -709,6 +416,17 @@ export default function HomePage() {
             }
           }
 
+          @keyframes homeProductReveal {
+            from {
+              opacity: 0;
+              transform: translateY(22px) scale(0.985);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+
           @keyframes toastIn {
             from {
               opacity: 0;
@@ -742,75 +460,14 @@ export default function HomePage() {
             }
           }
 
-          @keyframes scrollTopOut {
-            from {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
-            to {
-              opacity: 0;
-              transform: translateY(16px) scale(0.92);
-            }
+          @keyframes scrollTopArrow {
+            0%, 100% { transform: translateY(2px); }
+            50% { transform: translateY(-3px); }
           }
         `}
       </style>
 
-      {isPhone &&
-        pullRefreshEnabled &&
-        (rubberOffset > 2 || pullRefreshing) && (
-          <div
-            className="pointer-events-none fixed left-1/2 z-[99980] flex items-center gap-2 rounded-full bg-zinc-950 px-4 py-2.5 text-xs font-extrabold text-white shadow-[0_14px_40px_rgba(0,0,0,0.24)]"
-            style={{
-              top: `${pullIndicatorTop}px`,
-              opacity: pullRefreshing
-                ? 1
-                : Math.min(1, Math.max(0.25, rubberOffset / 48)),
-              transform: `translate(-50%, ${Math.min(
-                12,
-                Math.max(0, rubberOffset * 0.1),
-              )}px) scale(${pullRefreshing ? 1 : 0.94 + Math.min(0.06, rubberOffset / 900)})`,
-              transition: rubberDragging
-                ? "opacity 80ms linear"
-                : "opacity 260ms ease, transform 420ms cubic-bezier(0.22,1,0.36,1)",
-            }}
-          >
-            <FiRefreshCw
-              className={
-                pullRefreshing ? "animate-spin text-base" : "text-base"
-              }
-              style={
-                pullRefreshing
-                  ? undefined
-                  : {
-                      transform: `rotate(${Math.min(
-                        260,
-                        (rubberOffset / PULL_REFRESH_TRIGGER) * 260,
-                      )}deg)`,
-                    }
-              }
-            />
-
-            <span>
-              {pullRefreshing
-                ? "Yenilənir..."
-                : rubberOffset >= PULL_REFRESH_TRIGGER
-                  ? "Burax, yenilə"
-                  : "Yeniləmək üçün aşağı dart"}
-            </span>
-          </div>
-        )}
-
-      <div
-        ref={rubberSurfaceRef}
-        className="relative min-h-screen bg-[#fafafa]"
-        style={{
-          transform: `translate3d(0, ${rubberOffset}px, 0)`,
-          transition: rubberDragging
-            ? "none"
-            : "transform 520ms cubic-bezier(0.22,1,0.36,1)",
-          willChange: rubberOffset !== 0 ? "transform" : "auto",
-        }}
-      >
+      <div className="relative min-h-screen bg-[#fafafa]">
         <div className="relative z-30 animate-[softHomeIn_0.45s_ease_both]">
           <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
         </div>
@@ -854,12 +511,10 @@ export default function HomePage() {
             <div
               className="mb-5 flex items-end justify-between gap-4"
               style={{
-                opacity: allProductsVisible ? 1 : 0,
-                transform: allProductsVisible
-                  ? "translateY(0) scale(1)"
-                  : "translateY(20px) scale(0.985)",
-                transition:
-                  "opacity 0.65s ease, transform 0.65s cubic-bezier(0.22,1,0.36,1)",
+                opacity: 1,
+                visibility: "visible",
+                animation:
+                  "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) both",
               }}
             >
               <div className="w-full">
@@ -874,12 +529,7 @@ export default function HomePage() {
                 {descHasText && (
                   <div className="mt-2 max-w-[620px]">
                     <div className="relative overflow-hidden">
-                      <p
-                        className="text-sm leading-6 text-zinc-600 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{
-                          maxHeight: `${descLines * 24}px`,
-                        }}
-                      >
+                      <p className="text-sm leading-6 text-zinc-600">
                         {text.allProductsDesc}
                       </p>
                     </div>
@@ -897,11 +547,10 @@ export default function HomePage() {
                     key={product.id || `product-wrap-${index}`}
                     data-home-product-id={product.id}
                     style={{
-                      opacity: allProductsVisible ? 1 : 0,
-                      transform: allProductsVisible
-                        ? "translateY(0) scale(1)"
-                        : "translateY(22px) scale(0.985)",
-                      transition: `opacity 0.58s ease ${delay}s, transform 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
+                      opacity: 1,
+                      visibility: "visible",
+                      backfaceVisibility: "hidden",
+                      animation: `homeProductReveal 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
                     }}
                   >
                     <ProductCard product={product} />
@@ -910,16 +559,14 @@ export default function HomePage() {
               })}
             </div>
 
-            {products.length >= getProductPageSize() && (
+            {!filterActive && hasMore && (
               <div
                 className="mt-8 flex justify-center"
                 style={{
-                  opacity: allProductsVisible ? 1 : 0,
-                  transform: allProductsVisible
-                    ? "translateY(0)"
-                    : "translateY(18px)",
-                  transition:
-                    "opacity 0.6s ease 0.5s, transform 0.6s cubic-bezier(0.22,1,0.36,1) 0.5s",
+                  opacity: 1,
+                  visibility: "visible",
+                  animation:
+                    "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both",
                 }}
               >
                 <button
@@ -932,23 +579,39 @@ export default function HomePage() {
                 </button>
               </div>
             )}
+
+            {showScrollTop && (
+              <div className="mt-9 flex justify-center pb-2">
+                <button
+                  type="button"
+                  onClick={scrollToTop}
+                  className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-zinc-200 bg-white p-2 pr-5 text-left text-zinc-950 shadow-[0_16px_45px_rgba(0,0,0,0.08)] transition duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_22px_55px_rgba(0,0,0,0.12)] active:scale-[0.97]"
+                  style={{
+                    animation:
+                      "scrollTopIn 0.42s cubic-bezier(0.22,1,0.36,1) both",
+                  }}
+                  aria-label={text.backToTop || "Yuxarı qalx"}
+                >
+                  <span className="pointer-events-none absolute inset-0 translate-y-full bg-gradient-to-t from-zinc-100 to-transparent transition-transform duration-500 group-hover:translate-y-0" />
+
+                  <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-zinc-950 text-white shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+                    <FiArrowUp className="text-xl animate-[scrollTopArrow_1.7s_ease-in-out_infinite]" />
+                  </span>
+
+                  <span className="relative flex flex-col">
+                    <span className="text-[9px] font-extrabold uppercase tracking-[0.22em] text-zinc-400">
+                      nemesisbaku
+                    </span>
+                    <span className="mt-0.5 text-sm font-extrabold">
+                      {text.backToTop || "Yuxarı qalx"}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>
-
-      {showScrollTop && (
-        <button
-          type="button"
-          onClick={scrollToTop}
-          className="fixed bottom-5 right-4 z-[99990] grid h-12 w-12 place-items-center rounded-full bg-zinc-950 text-white shadow-[0_18px_50px_rgba(0,0,0,0.24)] ring-1 ring-white/20 transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.94] md:bottom-7 md:right-7 md:h-14 md:w-14"
-          style={{
-            animation: "scrollTopIn 0.36s cubic-bezier(0.22,1,0.36,1) both",
-          }}
-          aria-label="Yuxarı qalx"
-        >
-          <FiChevronUp className="text-2xl" />
-        </button>
-      )}
 
       {toast && (
         <div

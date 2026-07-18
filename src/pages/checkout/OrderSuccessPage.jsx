@@ -4,7 +4,9 @@ import { FiCheck, FiHome, FiPackage } from "react-icons/fi";
 import { useLanguage } from "../../i18n/LanguageContext";
 
 function money(value) {
-  return Number(value || 0).toFixed(2).replace(".00", "");
+  return Number(value || 0)
+    .toFixed(2)
+    .replace(".00", "");
 }
 
 export default function OrderSuccessPage() {
@@ -20,7 +22,7 @@ export default function OrderSuccessPage() {
   }, []);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
   return (
@@ -30,7 +32,7 @@ export default function OrderSuccessPage() {
           <FiCheck />
         </div>
 
-        <p className="mt-6 text-[15px] font-medium  tracking-[0.17em] text-zinc-400">
+        <p className="mt-6 text-[15px] font-medium tracking-[0.17em] text-zinc-400">
           nemesisbaku
         </p>
 
@@ -45,7 +47,6 @@ export default function OrderSuccessPage() {
         {order && (
           <div className="mt-6 rounded-[18px] bg-zinc-50 p-4 text-left">
             <Row label={text.orderNumber} value={order.orderNumber || "-"} />
-
             <Row
               label={text.productsTotal}
               value={`${money(order.originalTotalPrice || order.totalProductPrice)} ₼`}
@@ -59,27 +60,32 @@ export default function OrderSuccessPage() {
               />
             )}
 
-            <Row
-              label={text.promoDiscount}
-              value={`-${money(order.promoDiscountAmount)} ₼`}
-              danger
-            />
+            {Number(order.promoDiscountAmount || 0) > 0 && (
+              <Row
+                label={text.promoDiscount}
+                value={`-${money(order.promoDiscountAmount)} ₼`}
+                danger
+              />
+            )}
 
             <Row
               label={text.delivery}
               value={`${money(order.deliveryPrice)} ₼`}
             />
 
-            {order.deliveryDistanceKm ? (
+            {Number(order.deliveryDistanceKm || 0) > 0 && (
               <Row
                 label={text.deliveryDistance}
                 value={`${money(order.deliveryDistanceKm)} km`}
               />
-            ) : null}
+            )}
 
             <div className="my-3 h-px bg-zinc-200/70" />
-
-            <Row label={text.total} value={`${money(order.totalPrice)} ₼`} big />
+            <Row
+              label={text.total}
+              value={`${money(order.totalPrice)} ₼`}
+              big
+            />
           </div>
         )}
 
@@ -120,7 +126,7 @@ export default function OrderSuccessPage() {
   );
 }
 
-function Row({ label, value, danger, big }) {
+function Row({ label, value, danger = false, big = false }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <p className="text-sm text-zinc-500">{label}</p>

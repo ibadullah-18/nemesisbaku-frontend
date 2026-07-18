@@ -22,6 +22,7 @@ export default function AccountSettingsPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
   const fileRef = useRef(null);
+  const previewUrlRef = useRef("");
 
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({
@@ -52,6 +53,10 @@ export default function AccountSettingsPage() {
       clearTimeout(toastTimer.current);
       clearTimeout(toastCloseTimer.current);
       clearTimeout(toastStartTimer.current);
+
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
     };
   }, []);
 
@@ -79,6 +84,11 @@ export default function AccountSettingsPage() {
       const data = unwrap(res);
       setProfile(data);
 
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = "";
+      }
+
       setForm({
         fullName: data?.fullName || "",
         phoneNumber: normalizePhone(data?.phoneNumber || ""),
@@ -103,8 +113,15 @@ export default function AccountSettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = previewUrl;
+
     update("profileImage", file);
-    update("preview", URL.createObjectURL(file));
+    update("preview", previewUrl);
   }
 
   async function save(e) {
@@ -130,23 +147,28 @@ export default function AccountSettingsPage() {
         profileImage: form.profileImage,
       });
 
-      showToast(text.profileSaved || "Profil məlumatları yadda saxlanıldı.", "success");
+      showToast(
+        text.profileSaved || "Profil məlumatları yadda saxlanıldı.",
+        "success",
+      );
       await loadProfile();
       window.dispatchEvent(new Event("nemesis_auth_changed"));
     } catch (err) {
-      showToast(err.message || text.profileSaveError || "Profil yadda saxlanmadı.");
+      showToast(
+        err.message || text.profileSaveError || "Profil yadda saxlanmadı.",
+      );
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
-}
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">

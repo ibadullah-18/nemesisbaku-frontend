@@ -41,11 +41,11 @@ export default function OrderDetailsPage() {
 
   const status = useMemo(
     () => getOrderStatus(order?.status, text),
-    [order?.status, text]
+    [order?.status, text],
   );
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     loadOrder();
   }, [id]);
 
@@ -64,11 +64,11 @@ export default function OrderDetailsPage() {
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
   }
 
   if (!order) {
@@ -120,123 +120,129 @@ export default function OrderDetailsPage() {
                 </span>
               </div>
 
-<div className="mt-7">
-  {isBadStatus ? (
-    <div className="flex items-center gap-3 rounded-[16px] bg-red-50 px-4 py-4 text-red-700">
-      <span className="grid h-10 w-10 place-items-center rounded-full bg-red-600 text-white">
-        <FiX />
-      </span>
-      <div>
-        <p className="font-medium">{status.label}</p>
-        <p className="text-sm text-red-600/80">
-          {text.orderStoppedDesc}
-        </p>
-      </div>
-    </div>
-  ) : (
-    <>
-      {/* Desktop / Tablet */}
-      <div className="hidden items-center gap-2 md:flex">
-        {timeline.map((step, index) => {
-          const active = Number(order.status) >= step.status;
-          const current = Number(order.status) === step.status;
-          const Icon = step.icon;
+              <div className="mt-7">
+                {isBadStatus ? (
+                  <div className="flex items-center gap-3 rounded-[16px] bg-red-50 px-4 py-4 text-red-700">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-red-600 text-white">
+                      <FiX />
+                    </span>
+                    <div>
+                      <p className="font-medium">{status.label}</p>
+                      <p className="text-sm text-red-600/80">
+                        {text.orderStoppedDesc}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Desktop / Tablet */}
+                    <div className="hidden items-center gap-2 md:flex">
+                      {timeline.map((step, index) => {
+                        const active = Number(order.status) >= step.status;
+                        const current = Number(order.status) === step.status;
+                        const Icon = step.icon;
 
-          return (
-            <div key={step.status} className="flex flex-1 items-center">
-              <div
-                className={`flex min-h-[112px] flex-1 flex-col items-center justify-center rounded-[16px] border px-3 py-4 text-center transition-all duration-300 ${
-                  active
-                    ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_16px_35px_rgba(0,0,0,0.12)]"
-                    : "border-zinc-100 bg-zinc-50 text-zinc-400"
-                } ${current ? "scale-[1.03]" : ""}`}
-              >
-                <span
-                  className={`grid h-10 w-10 place-items-center rounded-full ${
-                    active ? "bg-white text-zinc-950" : "bg-white"
-                  }`}
-                >
-                  <Icon />
-                </span>
+                        return (
+                          <div
+                            key={step.status}
+                            className="flex flex-1 items-center"
+                          >
+                            <div
+                              className={`flex min-h-[112px] flex-1 flex-col items-center justify-center rounded-[16px] border px-3 py-4 text-center transition-all duration-300 ${
+                                active
+                                  ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_16px_35px_rgba(0,0,0,0.12)]"
+                                  : "border-zinc-100 bg-zinc-50 text-zinc-400"
+                              } ${current ? "scale-[1.03]" : ""}`}
+                            >
+                              <span
+                                className={`grid h-10 w-10 place-items-center rounded-full ${
+                                  active ? "bg-white text-zinc-950" : "bg-white"
+                                }`}
+                              >
+                                <Icon />
+                              </span>
 
-                <p className="mt-3 text-xs font-medium leading-4">
-                  {text.orderStatuses?.[step.key]}
-                </p>
-              </div>
+                              <p className="mt-3 text-xs font-medium leading-4">
+                                {text.orderStatuses?.[step.key]}
+                              </p>
+                            </div>
 
-              {index !== timeline.length - 1 && (
-                <div
-                  className={`mx-2 text-2xl transition ${
-                    Number(order.status) > step.status
-                      ? "text-zinc-950"
-                      : "text-zinc-300"
-                  }`}
-                >
-                  →
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                            {index !== timeline.length - 1 && (
+                              <div
+                                className={`mx-2 text-2xl transition ${
+                                  Number(order.status) > step.status
+                                    ? "text-zinc-950"
+                                    : "text-zinc-300"
+                                }`}
+                              >
+                                →
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
 
-      {/* Mobile */}
-      <div className="md:hidden">
-        {timeline.map((step, index) => {
-          const active = Number(order.status) >= step.status;
-          const current = Number(order.status) === step.status;
-          const Icon = step.icon;
+                    {/* Mobile */}
+                    <div className="md:hidden">
+                      {timeline.map((step, index) => {
+                        const active = Number(order.status) >= step.status;
+                        const current = Number(order.status) === step.status;
+                        const Icon = step.icon;
 
-          return (
-            <div key={step.status} className="relative flex gap-3 pb-5 last:pb-0">
-              {index !== timeline.length - 1 && (
-                <div
-                  className={`absolute left-[17px] top-9 h-full w-px ${
-                    Number(order.status) > step.status
-                      ? "bg-zinc-950"
-                      : "bg-zinc-200"
-                  }`}
-                />
-              )}
+                        return (
+                          <div
+                            key={step.status}
+                            className="relative flex gap-3 pb-5 last:pb-0"
+                          >
+                            {index !== timeline.length - 1 && (
+                              <div
+                                className={`absolute left-[17px] top-9 h-full w-px ${
+                                  Number(order.status) > step.status
+                                    ? "bg-zinc-950"
+                                    : "bg-zinc-200"
+                                }`}
+                              />
+                            )}
 
-              <div
-                className={`relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${
-                  active
-                    ? "border-zinc-950 bg-zinc-950 text-white"
-                    : "border-zinc-200 bg-white text-zinc-400"
-                } ${current ? "scale-110" : ""}`}
-              >
-                <Icon className="text-[15px]" />
-              </div>
+                            <div
+                              className={`relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${
+                                active
+                                  ? "border-zinc-950 bg-zinc-950 text-white"
+                                  : "border-zinc-200 bg-white text-zinc-400"
+                              } ${current ? "scale-110" : ""}`}
+                            >
+                              <Icon className="text-[15px]" />
+                            </div>
 
-              <div
-                className={`flex-1 rounded-[14px] border px-4 py-3 transition ${
-                  current
-                    ? "border-zinc-950 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.06)]"
-                    : "border-zinc-100 bg-white/70"
-                }`}
-              >
-                <p
-                  className={`text-sm font-medium ${
-                    active ? "text-zinc-950" : "text-zinc-400"
-                  }`}
-                >
-                  {text.orderStatuses?.[step.key]}
-                </p>
+                            <div
+                              className={`flex-1 rounded-[14px] border px-4 py-3 transition ${
+                                current
+                                  ? "border-zinc-950 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.06)]"
+                                  : "border-zinc-100 bg-white/70"
+                              }`}
+                            >
+                              <p
+                                className={`text-sm font-medium ${
+                                  active ? "text-zinc-950" : "text-zinc-400"
+                                }`}
+                              >
+                                {text.orderStatuses?.[step.key]}
+                              </p>
 
-                {current && (
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {text.currentStep}
-                  </p>
+                              {current && (
+                                <p className="mt-1 text-xs text-zinc-400">
+                                  {text.currentStep}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  )}
-</div>
             </div>
 
             <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
@@ -296,12 +302,27 @@ export default function OrderDetailsPage() {
               </h2>
 
               <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <Info label={text.customerFullName} value={order.customerFullName} />
-                <Info label={text.customerPhoneNumber} value={order.customerPhoneNumber} />
-                <Info label={text.deliveryDate} value={formatDate(order.deliveryDate)} />
-                <Info label={text.deliveryTimeRange} value={order.deliveryTimeRange} />
+                <Info
+                  label={text.customerFullName}
+                  value={order.customerFullName}
+                />
+                <Info
+                  label={text.customerPhoneNumber}
+                  value={order.customerPhoneNumber}
+                />
+                <Info
+                  label={text.deliveryDate}
+                  value={formatDate(order.deliveryDate)}
+                />
+                <Info
+                  label={text.deliveryTimeRange}
+                  value={order.deliveryTimeRange}
+                />
                 <Info label={text.address} value={order.addressText} wide />
-                <Info label={text.buildingNumber} value={order.buildingNumber} />
+                <Info
+                  label={text.buildingNumber}
+                  value={order.buildingNumber}
+                />
                 <Info label={text.floor} value={order.floor} />
                 <Info label={text.apartment} value={order.apartment} />
                 <Info label={text.note} value={order.note || "-"} wide />
@@ -325,11 +346,13 @@ export default function OrderDetailsPage() {
                 value={`${money(order.deliveryPrice)} ₼`}
               />
 
-              <SummaryRow
-                label={text.promoDiscount}
-                value={`-${money(order.promoDiscountAmount)} ₼`}
-                valueClass="text-red-500"
-              />
+              {Number(order.promoDiscountAmount || 0) > 0 && (
+                <SummaryRow
+                  label={text.promoDiscount}
+                  value={`-${money(order.promoDiscountAmount)} ₼`}
+                  valueClass="text-red-500"
+                />
+              )}
 
               {order.deliveryDistanceKm ? (
                 <SummaryRow
@@ -342,9 +365,7 @@ export default function OrderDetailsPage() {
             <div className="my-5 h-px bg-zinc-100" />
 
             <div className="flex items-end justify-between">
-              <p className="text-sm font-medium text-zinc-500">
-                {text.total}
-              </p>
+              <p className="text-sm font-medium text-zinc-500">{text.total}</p>
 
               <p className="text-[30px] font-medium text-zinc-950">
                 {money(order.totalPrice)} ₼

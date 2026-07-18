@@ -136,7 +136,7 @@ export default function ForgotPasswordPage() {
             email: email.trim(),
           }),
         },
-        false
+        false,
       );
 
       setResendSeconds(60);
@@ -146,8 +146,8 @@ export default function ForgotPasswordPage() {
         getCleanError(
           err,
           text.forgotEmailNotFound ||
-            "Bu email ilə qeydiyyatdan keçmiş hesab tapılmadı."
-        )
+            "Bu email ilə qeydiyyatdan keçmiş hesab tapılmadı.",
+        ),
       );
       return false;
     } finally {
@@ -221,7 +221,7 @@ export default function ForgotPasswordPage() {
             confirmNewPassword,
           }),
         },
-        false
+        false,
       );
 
       navigate("/login", { replace: true });
@@ -230,8 +230,8 @@ export default function ForgotPasswordPage() {
         getCleanError(
           err,
           text.resetPasswordError ||
-            "Şifrə yenilənərkən xəta baş verdi. OTP kodunu yoxlayın."
-        )
+            "Şifrə yenilənərkən xəta baş verdi. OTP kodunu yoxlayın.",
+        ),
       );
     } finally {
       setLoading(false);
@@ -289,9 +289,7 @@ export default function ForgotPasswordPage() {
         {(loading || storeLoading) && (
           <AppLoader
             text={
-              loading
-                ? text.loading || "Yüklənir"
-                : text.loading || "Yüklənir"
+              loading ? text.loading || "Yüklənir" : text.loading || "Yüklənir"
             }
           />
         )}
@@ -307,7 +305,7 @@ export default function ForgotPasswordPage() {
             >
               {toastError}
             </div>,
-            document.body
+            document.body,
           )}
 
         <section className="mx-auto flex w-full max-w-[1180px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px] animate-[forgotCardIn_.45s_cubic-bezier(.22,1,.36,1)_both]">
@@ -373,7 +371,9 @@ export default function ForgotPasswordPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         type="email"
-                        placeholder={text.emailPlaceholder || "example@mail.com"}
+                        placeholder={
+                          text.emailPlaceholder || "example@mail.com"
+                        }
                       />
                     </>
                   )}
@@ -397,7 +397,7 @@ export default function ForgotPasswordPage() {
                           value={code}
                           onChange={(e) =>
                             setCode(
-                              e.target.value.replace(/\D/g, "").slice(0, 6)
+                              e.target.value.replace(/\D/g, "").slice(0, 6),
                             )
                           }
                           inputMode="numeric"
@@ -466,9 +466,7 @@ export default function ForgotPasswordPage() {
                         />
 
                         <AnimatedInput
-                          label={
-                            text.confirmNewPassword || "Yeni şifrə təkrar"
-                          }
+                          label={text.confirmNewPassword || "Yeni şifrə təkrar"}
                           icon={<FiShield />}
                           value={confirmNewPassword}
                           onChange={(e) =>

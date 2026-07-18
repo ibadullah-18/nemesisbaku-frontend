@@ -1,18 +1,29 @@
-import { FiArrowRight, FiBriefcase, FiHeart, FiMail, FiUsers } from "react-icons/fi";
+import {
+  FiArrowRight,
+  FiBriefcase,
+  FiHeart,
+  FiMail,
+  FiUsers,
+} from "react-icons/fi";
+import { useLanguage } from "../../i18n/LanguageContext";
 
-const text = {
+const pageText = {
   az: {
     badge: "KARYERA",
     title: "nemesisbaku komandamıza qoşul",
     desc: "Premium sneaker mədəniyyətini sevən, detallara önəm verən və müştəri təcrübəsini yüksəltmək istəyən insanlarla işləməyə açığıq.",
     culture: "Komanda mədəniyyəti",
-    cultureText: "Minimalist düşüncə, məsuliyyətli yanaşma və premium xidmət standartı.",
+    cultureText:
+      "Minimalist düşüncə, məsuliyyətli yanaşma və premium xidmət standartı.",
     growth: "İnkişaf imkanı",
-    growthText: "Satış, stil məsləhəti, kontent və e-commerce sahəsində real təcrübə.",
+    growthText:
+      "Satış, stil məsləhəti, kontent və e-commerce sahəsində real təcrübə.",
     people: "İnsan yönümlü iş",
-    peopleText: "Müştəri ilə düzgün ünsiyyət və fərdi yanaşma bizim üçün əsasdır.",
+    peopleText:
+      "Müştəri ilə düzgün ünsiyyət və fərdi yanaşma bizim üçün əsasdır.",
     applyTitle: "Müraciət etmək istəyirsiniz?",
-    applyText: "CV və ya qısa məlumatınızı bizə e-mail və ya WhatsApp vasitəsilə göndərin.",
+    applyText:
+      "CV və ya qısa məlumatınızı bizə e-mail və ya WhatsApp vasitəsilə göndərin.",
     apply: "Müraciət et",
     note: "Aktiv vakansiya olmasa belə, uyğun profillər gələcək üçün saxlanılır.",
   },
@@ -21,11 +32,14 @@ const text = {
     title: "Join the nemesisbaku team",
     desc: "We are open to people who love premium sneaker culture, care about details and want to improve customer experience.",
     culture: "Team culture",
-    cultureText: "Minimal thinking, responsible approach and premium service standards.",
+    cultureText:
+      "Minimal thinking, responsible approach and premium service standards.",
     growth: "Growth opportunity",
-    growthText: "Real experience in sales, style consulting, content and e-commerce.",
+    growthText:
+      "Real experience in sales, style consulting, content and e-commerce.",
     people: "People-focused work",
-    peopleText: "Clear communication and personal approach are essential for us.",
+    peopleText:
+      "Clear communication and personal approach are essential for us.",
     applyTitle: "Want to apply?",
     applyText: "Send us your CV or short information by e-mail or WhatsApp.",
     apply: "Apply now",
@@ -34,28 +48,22 @@ const text = {
   ru: {
     badge: "КАРЬЕРА",
     title: "Присоединяйтесь к команде nemesisbaku",
-    desc: "Мы открыты для людей, которые любят premium sneaker-культура, ценят детали и хотят улучшать клиентский опыт.",
+    desc: "Мы открыты для людей, которые любят premium sneaker-культуру, ценят детали и хотят улучшать клиентский опыт.",
     culture: "Командная культура",
-    cultureText: "Минималистичное мышление, ответственность и высокий стандарт сервиса.",
+    cultureText:
+      "Минималистичное мышление, ответственность и высокий стандарт сервиса.",
     growth: "Возможность роста",
-    growthText: "Реальный опыт в продажах, style consulting, контенте и e-commerce.",
+    growthText:
+      "Реальный опыт в продажах, style consulting, контенте и e-commerce.",
     people: "Работа с людьми",
-    peopleText: "Правильная коммуникация и индивидуальный подход для нас важны.",
+    peopleText:
+      "Правильная коммуникация и индивидуальный подход для нас важны.",
     applyTitle: "Хотите подать заявку?",
     applyText: "Отправьте CV или краткую информацию по e-mail или WhatsApp.",
     apply: "Подать заявку",
     note: "Даже если активной вакансии нет, подходящие профили сохраняются на будущее.",
   },
 };
-
-function getLang() {
-  return (
-    localStorage.getItem("language") ||
-    localStorage.getItem("lang") ||
-    localStorage.getItem("nemesis_lang") ||
-    "az"
-  );
-}
 
 function CareerCard({ icon, title, desc, delay }) {
   return (
@@ -66,19 +74,17 @@ function CareerCard({ icon, title, desc, delay }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3eee7] text-xl">
         {icon}
       </div>
-
       <h3 className="mt-5 text-xl font-extrabold tracking-[-0.03em]">
         {title}
       </h3>
-
       <p className="mt-3 text-sm leading-7 text-zinc-600">{desc}</p>
     </div>
   );
 }
 
 export default function CareerPage() {
-  const lang = getLang();
-  const t = text[lang] || text.az;
+  const { lang } = useLanguage();
+  const t = pageText[lang] || pageText.az;
 
   return (
     <section className="min-h-screen bg-[#fafafa] px-4 py-10 text-zinc-950 sm:px-6 md:py-14 lg:px-10">
@@ -88,11 +94,9 @@ export default function CareerPage() {
             <span className="inline-flex rounded-full border border-zinc-300 bg-white px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.28em] text-zinc-600">
               {t.badge}
             </span>
-
             <h1 className="mt-5 max-w-[760px] text-[36px] font-extrabold leading-[1.04] tracking-[-0.05em] sm:text-[50px] lg:text-[66px]">
               {t.title}
             </h1>
-
             <p className="mt-5 max-w-[620px] text-sm leading-7 text-zinc-600 sm:text-base">
               {t.desc}
             </p>
@@ -102,15 +106,12 @@ export default function CareerPage() {
             <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-white/10 text-2xl">
               <FiBriefcase />
             </div>
-
             <h2 className="mt-6 text-2xl font-extrabold tracking-[-0.03em]">
               {t.applyTitle}
             </h2>
-
             <p className="mt-4 text-sm leading-7 text-white/70">
               {t.applyText}
             </p>
-
             <a
               href="mailto:nemesisbaku@gmail.com"
               className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-4 text-[11px] font-extrabold uppercase tracking-[0.18em] text-zinc-950 transition duration-300 hover:-translate-y-1"
@@ -129,14 +130,12 @@ export default function CareerPage() {
             desc={t.cultureText}
             delay={0.1}
           />
-
           <CareerCard
             icon={<FiBriefcase />}
             title={t.growth}
             desc={t.growthText}
             delay={0.2}
           />
-
           <CareerCard
             icon={<FiUsers />}
             title={t.people}
@@ -155,20 +154,12 @@ export default function CareerPage() {
         </div>
       </div>
 
-      <style>
-        {`
-          @keyframes careerFade {
-            from {
-              opacity: 0;
-              transform: translateY(18px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes careerFade {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   );
 }

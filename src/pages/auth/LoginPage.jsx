@@ -137,7 +137,7 @@ export default function LoginPage() {
     if (!isValidEmailOrPhone(emailOrPhone)) {
       showToast(
         text.emailOrPhoneError ||
-          "Email və ya telefon nömrəsini düzgün daxil edin."
+          "Email və ya telefon nömrəsini düzgün daxil edin.",
       );
       return;
     }
@@ -159,7 +159,7 @@ export default function LoginPage() {
             password,
           }),
         },
-        false
+        false,
       );
 
       const accessToken =
@@ -172,7 +172,7 @@ export default function LoginPage() {
 
       if (!accessToken) {
         throw new Error(
-          text.loginError || "Email, telefon və ya şifrə yanlışdır."
+          text.loginError || "Email, telefon və ya şifrə yanlışdır.",
         );
       }
 
@@ -205,7 +205,7 @@ export default function LoginPage() {
           >
             {toastError}
           </div>,
-          document.body
+          document.body,
         )}
 
       <section className="mx-auto flex w-full max-w-[1120px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px]">

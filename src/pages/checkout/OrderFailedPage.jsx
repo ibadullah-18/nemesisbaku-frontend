@@ -19,10 +19,10 @@ export default function OrderFailedPage() {
     } catch {
       return text.orderFailedDefaultReason;
     }
-  }, [location.state, text.orderFailedDefaultReason]);
+  }, [location.state?.reason, text.orderFailedDefaultReason]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
   return (
@@ -32,7 +32,7 @@ export default function OrderFailedPage() {
           <FiX />
         </div>
 
-        <p className="mt-6 text-[15px] font-medium  tracking-[0.17em] text-zinc-400">
+        <p className="mt-6 text-[15px] font-medium tracking-[0.17em] text-zinc-400">
           nemesisbaku
         </p>
 

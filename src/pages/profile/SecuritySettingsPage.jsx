@@ -151,14 +151,14 @@ export default function SecuritySettingsPage() {
       setEmailResendSeconds(60);
       showToast(
         text.otpSent || "Təsdiq kodu email ünvanınıza göndərildi.",
-        "success"
+        "success",
       );
     } catch (err) {
       showToast(
         getCleanError(
           err,
-          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi."
-        )
+          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi.",
+        ),
       );
     } finally {
       setSaving(false);
@@ -171,7 +171,10 @@ export default function SecuritySettingsPage() {
   }
 
   async function verifyChangeEmail() {
-    if (!isValidEmail(emailForm.newEmail) || emailForm.code.trim().length !== 6) {
+    if (
+      !isValidEmail(emailForm.newEmail) ||
+      emailForm.code.trim().length !== 6
+    ) {
       showToast(text.otpRequired || "6 rəqəmli OTP kodunu daxil edin.");
       return;
     }
@@ -181,7 +184,7 @@ export default function SecuritySettingsPage() {
 
       await profileApi.verifyChangeEmail(
         emailForm.newEmail.trim(),
-        emailForm.code.trim()
+        emailForm.code.trim(),
       );
 
       showToast(text.emailChanged || "Email uğurla dəyişdirildi.", "success");
@@ -196,8 +199,8 @@ export default function SecuritySettingsPage() {
       showToast(
         getCleanError(
           err,
-          text.emailVerifyError || "Email təsdiqi zamanı xəta baş verdi."
-        )
+          text.emailVerifyError || "Email təsdiqi zamanı xəta baş verdi.",
+        ),
       );
     } finally {
       setSaving(false);
@@ -219,14 +222,14 @@ export default function SecuritySettingsPage() {
       setPassResendSeconds(60);
       showToast(
         text.otpSent || "Təsdiq kodu email ünvanınıza göndərildi.",
-        "success"
+        "success",
       );
     } catch (err) {
       showToast(
         getCleanError(
           err,
-          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi."
-        )
+          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi.",
+        ),
       );
     } finally {
       setSaving(false);
@@ -266,7 +269,10 @@ export default function SecuritySettingsPage() {
         confirmNewPassword: passForm.confirmNewPassword,
       });
 
-      showToast(text.passwordChanged || "Şifrə uğurla dəyişdirildi.", "success");
+      showToast(
+        text.passwordChanged || "Şifrə uğurla dəyişdirildi.",
+        "success",
+      );
 
       setPassForm({
         code: "",
@@ -279,8 +285,8 @@ export default function SecuritySettingsPage() {
       showToast(
         getCleanError(
           err,
-          text.passwordChangeError || "Şifrə dəyişdirilərkən xəta baş verdi."
-        )
+          text.passwordChangeError || "Şifrə dəyişdirilərkən xəta baş verdi.",
+        ),
       );
     } finally {
       setSaving(false);
@@ -288,32 +294,32 @@ export default function SecuritySettingsPage() {
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
-}
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       {saving && <AppLoader text={text.saving} />}
 
-{toast &&
-  createPortal(
-    <div
-      className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
-        toastType === "success" ? "bg-green-600" : "bg-red-600"
-      } ${
-        toastVisible
-          ? "translate-y-0 scale-100 opacity-100"
-          : "translate-y-5 scale-95 opacity-0"
-      }`}
-    >
-      {toast}
-    </div>,
-    document.body
-  )}
+      {toast &&
+        createPortal(
+          <div
+            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
+              toastType === "success" ? "bg-green-600" : "bg-red-600"
+            } ${
+              toastVisible
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-5 scale-95 opacity-0"
+            }`}
+          >
+            {toast}
+          </div>,
+          document.body,
+        )}
 
       <div className="mx-auto max-w-[920px]">
         <TopBar
@@ -347,9 +353,7 @@ export default function SecuritySettingsPage() {
                 <Input
                   label={text.newEmail || "Yeni email"}
                   value={emailForm.newEmail}
-                  onChange={(v) =>
-                    setEmailForm((p) => ({ ...p, newEmail: v }))
-                  }
+                  onChange={(v) => setEmailForm((p) => ({ ...p, newEmail: v }))}
                   type="email"
                 />
 
@@ -420,7 +424,10 @@ export default function SecuritySettingsPage() {
                 {text.sendOtp || "OTP göndər"}
               </button>
             ) : (
-              <form onSubmit={resetPassword} className="grid gap-4 md:grid-cols-2">
+              <form
+                onSubmit={resetPassword}
+                className="grid gap-4 md:grid-cols-2"
+              >
                 <Input
                   label={text.otpCode || "OTP kodu"}
                   value={passForm.code}

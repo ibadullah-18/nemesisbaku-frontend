@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  FiArrowLeft,
-  FiCheck,
-  FiMapPin,
-  FiNavigation,
-  FiSave,
-} from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiNavigation, FiSave } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import {
   MapContainer,
@@ -40,7 +34,22 @@ function unwrap(res) {
 }
 
 function money(value) {
-  return Number(value || 0).toFixed(2).replace(".00", "");
+  return Number(value || 0)
+    .toFixed(2)
+    .replace(".00", "");
+}
+
+function safeJsonParse(value, fallback) {
+  try {
+    return JSON.parse(value) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function validCoordinate(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 export default function CheckoutPage() {
@@ -110,11 +119,11 @@ export default function CheckoutPage() {
 
   const finalTotal = Math.max(
     0,
-    productTotal + deliveryPrice - Number(promo.discountAmount || 0)
+    productTotal + deliveryPrice - Number(promo.discountAmount || 0),
   );
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     loadPage();
   }, []);
 
@@ -136,12 +145,17 @@ export default function CheckoutPage() {
       setLoading(true);
       setError("");
 
-      const selectedIds = JSON.parse(
-        localStorage.getItem("nemesis_checkout_items") || "[]"
+      const storedSelectedIds = safeJsonParse(
+        localStorage.getItem("nemesis_checkout_items") || "[]",
+        [],
       );
+      const selectedIds = Array.isArray(storedSelectedIds)
+        ? storedSelectedIds
+        : [];
 
-      const promoData = JSON.parse(
-        localStorage.getItem("nemesis_checkout_promo") || "{}"
+      const promoData = safeJsonParse(
+        localStorage.getItem("nemesis_checkout_promo") || "{}",
+        {},
       );
 
       setPromo({
@@ -160,7 +174,7 @@ export default function CheckoutPage() {
       const addressList = addressesRes ? unwrap(addressesRes) : [];
 
       const checkoutItems = (basket?.items || []).filter((item) =>
-        selectedIds.includes(item.id)
+        selectedIds.includes(item.id),
       );
 
       if (checkoutItems.length === 0) {
@@ -184,8 +198,14 @@ export default function CheckoutPage() {
           ? {
               addressTitle: defaultAddress.title || "",
               addressText: defaultAddress.addressText || "",
-              latitude: Number(defaultAddress.latitude || BAKU_CENTER[0]),
-              longitude: Number(defaultAddress.longitude || BAKU_CENTER[1]),
+              latitude: validCoordinate(
+                defaultAddress.latitude,
+                BAKU_CENTER[0],
+              ),
+              longitude: validCoordinate(
+                defaultAddress.longitude,
+                BAKU_CENTER[1],
+              ),
               buildingNumber: defaultAddress.buildingNumber || "",
               floor: defaultAddress.floor || "",
               apartment: defaultAddress.apartment || "",
@@ -221,8 +241,7 @@ export default function CheckoutPage() {
           Number(data?.deliveryDistanceKm) ||
           Number(data?.distance) ||
           0,
-        deliveryPrice:
-          Number(data?.deliveryPrice) || Number(data?.price) || 0,
+        deliveryPrice: Number(data?.deliveryPrice) || Number(data?.price) || 0,
         available: data?.available ?? data?.isAvailable ?? true,
         message: data?.message || "",
       });
@@ -248,8 +267,8 @@ export default function CheckoutPage() {
       ...prev,
       addressTitle: address.title || "",
       addressText: address.addressText || "",
-      latitude: Number(address.latitude || BAKU_CENTER[0]),
-      longitude: Number(address.longitude || BAKU_CENTER[1]),
+      latitude: validCoordinate(address.latitude, BAKU_CENTER[0]),
+      longitude: validCoordinate(address.longitude, BAKU_CENTER[1]),
       buildingNumber: address.buildingNumber || "",
       floor: address.floor || "",
       apartment: address.apartment || "",
@@ -287,7 +306,7 @@ export default function CheckoutPage() {
         setSelectedAddressId("");
       },
       () => setError(text.locationPermissionError),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true },
     );
   }
 
@@ -377,7 +396,7 @@ export default function CheckoutPage() {
           totalPrice: finalTotal,
           deliveryDate: form.deliveryDate,
           deliveryTimeRange: form.deliveryTimeRange,
-        })
+        }),
       );
 
       window.dispatchEvent(new Event("nemesis_auth_changed"));
@@ -387,7 +406,7 @@ export default function CheckoutPage() {
         "nemesis_order_failed",
         JSON.stringify({
           reason: err.message || text.orderCreateError,
-        })
+        }),
       );
 
       navigate("/order-failed", {
@@ -408,7 +427,7 @@ export default function CheckoutPage() {
             item.productCode
           }\nRazmer: ${item.sizeValue}\nRəng: ${item.colorName}\nSay: ${
             item.quantity
-          }\nQiymət: ${money(item.totalPrice)} ₼`
+          }\nQiymət: ${money(item.totalPrice)} ₼`,
       )
       .join("\n\n");
 
@@ -418,20 +437,20 @@ export default function CheckoutPage() {
 
     window.open(
       `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(
-        message
+        message,
       )}`,
       "_blank",
-      "noopener,noreferrer"
+      "noopener,noreferrer",
     );
   }
 
   if (loading) {
-  return (
-    <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </main>
-  );
-}
+    return (
+      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
@@ -778,17 +797,21 @@ export default function CheckoutPage() {
                 value={`${money(originalTotal)} ₼`}
               />
 
-              <SummaryRow
-                label={text.discount}
-                value={`-${money(productDiscount)} ₼`}
-                valueClass="text-red-500"
-              />
+              {productDiscount > 0 && (
+                <SummaryRow
+                  label={text.discount}
+                  value={`-${money(productDiscount)} ₼`}
+                  valueClass="text-red-500"
+                />
+              )}
 
-              <SummaryRow
-                label={text.promoDiscount}
-                value={`-${money(promo.discountAmount)} ₼`}
-                valueClass="text-red-500"
-              />
+              {Number(promo.discountAmount || 0) > 0 && (
+                <SummaryRow
+                  label={text.promoDiscount}
+                  value={`-${money(promo.discountAmount)} ₼`}
+                  valueClass="text-red-500"
+                />
+              )}
 
               {Number(form.deliveryType) === 1 && (
                 <SummaryRow

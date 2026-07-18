@@ -9,8 +9,9 @@ import {
 } from "react-icons/fi";
 import { FaInstagram, FaTiktok, FaWhatsapp } from "react-icons/fa";
 import { API_BASE_URL } from "../../api/config";
+import { useLanguage } from "../../i18n/LanguageContext";
 
-const text = {
+const pageText = {
   az: {
     badge: "ƏLAQƏ & MAĞAZA",
     title: "Əlaqələr və mağazamız",
@@ -64,15 +65,6 @@ const text = {
   },
 };
 
-function getLang() {
-  return (
-    localStorage.getItem("language") ||
-    localStorage.getItem("lang") ||
-    localStorage.getItem("nemesis_lang") ||
-    "az"
-  );
-}
-
 function cleanValue(value) {
   const v = String(value || "").trim();
   if (!v || v.toLowerCase() === "string") return "";
@@ -118,24 +110,9 @@ function DetailRow({ icon, label, value, href }) {
 
 export default function InfoAddressPage() {
   const [store, setStore] = useState(null);
-  const [lang, setLang] = useState(getLang);
+  const { lang } = useLanguage();
 
-  const t = text[lang] || text.az;
-
-  useEffect(() => {
-    const syncLang = () => setLang(getLang());
-
-    window.addEventListener("storage", syncLang);
-    window.addEventListener("languageChanged", syncLang);
-
-    const interval = setInterval(syncLang, 700);
-
-    return () => {
-      window.removeEventListener("storage", syncLang);
-      window.removeEventListener("languageChanged", syncLang);
-      clearInterval(interval);
-    };
-  }, []);
+  const t = pageText[lang] || pageText.az;
 
   useEffect(() => {
     let alive = true;
@@ -143,6 +120,7 @@ export default function InfoAddressPage() {
     async function loadStoreInfo() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/StoreInfo`);
+        if (!res.ok) throw new Error(`StoreInfo HTTP ${res.status}`);
         const json = await res.json();
 
         if (alive && json?.success) {
@@ -160,8 +138,10 @@ export default function InfoAddressPage() {
     };
   }, []);
 
-  const lat = Number(store?.latitude || 40.376504);
-  const lng = Number(store?.longitude || 49.841709);
+  const parsedLat = Number(store?.latitude);
+  const parsedLng = Number(store?.longitude);
+  const lat = Number.isFinite(parsedLat) ? parsedLat : 40.376504;
+  const lng = Number.isFinite(parsedLng) ? parsedLng : 49.841709;
 
   const phoneNumber = cleanValue(store?.phoneNumber);
   const whatsAppNumber = cleanValue(store?.whatsAppNumber);

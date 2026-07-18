@@ -19,7 +19,6 @@ import { getProducts } from "../../api/homeApi";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
 
-
 const STORE_WHATSAPP_NUMBER = "994514349829";
 const SWIPE_LIMIT = 45;
 const RUBBER_LIMIT = 42;
@@ -42,7 +41,9 @@ function normalizeList(res) {
 }
 
 function money(value) {
-  return Number(value || 0).toFixed(2).replace(".00", "");
+  return Number(value || 0)
+    .toFixed(2)
+    .replace(".00", "");
 }
 
 function getImageUrl(x) {
@@ -78,7 +79,7 @@ function getProductSizes(product) {
       variants
         .filter((x) => Number(x.stockCount || 0) > 0)
         .map((x) => x.sizeValue || x.sizeName || x.size || x.size?.value)
-        .filter(Boolean)
+        .filter(Boolean),
     ),
   ];
 }
@@ -115,11 +116,11 @@ export default function BasketPage() {
   const [error, setError] = useState("");
   const [toastClosing, setToastClosing] = useState(false);
 
-  const items = basket.items || [];
+  const items = useMemo(() => basket.items || [], [basket.items]);
 
   const selectedItems = useMemo(
     () => items.filter((x) => selectedIds.includes(x.id)),
-    [items, selectedIds]
+    [items, selectedIds],
   );
 
   const allSelected = items.length > 0 && selectedIds.length === items.length;
@@ -130,20 +131,20 @@ export default function BasketPage() {
       Number(
         item.originalTotalPrice ??
           Number(item.originalPrice || item.unitPrice || 0) *
-            Number(item.quantity || 0)
+            Number(item.quantity || 0),
       ),
-    0
+    0,
   );
 
   const selectedDiscountTotal = selectedItems.reduce(
     (sum, item) =>
       sum + Number(item.discountAmount || 0) * Number(item.quantity || 0),
-    0
+    0,
   );
 
   const selectedFinalTotal = selectedItems.reduce(
     (sum, item) => sum + Number(item.totalPrice || 0),
-    0
+    0,
   );
 
   const payableTotal = Math.max(0, selectedFinalTotal - promoDiscount);
@@ -219,7 +220,7 @@ export default function BasketPage() {
         } catch {
           loaded[productId] = null;
         }
-      })
+      }),
     );
 
     setProductDetails((prev) => ({ ...prev, ...loaded }));
@@ -256,7 +257,7 @@ export default function BasketPage() {
     setPromoDiscount(0);
     setPromoMessage("");
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
@@ -269,7 +270,7 @@ export default function BasketPage() {
   async function updateQuantity(item, nextQuantity) {
     const quantity = Math.max(
       1,
-      Math.min(Number(item.stockCount || 1), nextQuantity)
+      Math.min(Number(item.stockCount || 1), nextQuantity),
     );
 
     const oldBasket = basket;
@@ -286,7 +287,7 @@ export default function BasketPage() {
         const discountAmount = Number(x.discountAmount || 0);
         const unitPrice = Number(x.unitPrice || 0);
         const originalPrice = Number(
-          x.originalPrice || unitPrice + discountAmount
+          x.originalPrice || unitPrice + discountAmount,
         );
 
         return {
@@ -375,7 +376,7 @@ export default function BasketPage() {
 
     localStorage.setItem(
       "nemesis_checkout_items",
-      JSON.stringify(selectedItems.map((x) => x.id))
+      JSON.stringify(selectedItems.map((x) => x.id)),
     );
 
     localStorage.setItem(
@@ -383,7 +384,7 @@ export default function BasketPage() {
       JSON.stringify({
         code: promoCode.trim(),
         discountAmount: promoDiscount,
-      })
+      }),
     );
 
     navigate("/checkout");
@@ -401,32 +402,32 @@ export default function BasketPage() {
           `${index + 1}. ${x.productName}\nKod: ${x.productCode}\nRazmer: ${
             x.sizeValue
           }\nRəng: ${x.colorName}\nSay: ${x.quantity}\nQiymət: ${money(
-            x.totalPrice
-          )} ₼`
+            x.totalPrice,
+          )} ₼`,
       )
       .join("\n\n");
 
     const message = `Salam, bu məhsulları sifariş etmək istəyirəm:\n\n${lines}\n\nYekun: ${money(
-      payableTotal
+      payableTotal,
     )} ₼`;
 
     window.open(
       `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(
-        message
+        message,
       )}`,
       "_blank",
-      "noopener,noreferrer"
+      "noopener,noreferrer",
     );
   }
 
-if (loading) {
-  return createPortal(
-    <div className="fixed inset-0 z-[9999999999] grid min-h-screen w-screen place-items-center bg-[#fafafa]">
-      <AppLoader text={text.loading} />
-    </div>,
-    document.body
-  );
-}
+  if (loading) {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999999999] grid min-h-screen w-screen place-items-center bg-[#fafafa]">
+        <AppLoader text={text.loading} />
+      </div>,
+      document.body,
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
@@ -591,7 +592,9 @@ if (loading) {
                               onClick={() =>
                                 updateQuantity(item, item.quantity + 1)
                               }
-                              disabled={busy || item.quantity >= item.stockCount}
+                              disabled={
+                                busy || item.quantity >= item.stockCount
+                              }
                               className="grid w-10 place-items-center transition hover:bg-zinc-50 disabled:opacity-40"
                             >
                               <FiPlus />
@@ -633,10 +636,28 @@ if (loading) {
               </h2>
 
               <div className="mt-5 space-y-3">
-                <SummaryRow label={text.selectedProducts} value={selectedItems.length} />
-                <SummaryRow label={text.productsTotal} value={`${money(selectedOriginalTotal)} ₼`} />
-                <SummaryRow label={text.discount} value={`-${money(selectedDiscountTotal)} ₼`} valueClass="text-red-500" />
-                <SummaryRow label={text.promoCode} value={`-${money(promoDiscount)} ₼`} valueClass="text-red-500" />
+                <SummaryRow
+                  label={text.selectedProducts}
+                  value={selectedItems.length}
+                />
+                <SummaryRow
+                  label={text.productsTotal}
+                  value={`${money(selectedOriginalTotal)} ₼`}
+                />
+                {selectedDiscountTotal > 0 && (
+                  <SummaryRow
+                    label={text.discount}
+                    value={`-${money(selectedDiscountTotal)} ₼`}
+                    valueClass="text-red-500"
+                  />
+                )}
+                {promoDiscount > 0 && (
+                  <SummaryRow
+                    label={text.promoCode}
+                    value={`-${money(promoDiscount)} ₼`}
+                    valueClass="text-red-500"
+                  />
+                )}
               </div>
 
               <div className="mt-5 flex gap-2">
@@ -743,10 +764,10 @@ if (loading) {
         )}
       </div>
 
-{error &&
-  createPortal(
-    <div
-      className={`fixed z-[999999999] rounded-2xl bg-red-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_24px_70px_rgba(220,38,38,0.28)]
+      {error &&
+        createPortal(
+          <div
+            className={`fixed z-[999999999] rounded-2xl bg-red-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_24px_70px_rgba(220,38,38,0.28)]
         bottom-[calc(env(safe-area-inset-bottom)+20px)]
         left-1/2 w-[calc(100vw-32px)] max-w-[420px]
         md:left-6 md:w-auto md:min-w-[320px] md:max-w-[420px]
@@ -755,11 +776,11 @@ if (loading) {
             ? "animate-[toastOut_0.28s_cubic-bezier(0.22,1,0.36,1)_both]"
             : "animate-[toastIn_0.32s_cubic-bezier(0.22,1,0.36,1)_both]"
         }`}
-    >
-      {error}
-    </div>,
-    document.body
-  )}
+          >
+            {error}
+          </div>,
+          document.body,
+        )}
 
       <style>{`
          @keyframes toastIn {
@@ -917,7 +938,7 @@ function SwipeImage({ images, name, className }) {
             >
               nemesisbaku
             </div>
-          )
+          ),
         )}
       </div>
     </div>
@@ -937,9 +958,9 @@ function RelatedProductRow({ product, index, text }) {
     () =>
       getProductImages(
         mergedProduct,
-        mergedProduct?.mainImageUrl || mergedProduct?.imageUrl
+        mergedProduct?.mainImageUrl || mergedProduct?.imageUrl,
       ),
-    [mergedProduct]
+    [mergedProduct],
   );
 
   const sizes = useMemo(() => getProductSizes(mergedProduct), [mergedProduct]);
@@ -954,7 +975,9 @@ function RelatedProductRow({ product, index, text }) {
 
       try {
         const [favRes, detailRes] = await Promise.all([
-          getAccessToken() ? favoritesApi.check(productId).catch(() => false) : false,
+          getAccessToken()
+            ? favoritesApi.check(productId).catch(() => false)
+            : false,
           apiFetch(`/api/Products/${productId}`).catch(() => null),
         ]);
 
@@ -998,7 +1021,7 @@ function RelatedProductRow({ product, index, text }) {
       window.dispatchEvent(
         new CustomEvent("favorite_changed", {
           detail: { productId, isFavorite: next },
-        })
+        }),
       );
     } finally {
       setActionLoading(false);

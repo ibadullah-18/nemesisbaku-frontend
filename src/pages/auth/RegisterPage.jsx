@@ -148,7 +148,7 @@ export default function RegisterPage() {
           "Email ünvanınıza göndərilən 6 rəqəmli təsdiq kodunu daxil edin.",
       },
     ],
-    [text]
+    [text],
   );
 
   function BrandLogo({ variant = "main" }) {
@@ -292,7 +292,7 @@ export default function RegisterPage() {
             email: form.email.trim(),
           }),
         },
-        false
+        false,
       );
 
       setOtpSent(true);
@@ -302,8 +302,8 @@ export default function RegisterPage() {
       showToast(
         getCleanError(
           err,
-          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi."
-        )
+          text.otpSendError || "OTP kodu göndərilərkən xəta baş verdi.",
+        ),
       );
       return false;
     } finally {
@@ -363,7 +363,7 @@ export default function RegisterPage() {
           method: "POST",
           body: fd,
         },
-        false
+        false,
       );
 
       navigate("/login", { replace: true });
@@ -371,8 +371,8 @@ export default function RegisterPage() {
       showToast(
         getCleanError(
           err,
-          text.registerError || "Qeydiyyat zamanı xəta baş verdi."
-        )
+          text.registerError || "Qeydiyyat zamanı xəta baş verdi.",
+        ),
       );
     } finally {
       setLoading(false);
@@ -384,9 +384,16 @@ export default function RegisterPage() {
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  const imagePreview = form.profileImage
-    ? URL.createObjectURL(form.profileImage)
-    : null;
+  const imagePreview = useMemo(
+    () => (form.profileImage ? URL.createObjectURL(form.profileImage) : null),
+    [form.profileImage],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   return (
     <>
@@ -421,8 +428,8 @@ export default function RegisterPage() {
               loading
                 ? text.registering || "Qeydiyyat yaradılır"
                 : otpLoading
-                ? text.otpSending || "OTP göndərilir"
-                : text.loading
+                  ? text.otpSending || "OTP göndərilir"
+                  : text.loading
             }
           />
         )}
@@ -438,7 +445,7 @@ export default function RegisterPage() {
             >
               {toastError}
             </div>,
-            document.body
+            document.body,
           )}
 
         <section className="mx-auto flex w-full max-w-[1180px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px] animate-[registerCardIn_.45s_cubic-bezier(.22,1,.36,1)_both]">
@@ -500,8 +507,8 @@ export default function RegisterPage() {
                             active
                               ? "bg-black text-white shadow-[0_14px_28px_rgba(0,0,0,0.16)]"
                               : done
-                              ? "bg-zinc-900 text-white"
-                              : "bg-zinc-100 text-zinc-500"
+                                ? "bg-zinc-900 text-white"
+                                : "bg-zinc-100 text-zinc-500"
                           }`}
                         >
                           {done ? <FiCheck /> : index + 1}
@@ -668,7 +675,7 @@ export default function RegisterPage() {
                           onChange={(e) =>
                             updateField(
                               "profileImage",
-                              e.target.files?.[0] || null
+                              e.target.files?.[0] || null,
                             )
                           }
                         />
@@ -736,7 +743,7 @@ export default function RegisterPage() {
                         onChange={(e) =>
                           updateField(
                             "code",
-                            e.target.value.replace(/\D/g, "").slice(0, 6)
+                            e.target.value.replace(/\D/g, "").slice(0, 6),
                           )
                         }
                         inputMode="numeric"

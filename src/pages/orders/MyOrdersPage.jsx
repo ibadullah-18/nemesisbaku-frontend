@@ -11,7 +11,11 @@ import AppLoader from "../../components/common/AppLoader";
 import { ordersApi } from "../../api/ordersApi";
 import { apiFetch } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
-import { formatDateTime, getOrderStatus, money } from "../../helpers/orderStatus";
+import {
+  formatDateTime,
+  getOrderStatus,
+  money,
+} from "../../helpers/orderStatus";
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
@@ -61,7 +65,7 @@ function getProductMainImage(product) {
     .filter((img) => img?.imageUrl)
     .sort(
       (a, b) =>
-        Number(a.displayOrder || 999999) - Number(b.displayOrder || 999999)
+        Number(a.displayOrder || 999999) - Number(b.displayOrder || 999999),
     )[0];
 
   return (
@@ -96,45 +100,45 @@ export default function MyOrdersPage() {
     loadOrders();
   }, []);
 
-async function loadOrders() {
-  try {
-    setLoading(true);
-    setError("");
+  async function loadOrders() {
+    try {
+      setLoading(true);
+      setError("");
 
-    const res = await ordersApi.my();
-    const data = unwrap(res);
-    const list = Array.isArray(data) ? data : [];
+      const res = await ordersApi.my();
+      const data = unwrap(res);
+      const list = Array.isArray(data) ? data : [];
 
-    const detailedOrders = await Promise.all(
-      list.map(async (order) => {
-        try {
-          const detailRes = await ordersApi.detail(order.id);
-          const detail = unwrap(detailRes);
+      const detailedOrders = await Promise.all(
+        list.map(async (order) => {
+          try {
+            const detailRes = await ordersApi.detail(order.id);
+            const detail = unwrap(detailRes);
 
-          return {
-            ...order,
-            ...detail,
-            items:
-              detail?.items ||
-              detail?.orderItems ||
-              order?.items ||
-              order?.orderItems ||
-              [],
-          };
-        } catch {
-          return order;
-        }
-      })
-    );
+            return {
+              ...order,
+              ...detail,
+              items:
+                detail?.items ||
+                detail?.orderItems ||
+                order?.items ||
+                order?.orderItems ||
+                [],
+            };
+          } catch {
+            return order;
+          }
+        }),
+      );
 
-    setOrders(detailedOrders);
-    await loadProductsForOrders(detailedOrders);
-  } catch (err) {
-    setError(err.message || text.ordersLoadError);
-  } finally {
-    setLoading(false);
+      setOrders(detailedOrders);
+      await loadProductsForOrders(detailedOrders);
+    } catch (err) {
+      setError(err.message || text.ordersLoadError);
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   async function loadProductsForOrders(nextOrders) {
     const productIds = [
@@ -142,7 +146,7 @@ async function loadOrders() {
         nextOrders
           .flatMap((order) => getOrderItems(order))
           .map((item) => getProductId(item))
-          .filter(Boolean)
+          .filter(Boolean),
       ),
     ];
 
@@ -156,7 +160,7 @@ async function loadOrders() {
         } catch {
           loaded[productId] = null;
         }
-      })
+      }),
     );
 
     setProductDetails(loaded);
@@ -167,7 +171,7 @@ async function loadOrders() {
       <div className="fixed inset-0 z-[9999999999] grid min-h-screen w-screen place-items-center bg-[#fafafa]">
         <AppLoader text={text.loading} />
       </div>,
-      document.body
+      document.body,
     );
   }
 

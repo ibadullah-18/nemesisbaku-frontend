@@ -7,8 +7,9 @@ import {
   FiPhone,
 } from "react-icons/fi";
 import { API_BASE_URL } from "../../api/config";
+import { useLanguage } from "../../i18n/LanguageContext";
 
-const text = {
+const pageText = {
   az: {
     badge: "MAĞAZAMIZ",
     title: "nemesisbaku mağazası",
@@ -47,13 +48,9 @@ const text = {
   },
 };
 
-function getLang() {
-  return (
-    localStorage.getItem("language") ||
-    localStorage.getItem("lang") ||
-    localStorage.getItem("nemesis_lang") ||
-    "az"
-  );
+function cleanValue(value) {
+  const clean = String(value || "").trim();
+  return !clean || clean.toLowerCase() === "string" ? "" : clean;
 }
 
 function StoreInfoRow({ icon, label, value, href }) {
@@ -62,17 +59,14 @@ function StoreInfoRow({ icon, label, value, href }) {
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f3eee7] text-lg">
         {icon}
       </div>
-
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-zinc-500">
           {label}
         </p>
-
         <p className="mt-1 break-words text-sm font-bold leading-6 text-zinc-950">
           {value}
         </p>
       </div>
-
       {href && (
         <FiExternalLink className="mt-1 shrink-0 text-zinc-400 transition duration-300 group-hover:text-zinc-950" />
       )}
@@ -85,7 +79,7 @@ function StoreInfoRow({ icon, label, value, href }) {
     <a
       href={href}
       target={href.startsWith("http") ? "_blank" : undefined}
-      rel="noreferrer"
+      rel={href.startsWith("http") ? "noreferrer" : undefined}
     >
       {content}
     </a>
@@ -94,52 +88,39 @@ function StoreInfoRow({ icon, label, value, href }) {
 
 export default function StoresPage() {
   const [store, setStore] = useState(null);
-  const [lang, setLang] = useState(getLang);
-
-  const t = text[lang] || text.az;
-
-  useEffect(() => {
-    const syncLang = () => setLang(getLang());
-
-    window.addEventListener("storage", syncLang);
-    window.addEventListener("languageChanged", syncLang);
-
-    const interval = setInterval(syncLang, 700);
-
-    return () => {
-      window.removeEventListener("storage", syncLang);
-      window.removeEventListener("languageChanged", syncLang);
-      clearInterval(interval);
-    };
-  }, []);
+  const { lang } = useLanguage();
+  const t = pageText[lang] || pageText.az;
 
   useEffect(() => {
-    let alive = true;
+    const controller = new AbortController();
 
     async function loadStoreInfo() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/StoreInfo`);
-        const json = await res.json();
+        const res = await fetch(`${API_BASE_URL}/api/StoreInfo`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`StoreInfo HTTP ${res.status}`);
 
-        if (alive && json?.success) {
-          setStore(json.data);
-        }
+        const json = await res.json();
+        if (!controller.signal.aborted && json?.success) setStore(json.data);
       } catch (err) {
-        console.error("Stores StoreInfo error:", err);
+        if (err.name !== "AbortError") {
+          console.error("Stores StoreInfo error:", err);
+        }
       }
     }
 
     loadStoreInfo();
-
-    return () => {
-      alive = false;
-    };
+    return () => controller.abort();
   }, []);
 
-  const lat = Number(store?.latitude || 40.376504);
-  const lng = Number(store?.longitude || 49.841709);
-  const addressIsValid = store?.address && store.address !== "string";
-
+  const parsedLat = Number(store?.latitude);
+  const parsedLng = Number(store?.longitude);
+  const lat = Number.isFinite(parsedLat) ? parsedLat : 40.376504;
+  const lng = Number.isFinite(parsedLng) ? parsedLng : 49.841709;
+  const address = cleanValue(store?.address);
+  const phone = cleanValue(store?.phoneNumber);
+  const workingHours = cleanValue(store?.workingHours);
   const openMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
   const mapUrl = `https://www.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
 
@@ -150,11 +131,9 @@ export default function StoresPage() {
           <span className="inline-flex rounded-full border border-zinc-300 bg-white px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.28em] text-zinc-600">
             {t.badge}
           </span>
-
           <h1 className="mt-5 text-[34px] font-extrabold leading-[1.05] tracking-[-0.04em] sm:text-[48px] lg:text-[62px]">
             {t.title}
           </h1>
-
           <p className="mx-auto mt-5 max-w-[620px] text-sm leading-7 text-zinc-600 sm:text-base">
             {t.desc}
           </p>
@@ -167,16 +146,13 @@ export default function StoresPage() {
           >
             <div className="relative overflow-hidden rounded-[30px] bg-[#120d09] p-6 text-white">
               <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-white/20 blur-3xl" />
-
               <div className="relative">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-2xl">
                   <FiMapPin />
                 </div>
-
                 <p className="mt-6 text-[15px] font-extrabold tracking-[0.17em] text-white/60">
                   nemesisbaku
                 </p>
-
                 <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.05em]">
                   {t.mainStore}
                 </h2>
@@ -187,21 +163,19 @@ export default function StoresPage() {
               <StoreInfoRow
                 icon={<FiMapPin />}
                 label={t.address}
-                value={addressIsValid ? store.address : `${lat}, ${lng}`}
+                value={address || `${lat}, ${lng}`}
                 href={openMapUrl}
               />
-
               <StoreInfoRow
                 icon={<FiClock />}
                 label={t.workHours}
-                value={store?.workingHours || t.notAdded}
+                value={workingHours || t.notAdded}
               />
-
               <StoreInfoRow
                 icon={<FiPhone />}
                 label={t.phone}
-                value={store?.phoneNumber || t.notAdded}
-                href={store?.phoneNumber ? `tel:${store.phoneNumber}` : null}
+                value={phone || t.notAdded}
+                href={phone ? `tel:${phone}` : null}
               />
 
               <a
@@ -224,7 +198,6 @@ export default function StoresPage() {
               <h2 className="text-sm font-extrabold uppercase tracking-[0.2em]">
                 {t.map}
               </h2>
-
               <span className="text-[11px] font-bold text-zinc-500">
                 {lat}, {lng}
               </span>
@@ -242,20 +215,12 @@ export default function StoresPage() {
         </div>
       </div>
 
-      <style>
-        {`
-          @keyframes storesFade {
-            from {
-              opacity: 0;
-              transform: translateY(18px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes storesFade {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   );
 }

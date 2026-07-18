@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   FiChevronLeft,
-  FiChevronRight,
   FiHeart,
   FiMinus,
   FiPlus,
@@ -89,6 +88,7 @@ export default function ProductDetailsPage() {
   const relatedRef = useRef(null);
   const toastTimerRef = useRef(null);
   const toastCloseTimerRef = useRef(null);
+  const basketSuccessTimerRef = useRef(null);
 
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -98,7 +98,6 @@ export default function ProductDetailsPage() {
   const [zoom, setZoom] = useState({ active: false, x: 50, y: 50 });
 
   const [selectedColor, setSelectedColor] = useState("");
-  const [selectedSize, setSelectedSize] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [quantity, setQuantity] = useState(1);
 
@@ -122,7 +121,7 @@ export default function ProductDetailsPage() {
   const [modalDragging, setModalDragging] = useState(false);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     loadPage();
   }, [id]);
 
@@ -130,6 +129,7 @@ export default function ProductDetailsPage() {
     return () => {
       window.clearTimeout(toastTimerRef.current);
       window.clearTimeout(toastCloseTimerRef.current);
+      window.clearTimeout(basketSuccessTimerRef.current);
     };
   }, []);
 
@@ -192,7 +192,6 @@ export default function ProductDetailsPage() {
 
       setSelectedVariantId("");
       setSelectedColor("");
-      setSelectedSize("");
       setQuantity(1);
 
       await loadRelated(data, 1);
@@ -338,7 +337,6 @@ export default function ProductDetailsPage() {
   function chooseColor(colorName) {
     setSelectedColor(colorName);
     setSelectedVariantId("");
-    setSelectedSize("");
     setQuantity(1);
     setToastError("");
     setToastClosing(false);
@@ -350,7 +348,6 @@ export default function ProductDetailsPage() {
     }
 
     setSelectedVariantId(item.variantId);
-    setSelectedSize(item.size);
     setQuantity(1);
     setToastError("");
     setToastClosing(false);
@@ -363,19 +360,6 @@ export default function ProductDetailsPage() {
       active: true,
       x: ((e.clientX - rect.left) / rect.width) * 100,
       y: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-  }
-
-  function scrollRelated(direction) {
-    const row = relatedRef.current;
-    if (!row) return;
-
-    const card = row.querySelector("[data-related-card]");
-    const cardWidth = card?.clientWidth || 240;
-
-    row.scrollBy({
-      left: direction === "right" ? cardWidth + 16 : -(cardWidth + 16),
-      behavior: "smooth",
     });
   }
 
@@ -478,7 +462,8 @@ export default function ProductDetailsPage() {
       setBasketSuccess(true);
       window.dispatchEvent(new Event("nemesis_auth_changed"));
 
-      window.setTimeout(() => {
+      window.clearTimeout(basketSuccessTimerRef.current);
+      basketSuccessTimerRef.current = window.setTimeout(() => {
         setBasketSuccess(false);
       }, 3000);
     } catch (err) {
