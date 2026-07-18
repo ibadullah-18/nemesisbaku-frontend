@@ -10,9 +10,9 @@ import {
   FiShield,
   FiSmartphone,
 } from "react-icons/fi";
-import loyaltyIntroImage from "../../assets/loyalli3.png";
-import loyaltyRegistrationImage from "../../assets/loyalliq1.png";
-import loyaltyWalletImage from "../../assets/loyalliq4.png";
+import loyaltyIntroImage from "../../assets/loyalli3.PNG";
+import loyaltyRegistrationImage from "../../assets/loyalliq1.PNG";
+import loyaltyWalletImage from "../../assets/loyalliq4.PNG";
 import { useLanguage } from "../../i18n/LanguageContext";
 
 const WALLET_PLUS_URL = "https://nemesisbaku.walletplus.az/";
