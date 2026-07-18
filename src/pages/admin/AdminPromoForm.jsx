@@ -25,18 +25,11 @@ import {
   prepareImageFile,
   revokeImagePreview,
 } from "../../utils/imageFile";
-import {
-  isEndAfterStart,
-  localDateTimeToIso,
-  toLocalDateTimeInput,
-} from "../../utils/dataTime";
+import { localDateTimeToIso, toLocalDateTimeInput } from "../../utils/dataTime";
 
 const emptyForm = {
-  title: "",
-  description: "",
   type: 1,
   startDate: "",
-  endDate: "",
   isActive: true,
   file: null,
   previewUrl: "",
@@ -132,11 +125,8 @@ export default function AdminPromoForm({ mode }) {
 
         revokeImagePreview(form.previewUrl);
         setForm({
-          title: promo?.title || "",
-          description: promo?.description || "",
           type: Number(promo?.type || 1),
           startDate: toLocalDateTimeInput(promo?.startDate),
-          endDate: toLocalDateTimeInput(promo?.endDate),
           isActive: promo?.isActive ?? true,
           file: null,
           previewUrl: promo?.imageUrl || "",
@@ -207,34 +197,22 @@ export default function AdminPromoForm({ mode }) {
     setError("");
     setSuccess("");
 
-    if (!form.title.trim()) return setError("Başlıq yazılmalıdır.");
     if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
-    if (!form.endDate) return setError("Bitmə tarixi seçilməlidir.");
-    if (!isEdit && !form.file) return setError("Şəkil seçilməlidir.");
+    if (!form.file && !form.previewUrl) return setError("Şəkil seçilməlidir.");
     if (form.productIds.length === 0) {
       return setError("Ən azı 1 məhsul seçilməlidir.");
     }
 
     let startDate;
-    let endDate;
-
     try {
       startDate = localDateTimeToIso(form.startDate);
-      endDate = localDateTimeToIso(form.endDate);
     } catch (err) {
       return setError(err.message);
     }
 
-    if (!isEndAfterStart(startDate, endDate)) {
-      return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
-    }
-
     const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
       type: Number(form.type),
       startDate,
-      endDate,
       isActive: Boolean(form.isActive),
       file: form.file,
       productIds: form.productIds,
@@ -314,7 +292,7 @@ export default function AdminPromoForm({ mode }) {
           </h1>
 
           <p className="mt-1 text-sm font-medium text-zinc-500">
-            Campaign və Banner üçün şəkil, tarix və məhsul seçimi.
+            Campaign və Banner üçün şəkil, başlama tarixi və məhsul seçimi.
           </p>
         </div>
 
@@ -354,13 +332,6 @@ export default function AdminPromoForm({ mode }) {
             </h2>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <AdminInput
-                label="Başlıq"
-                placeholder="Yay Endirimi"
-                value={form.title}
-                onChange={(v) => updateForm("title", v)}
-              />
-
               <AdminSelect
                 label="Promo tipi"
                 value={form.type}
@@ -377,28 +348,7 @@ export default function AdminPromoForm({ mode }) {
                 value={form.startDate}
                 onChange={(v) => updateForm("startDate", v)}
               />
-
-              <AdminInput
-                label="Bitmə tarixi"
-                type="datetime-local"
-                value={form.endDate}
-                onChange={(v) => updateForm("endDate", v)}
-              />
             </div>
-
-            <label className="mt-4 block">
-              <span className="mb-2 block text-sm font-bold text-zinc-800">
-                Açıqlama
-              </span>
-
-              <textarea
-                value={form.description}
-                onChange={(e) => updateForm("description", e.target.value)}
-                placeholder="Promo haqqında qısa açıqlama..."
-                rows={5}
-                className="w-full resize-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-zinc-400"
-              />
-            </label>
 
             <div className="mt-4">
               <ToggleRow
@@ -423,7 +373,8 @@ export default function AdminPromoForm({ mode }) {
               </p>
 
               <p className="mt-1 text-xs font-bold text-zinc-400">
-                Campaign və Banner üçün əsas görünən şəkil.
+                Tövsiyə: 1600 × 640 px (5:2), JPG/PNG/WEBP, maksimum 10 MB.
+                Bütün vacib məzmunu şəkilin içində yerləşdirin.
               </p>
 
               <input
@@ -439,7 +390,7 @@ export default function AdminPromoForm({ mode }) {
                 <img
                   src={form.previewUrl}
                   alt="Promo preview"
-                  className="h-64 w-full object-cover"
+                  className="aspect-[5/2] w-full object-contain"
                 />
               </div>
             )}

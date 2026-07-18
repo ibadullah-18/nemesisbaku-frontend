@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { useLocation } from "react-router-dom";
 import {
+  FiCalendar,
   FiEdit3,
   FiImage,
   FiPlus,
@@ -9,6 +9,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import { adminPromoPagesApi } from "../../api/admin/adminApi";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
 import AppLoader from "../../components/common/AppLoader";
 
 function unwrapData(res) {
@@ -17,7 +18,12 @@ function unwrapData(res) {
 
 function listOf(res) {
   const data = unwrapData(res);
-  return data?.items || data?.list || data?.result || (Array.isArray(data) ? data : []);
+  return (
+    data?.items ||
+    data?.list ||
+    data?.result ||
+    (Array.isArray(data) ? data : [])
+  );
 }
 
 function promoTypeText(type) {
@@ -30,17 +36,29 @@ function promoTypeClass(type) {
     : "bg-[#eef3ff] text-[#244989]";
 }
 
+function formatStartDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+
+  return new Intl.DateTimeFormat("az-AZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export default function AdminCampaigns() {
   const [promos, setPromos] = useState([]);
   const [filterType, setFilterType] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const location = useLocation();
 
-  const basePath = location.pathname.startsWith("/Admin")
-    ? "/Admin"
-    : "/SuperAdmin";
+  const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadPromos();
@@ -55,18 +73,18 @@ export default function AdminCampaigns() {
       const res = await adminPromoPagesApi.list(filterType || undefined);
       setPromos(listOf(res));
     } catch (err) {
-      setError(err.message || "Promo səhifələr yüklənmədi.");
+      setError(err.message || "Promolar yüklənmədi.");
     } finally {
       setLoading(false);
     }
   }
 
   async function deletePromo(promo) {
-    const ok = confirm(`${promo.title || "Bu promo"} silinsin?`);
-    if (!ok) return;
+    if (!window.confirm("Bu promo silinsin?")) return;
 
     try {
       setSaving(true);
+      setError("");
       await adminPromoPagesApi.delete(promo.id);
       await loadPromos();
     } catch (err) {
@@ -76,14 +94,15 @@ export default function AdminCampaigns() {
     }
   }
 
-  const counters = useMemo(() => {
-    return {
+  const counters = useMemo(
+    () => ({
       total: promos.length,
       campaigns: promos.filter((x) => Number(x.type) === 1).length,
       banners: promos.filter((x) => Number(x.type) === 2).length,
       active: promos.filter((x) => x.isActive).length,
-    };
-  }, [promos]);
+    }),
+    [promos],
+  );
 
   if (loading) return <AppLoader text="Promolar yüklənir" />;
 
@@ -94,15 +113,15 @@ export default function AdminCampaigns() {
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Promo pages
+            Promo idarəsi
           </p>
 
           <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
-            Kampaniya və Bannerlər
+            Kampaniya və bannerlər
           </h1>
 
           <p className="mt-1 text-sm font-medium text-zinc-500">
-            Homepage-də görünən campaign və banner slotlarını idarə edin.
+            Şəkil, başlama tarixi, aktivlik və məhsulları idarə edin.
           </p>
         </div>
 
@@ -140,15 +159,22 @@ export default function AdminCampaigns() {
       </div>
 
       <div className="mb-5 flex flex-wrap gap-2 rounded-[22px] bg-white p-2 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
-        <FilterButton active={filterType === ""} onClick={() => setFilterType("")}>
+        <FilterButton
+          active={filterType === ""}
+          onClick={() => setFilterType("")}
+        >
           Hamısı
         </FilterButton>
-
-        <FilterButton active={filterType === "1"} onClick={() => setFilterType("1")}>
+        <FilterButton
+          active={filterType === "1"}
+          onClick={() => setFilterType("1")}
+        >
           Campaign
         </FilterButton>
-
-        <FilterButton active={filterType === "2"} onClick={() => setFilterType("2")}>
+        <FilterButton
+          active={filterType === "2"}
+          onClick={() => setFilterType("2")}
+        >
           Banner
         </FilterButton>
       </div>
@@ -167,12 +193,12 @@ export default function AdminCampaigns() {
               key={promo.id}
               className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)]"
             >
-              <div className="relative h-52 bg-zinc-50">
+              <div className="relative aspect-[5/2] bg-zinc-100">
                 {promo.imageUrl ? (
                   <img
                     src={promo.imageUrl}
-                    alt={promo.title}
-                    className="h-full w-full object-cover"
+                    alt="Promo şəkli"
+                    className="h-full w-full object-contain"
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center text-zinc-300">
@@ -180,19 +206,13 @@ export default function AdminCampaigns() {
                   </div>
                 )}
 
-                <div className="absolute left-3 top-3 flex gap-2">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-extrabold ${promoTypeClass(
-                      promo.type
-                    )}`}
-                  >
-                    {promoTypeText(promo.type)}
-                  </span>
-
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-zinc-700">
-                    Slot {promo.slotNumber || "—"}
-                  </span>
-                </div>
+                <span
+                  className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-extrabold ${promoTypeClass(
+                    promo.type,
+                  )}`}
+                >
+                  {promoTypeText(promo.type)}
+                </span>
 
                 <span
                   className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-extrabold ${
@@ -206,21 +226,12 @@ export default function AdminCampaigns() {
               </div>
 
               <div className="p-5">
-                <h3 className="line-clamp-1 text-lg font-extrabold text-zinc-950">
-                  {promo.title}
-                </h3>
-
-                <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-zinc-500">
-                  {promo.description || "Açıqlama yoxdur"}
-                </p>
-
-                <div className="mt-4 rounded-[20px] bg-zinc-50 p-3 text-xs font-bold text-zinc-500">
-                  <p>Slug: {promo.slug || "—"}</p>
-                  <p className="mt-1">
-                    Tarix: {String(promo.startDate || "").slice(0, 10)} —{" "}
-                    {String(promo.endDate || "").slice(0, 10)}
+                <div className="rounded-[20px] bg-zinc-50 p-4 text-sm font-bold text-zinc-600">
+                  <p className="flex items-center gap-2">
+                    <FiCalendar className="text-zinc-400" />
+                    Başlama: {formatStartDate(promo.startDate)}
                   </p>
-                  <p className="mt-1">
+                  <p className="mt-2">
                     Məhsul sayı: {(promo.productIds || []).length}
                   </p>
                 </div>
@@ -231,7 +242,7 @@ export default function AdminCampaigns() {
                     className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-white text-sm font-extrabold text-zinc-800 ring-1 ring-zinc-100 transition active:scale-[0.97]"
                   >
                     <FiEdit3 />
-                    Edit
+                    Düzəliş et
                   </NavLink>
 
                   <button
@@ -258,9 +269,7 @@ function CounterCard({ label, value }) {
       <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-zinc-400">
         {label}
       </p>
-      <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em]">
-        {value}
-      </p>
+      <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em]">{value}</p>
     </div>
   );
 }

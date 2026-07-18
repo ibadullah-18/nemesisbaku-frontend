@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiCamera, FiSave, FiUser } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiCamera,
+  FiChevronRight,
+  FiCreditCard,
+  FiSave,
+  FiUser,
+} from "react-icons/fi";
 import AppLoader from "../../components/common/AppLoader";
 import { profileApi } from "../../api/profileApi";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -16,6 +23,42 @@ function normalizePhone(value) {
   if (digits.startsWith("0")) digits = digits.slice(1);
 
   return digits.slice(0, 9);
+}
+
+const loyaltyText = {
+  az: {
+    notAdded: "Əlavə edilməyib",
+    active: "Aktiv loyallıq kartı",
+    add: "Loyallıq kartı əlavə et",
+    desc: "5% cashback, Apple Wallet və Google Wallet dəstəyi haqqında məlumat al.",
+  },
+  en: {
+    notAdded: "Not added",
+    active: "Active loyalty card",
+    add: "Add loyalty card",
+    desc: "Learn about 5% cashback and Apple Wallet or Google Wallet support.",
+  },
+  ru: {
+    notAdded: "Не добавлена",
+    active: "Активная карта лояльности",
+    add: "Добавить карту лояльности",
+    desc: "Узнайте о кешбэке 5% и поддержке Apple Wallet и Google Wallet.",
+  },
+};
+
+function getStoredLanguage() {
+  return (
+    localStorage.getItem("language") ||
+    localStorage.getItem("lang") ||
+    localStorage.getItem("nemesis_lang") ||
+    "az"
+  );
+}
+
+function normalizeLoyaltyCode(value) {
+  const code = String(value || "").trim();
+
+  return code && code.toLowerCase() !== "string" ? code : "";
 }
 
 export default function AccountSettingsPage() {
@@ -41,6 +84,9 @@ export default function AccountSettingsPage() {
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState("error");
   const [toastVisible, setToastVisible] = useState(false);
+  const [language, setLanguage] = useState(getStoredLanguage);
+
+  const loyalty = loyaltyText[language] || loyaltyText.az;
 
   const toastTimer = useRef(null);
   const toastCloseTimer = useRef(null);
@@ -57,6 +103,18 @@ export default function AccountSettingsPage() {
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(getStoredLanguage());
+
+    window.addEventListener("storage", syncLanguage);
+    window.addEventListener("languageChanged", syncLanguage);
+
+    return () => {
+      window.removeEventListener("storage", syncLanguage);
+      window.removeEventListener("languageChanged", syncLanguage);
     };
   }, []);
 
@@ -273,10 +331,11 @@ export default function AccountSettingsPage() {
               onChange={(v) => update("dateOfBirth", v)}
             />
 
-            <Input
+            <LoyaltyCardField
               label={text.loyaltyCard}
-              value={form.loyaltyCardCode}
-              onChange={(v) => update("loyaltyCardCode", v)}
+              code={normalizeLoyaltyCode(form.loyaltyCardCode)}
+              copy={loyalty}
+              onAdd={() => navigate("/profile/loyalty-card")}
             />
           </div>
 
@@ -372,5 +431,44 @@ function ReadOnlyInput({ label, value, hint }) {
       />
       {hint && <p className="mt-2 text-xs leading-5 text-zinc-400">{hint}</p>}
     </label>
+  );
+}
+
+function LoyaltyCardField({ label, code, copy, onAdd }) {
+  return (
+    <div className="rounded-[18px] border border-zinc-100 bg-zinc-50 p-4 md:col-span-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-white text-xl text-zinc-950 shadow-sm">
+            <FiCreditCard />
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-zinc-800">{label}</p>
+            <p
+              className={`mt-1 truncate text-sm ${
+                code ? "font-semibold text-zinc-950" : "text-zinc-400"
+              }`}
+            >
+              {code || copy.notAdded}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-zinc-400">
+              {code ? copy.active : copy.desc}
+            </p>
+          </div>
+        </div>
+
+        {!code && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-4 text-xs font-semibold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
+          >
+            {copy.add}
+            <FiChevronRight />
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

@@ -397,29 +397,14 @@ export const adminPromoPagesApi = {
   },
 
   detail: async (id) => {
-    const res1 = await adminFetch("/api/AdminPromoPages?type=1").catch(
-      () => null,
-    );
-    const res2 = await adminFetch("/api/AdminPromoPages?type=2").catch(
-      () => null,
-    );
-
-    const items = [...listAdmin(res1), ...listAdmin(res2)];
-    const promo = items.find((x) => String(x.id) === String(id));
-
-    if (!promo) throw new Error("Promo tapılmadı.");
-
-    return { success: true, data: promo };
+    return adminFetch(`/api/AdminPromoPages/${id}`);
   },
 
   create: (body) => {
     const formData = new FormData();
 
-    formData.append("Title", body.title || "");
-    formData.append("Description", body.description || "");
     formData.append("Type", String(Number(body.type || 1)));
     formData.append("StartDate", body.startDate || "");
-    formData.append("EndDate", body.endDate || "");
     formData.append("IsActive", String(Boolean(body.isActive)));
 
     if (body.file instanceof File) {
@@ -439,10 +424,7 @@ export const adminPromoPagesApi = {
   update: (id, body) => {
     const formData = new FormData();
 
-    formData.append("Title", body.title || "");
-    formData.append("Description", body.description || "");
     formData.append("StartDate", body.startDate || "");
-    formData.append("EndDate", body.endDate || "");
     formData.append("IsActive", String(Boolean(body.isActive)));
 
     if (body.file instanceof File) {

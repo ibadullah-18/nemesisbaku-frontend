@@ -325,41 +325,22 @@ function PromoCard({ promo, text }) {
     <NavLink
       to={getPromoLink(promo)}
       draggable="false"
-      className="group relative block h-[360px] overflow-hidden rounded-[28px] bg-[#efe7da] shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:h-[430px] md:rounded-[32px] lg:h-[460px]"
+      className="group relative block aspect-[5/2] overflow-hidden rounded-[20px] bg-[#efe7da] shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:rounded-[32px]"
     >
       <img
         src={promo.imageUrl}
-        alt={promo.title}
+        alt="Kampaniya şəkli"
         draggable="false"
-        className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
+        className="absolute inset-0 h-full w-full object-contain"
       />
 
-      <div className="absolute inset-0 bg-[#efe7da]/20" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#efe7da]/95 via-[#efe7da]/58 to-black/12" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+      <span className="absolute bottom-3 left-3 z-10 inline-flex h-8 items-center gap-2 rounded-full border border-white/80 bg-white/90 py-1 pl-3.5 pr-1.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-zinc-950 shadow-[0_10px_28px_rgba(0,0,0,0.16)] backdrop-blur-md transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-white md:bottom-5 md:left-5 md:h-10 md:pl-4 md:pr-2 md:text-[10px]">
+        {text.discover || "Kəşf et"}
 
-      <div className="absolute left-0 top-0 z-10 flex h-full w-full items-center p-6 md:p-10">
-        <div className="max-w-[300px] text-left md:max-w-[430px]">
-          <p className="mb-3 text-[20px] font-extrabold  tracking-[0.22em] text-zinc-700 md:text-xs">
-            nemesisbaku
-          </p>
-
-          <h1 className="text-[42px] font-extrabold leading-[0.92] tracking-[-0.065em] text-zinc-950 md:text-[72px]">
-            {promo.title}
-          </h1>
-
-          {promo.description && (
-            <p className="mt-4 max-w-[360px] text-xs font-semibold leading-5 text-zinc-700 md:text-sm md:leading-6">
-              {promo.description}
-            </p>
-          )}
-
-          <div className="mt-6 inline-flex h-11 items-center gap-4 rounded-[10px] bg-zinc-950 px-6 text-xs font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition group-hover:gap-6 active:scale-[0.97] md:h-14 md:rounded-[14px] md:px-8 md:text-sm">
-            {text.discover || "Kəşf et"}
-            <FiChevronRight className="text-lg md:text-xl" />
-          </div>
-        </div>
-      </div>
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-zinc-950 text-[12px] text-white md:h-7 md:w-7 md:text-sm">
+          <FiChevronRight />
+        </span>
+      </span>
     </NavLink>
   );
 }

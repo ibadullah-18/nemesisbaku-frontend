@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiChevronRight,
+  FiCreditCard,
+  FiGift,
   FiHome,
   FiLogOut,
   FiMail,
@@ -24,6 +26,42 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("az-AZ");
 }
 
+const loyaltyText = {
+  az: {
+    notAdded: "Əlavə edilməyib",
+    add: "Loyallıq kartı əlavə et",
+    desc: "Hər alışda 5% cashback qazan və kartını Apple Wallet və ya Google Wallet-a əlavə et.",
+    open: "Kart sisteminə bax",
+  },
+  en: {
+    notAdded: "Not added",
+    add: "Add loyalty card",
+    desc: "Earn 5% cashback on every purchase and add your card to Apple Wallet or Google Wallet.",
+    open: "Explore the card system",
+  },
+  ru: {
+    notAdded: "Не добавлена",
+    add: "Добавить карту лояльности",
+    desc: "Получайте 5% кешбэка с каждой покупки и добавьте карту в Apple Wallet или Google Wallet.",
+    open: "Подробнее о карте",
+  },
+};
+
+function getStoredLanguage() {
+  return (
+    localStorage.getItem("language") ||
+    localStorage.getItem("lang") ||
+    localStorage.getItem("nemesis_lang") ||
+    "az"
+  );
+}
+
+function normalizeLoyaltyCode(value) {
+  const code = String(value || "").trim();
+
+  return code && code.toLowerCase() !== "string" ? code : "";
+}
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
@@ -32,9 +70,24 @@ export default function ProfilePage() {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addressError, setAddressError] = useState(false);
+  const [language, setLanguage] = useState(getStoredLanguage);
+
+  const loyalty = loyaltyText[language] || loyaltyText.az;
 
   useEffect(() => {
     loadPage();
+  }, []);
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(getStoredLanguage());
+
+    window.addEventListener("storage", syncLanguage);
+    window.addEventListener("languageChanged", syncLanguage);
+
+    return () => {
+      window.removeEventListener("storage", syncLanguage);
+      window.removeEventListener("languageChanged", syncLanguage);
+    };
   }, []);
 
   async function loadPage() {
@@ -77,6 +130,7 @@ export default function ProfilePage() {
 
   const defaultAddress =
     addresses.find((x) => x.isDefault) || addresses[0] || null;
+  const loyaltyCardCode = normalizeLoyaltyCode(profile?.loyaltyCardCode);
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
@@ -154,7 +208,9 @@ export default function ProfilePage() {
 
             <ProfileMiniStat
               label={text.loyaltyCard}
-              value={profile?.loyaltyCardCode || text.none}
+              value={loyaltyCardCode || loyalty.notAdded}
+              actionLabel={!loyaltyCardCode ? loyalty.add : ""}
+              onAction={() => navigate("/profile/loyalty-card")}
             />
 
             <ProfileMiniStat
@@ -165,6 +221,15 @@ export default function ProfilePage() {
         </section>
 
         <section className="mt-5 grid gap-3 md:grid-cols-2">
+          {!loyaltyCardCode && (
+            <LoyaltyInviteCard
+              title={loyalty.add}
+              desc={loyalty.desc}
+              action={loyalty.open}
+              onClick={() => navigate("/profile/loyalty-card")}
+            />
+          )}
+
           <ActionCard
             icon={<FiPackage />}
             title={text.myOrders}
@@ -271,15 +336,59 @@ export default function ProfilePage() {
   );
 }
 
-function ProfileMiniStat({ label, value }) {
+function ProfileMiniStat({ label, value, actionLabel, onAction }) {
   return (
     <div className="border-t border-white/10 px-5 py-4 md:border-l md:border-t-0 first:md:border-l-0">
       <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/35">
         {label}
       </p>
 
-      <p className="mt-1 truncate text-sm font-medium text-white/85">{value}</p>
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+        <p className="truncate text-sm font-medium text-white/85">{value}</p>
+
+        {actionLabel && (
+          <button
+            type="button"
+            onClick={onAction}
+            className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-zinc-950 transition hover:-translate-y-0.5 active:scale-95"
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
     </div>
+  );
+}
+
+function LoyaltyInviteCard({ title, desc, action, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-[20px] bg-zinc-950 px-5 py-5 text-left text-white shadow-[0_20px_55px_rgba(0,0,0,0.14)] transition duration-500 hover:-translate-y-1 active:scale-[0.98] md:col-span-2"
+    >
+      <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10 blur-3xl transition duration-700 group-hover:scale-125" />
+      <div className="absolute bottom-0 left-1/3 h-px w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+
+      <div className="relative flex items-center justify-between gap-5">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-[18px] bg-white text-2xl text-zinc-950">
+            <FiCreditCard />
+            <FiGift className="absolute -right-1 -top-1 rounded-full bg-zinc-950 p-1 text-[18px] text-white ring-2 ring-white" />
+          </div>
+
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold">{title}</h2>
+            <p className="mt-1 max-w-[720px] text-sm leading-6 text-white/55">
+              {desc}
+            </p>
+            <p className="mt-2 text-xs font-bold text-white/85">{action}</p>
+          </div>
+        </div>
+
+        <FiChevronRight className="shrink-0 text-2xl text-white/40 transition duration-300 group-hover:translate-x-1 group-hover:text-white" />
+      </div>
+    </button>
   );
 }
 
