@@ -12,13 +12,9 @@ import {
   FiUsers,
   FiXCircle,
 } from "react-icons/fi";
-import {
-  adminOrdersApi,
-  listAdmin,
-  metaAdmin,
-} from "../../api/admin/adminApi";
+import { adminOrdersApi, listAdmin, metaAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { useLocation } from "react-router-dom";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
 
 const statusFilters = [
   { value: "", label: "Hamısı" },
@@ -130,11 +126,7 @@ export default function AdminOrders() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const location = useLocation();
-
-  const basePath = location.pathname.startsWith("/Admin")
-      ? "/Admin"
-      : "/SuperAdmin";
+  const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadOrders(1);
@@ -256,9 +248,7 @@ export default function AdminOrders() {
             className="rounded-[22px] bg-white p-4 shadow-[0_14px_42px_rgba(0,0,0,0.035)] transition hover:-translate-y-1 active:scale-[0.98]"
           >
             <div className={`mb-3 h-2 w-2 rounded-full ${item.info.dot}`} />
-            <p className="text-xs font-extrabold text-zinc-400">
-              {item.label}
-            </p>
+            <p className="text-xs font-extrabold text-zinc-400">{item.label}</p>
             <h3 className="mt-1 text-[26px] font-extrabold tracking-[-0.04em]">
               {item.count}
             </h3>

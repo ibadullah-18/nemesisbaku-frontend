@@ -17,7 +17,12 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { useLocation } from "react-router-dom";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
+import {
+  isEndAfterStart,
+  localDateTimeToIso,
+  toLocalDateTimeInput,
+} from "../../utils/dataTime";
 
 const emptyForm = {
   title: "",
@@ -28,11 +33,6 @@ const emptyForm = {
   isActive: true,
   productIds: [],
 };
-
-function toInputDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 16);
-}
 
 function getProductId(product) {
   return product?.id || product?.productId || "";
@@ -85,11 +85,7 @@ export default function AdminHomeSectionForm({ mode }) {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const location = useLocation();
-
-  const basePath = location.pathname.startsWith("/Admin")
-      ? "/Admin"
-      : "/SuperAdmin";
+  const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadAll();
@@ -118,8 +114,8 @@ export default function AdminHomeSectionForm({ mode }) {
           title: section?.title || "",
           subtitle: section?.subtitle || "",
           displayOrder: section?.displayOrder || 1,
-          startDate: toInputDate(section?.startDate),
-          endDate: toInputDate(section?.endDate),
+          startDate: toLocalDateTimeInput(section?.startDate),
+          endDate: toLocalDateTimeInput(section?.endDate),
           isActive: section?.isActive ?? true,
           productIds: section?.productIds || [],
         });
@@ -177,12 +173,26 @@ export default function AdminHomeSectionForm({ mode }) {
       return setError("Ən azı 1 məhsul seçilməlidir.");
     }
 
+    let startDate;
+    let endDate;
+
+    try {
+      startDate = localDateTimeToIso(form.startDate);
+      endDate = localDateTimeToIso(form.endDate);
+    } catch (err) {
+      return setError(err.message);
+    }
+
+    if (!isEndAfterStart(startDate, endDate)) {
+      return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
+    }
+
     const payload = {
       title: form.title.trim(),
       subtitle: form.subtitle.trim(),
       displayOrder: Number(form.displayOrder),
-      startDate: form.startDate,
-      endDate: form.endDate,
+      startDate,
+      endDate,
       isActive: Boolean(form.isActive),
       productIds: form.productIds,
     };
@@ -229,8 +239,8 @@ export default function AdminHomeSectionForm({ mode }) {
     return form.productIds
       .map((productId) =>
         products.find(
-          (product) => String(getProductId(product)) === String(productId)
-        )
+          (product) => String(getProductId(product)) === String(productId),
+        ),
       )
       .filter(Boolean);
   }, [form.productIds, products]);

@@ -10,6 +10,11 @@ import {
 } from "react-icons/fi";
 import { adminPromoCodesApi, listAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import {
+  isEndAfterStart,
+  localDateTimeToIso,
+  toLocalDateTimeInput,
+} from "../../utils/dataTime";
 
 const emptyForm = {
   code: "",
@@ -21,16 +26,6 @@ const emptyForm = {
   endDate: "",
   isActive: true,
 };
-
-function toDateTimeLocal(value) {
-  if (!value) return "";
-  return String(value).slice(0, 16);
-}
-
-function toIso(value) {
-  if (!value) return null;
-  return new Date(value).toISOString();
-}
 
 function formatDate(value) {
   if (!value) return "—";
@@ -86,8 +81,28 @@ export default function AdminPromoCodes() {
     if (!form.usageLimit || Number(form.usageLimit) <= 0) {
       return setError("İstifadə limiti 0-dan böyük olmalıdır.");
     }
+    if (!Number.isInteger(Number(form.usageLimit))) {
+      return setError("İstifadə limiti tam ədəd olmalıdır.");
+    }
+    if (Number(form.discountType) === 1 && Number(form.discountValue) > 100) {
+      return setError("Faiz endirimi 100-dən böyük ola bilməz.");
+    }
     if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
     if (!form.endDate) return setError("Bitmə tarixi seçilməlidir.");
+
+    let startDate;
+    let endDate;
+
+    try {
+      startDate = localDateTimeToIso(form.startDate);
+      endDate = localDateTimeToIso(form.endDate);
+    } catch (err) {
+      return setError(err.message);
+    }
+
+    if (!isEndAfterStart(startDate, endDate)) {
+      return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
+    }
 
     try {
       setSaving(true);
@@ -98,8 +113,8 @@ export default function AdminPromoCodes() {
         discountValue: Number(form.discountValue),
         usageLimit: Number(form.usageLimit),
         minOrderAmount: Number(form.minOrderAmount || 0),
-        startDate: toIso(form.startDate),
-        endDate: toIso(form.endDate),
+        startDate,
+        endDate,
         isActive: Boolean(form.isActive),
       });
 
@@ -131,7 +146,7 @@ export default function AdminPromoCodes() {
 
       await adminPromoCodesApi.delete(id);
       setPromoCodes((prev) =>
-        prev.filter((x) => (x.id || x.promoCodeId) !== id)
+        prev.filter((x) => (x.id || x.promoCodeId) !== id),
       );
       setSuccess("Promo kod silindi.");
     } catch (err) {
@@ -146,7 +161,9 @@ export default function AdminPromoCodes() {
     if (!text) return promoCodes;
 
     return promoCodes.filter((item) =>
-      String(item.code || "").toLowerCase().includes(text)
+      String(item.code || "")
+        .toLowerCase()
+        .includes(text),
     );
   }, [promoCodes, search]);
 
@@ -253,14 +270,14 @@ export default function AdminPromoCodes() {
             <AdminInput
               label="Başlama tarixi"
               type="datetime-local"
-              value={toDateTimeLocal(form.startDate)}
+              value={toLocalDateTimeInput(form.startDate)}
               onChange={(v) => updateForm("startDate", v)}
             />
 
             <AdminInput
               label="Bitmə tarixi"
               type="datetime-local"
-              value={toDateTimeLocal(form.endDate)}
+              value={toLocalDateTimeInput(form.endDate)}
               onChange={(v) => updateForm("endDate", v)}
             />
 
@@ -333,7 +350,11 @@ export default function AdminPromoCodes() {
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
                       <div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#244989]/8 text-[#244989]">
-                        {Number(item.discountType) === 1 ? <FiPercent /> : <FiTag />}
+                        {Number(item.discountType) === 1 ? (
+                          <FiPercent />
+                        ) : (
+                          <FiTag />
+                        )}
                       </div>
 
                       <div>
@@ -370,8 +391,16 @@ export default function AdminPromoCodes() {
                   </div>
 
                   <div className="mt-4 grid gap-2 text-xs font-bold text-zinc-500 md:grid-cols-3">
-                    <Info icon={<FiCalendar />} label="Başlama" value={formatDate(item.startDate)} />
-                    <Info icon={<FiCalendar />} label="Bitmə" value={formatDate(item.endDate)} />
+                    <Info
+                      icon={<FiCalendar />}
+                      label="Başlama"
+                      value={formatDate(item.startDate)}
+                    />
+                    <Info
+                      icon={<FiCalendar />}
+                      label="Bitmə"
+                      value={formatDate(item.endDate)}
+                    />
                     <Info
                       icon={<FiTag />}
                       label="Limit"
@@ -418,7 +447,9 @@ function Info({ icon, label, value }) {
   return (
     <div className="flex items-center gap-2 rounded-[14px] bg-white px-3 py-2">
       <span className="text-[#244989]">{icon}</span>
-      <span>{label}: {value}</span>
+      <span>
+        {label}: {value}
+      </span>
     </div>
   );
 }

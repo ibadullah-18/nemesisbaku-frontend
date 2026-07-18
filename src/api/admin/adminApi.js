@@ -1,21 +1,60 @@
 import { API_BASE_URL } from "../config";
 import {
-    clearAllAdminAuth,
-    getCurrentAccessToken,
+  clearPanelAuth,
+  getPanelAccessToken,
+  getPanelFromPath,
+  getPanelLoginPath,
+  refreshPanelAccessToken,
 } from "./adminAuth";
 
-export async function adminFetch(endpoint, options = {}) {
-const token = getCurrentAccessToken();
-  const isFormData = options.body instanceof FormData;
+function redirectToPanelLogin(panel) {
+  const loginPath = getPanelLoginPath(panel);
 
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  if (window.location.pathname.toLowerCase() !== loginPath.toLowerCase()) {
+    window.location.assign(loginPath);
+  }
+}
+
+export async function adminFetch(endpoint, options = {}, retry = true) {
+  const { panel: requestedPanel, ...fetchOptions } = options;
+  const panel = requestedPanel || getPanelFromPath();
+
+  if (!panel) {
+    throw new Error(
+      "Admin sorğusunun hansı panelə aid olduğu müəyyən edilmədi.",
+    );
+  }
+
+  const token = getPanelAccessToken(panel);
+  const isFormData =
+    typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
+
+  let res;
+
+  try {
+    res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...fetchOptions,
+      headers: {
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...fetchOptions.headers,
+      },
+    });
+  } catch {
+    throw new Error("Serverlə əlaqə qurulmadı.");
+  }
+
+  if (res.status === 401 && retry) {
+    const newToken = await refreshPanelAccessToken(panel);
+
+    if (!newToken) {
+      clearPanelAuth(panel);
+      redirectToPanelLogin(panel);
+      throw new Error("Sessiyanın vaxtı bitib. Yenidən daxil olun.");
+    }
+
+    return adminFetch(endpoint, { ...fetchOptions, panel }, false);
+  }
 
   let result = null;
   const text = await res.text();
@@ -26,11 +65,16 @@ const token = getCurrentAccessToken();
     result = text;
   }
 
-  if (res.status === 401 || res.status === 403) {
-    clearAllAdminAuth();
+  if (res.status === 401) {
+    clearPanelAuth(panel);
+    redirectToPanelLogin(panel);
+    throw new Error("Sessiyanın vaxtı bitib. Yenidən daxil olun.");
+  }
 
-    window.location.href="/";
-    return null;
+  if (res.status === 403) {
+    throw new Error(
+      result?.message || "Bu əməliyyat üçün səlahiyyətiniz yoxdur.",
+    );
   }
 
   if (!res.ok || result?.success === false) {
@@ -43,7 +87,10 @@ const token = getCurrentAccessToken();
     const validationErrors =
       result?.errors && typeof result.errors === "object"
         ? Object.entries(result.errors)
-            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
+            .map(
+              ([key, value]) =>
+                `${key}: ${Array.isArray(value) ? value.join(", ") : value}`,
+            )
             .join(" | ")
         : "";
 
@@ -52,7 +99,7 @@ const token = getCurrentAccessToken();
         result?.message ||
         result?.title ||
         result?.error ||
-        "Admin əməliyyatı uğursuz oldu"
+        "Admin əməliyyatı uğursuz oldu",
     );
   }
 
@@ -162,7 +209,7 @@ export const adminProductImagesApi = {
       {
         method: "POST",
         body: formData,
-      }
+      },
     );
   },
 
@@ -286,7 +333,7 @@ export const adminColorsApi = {
 export const adminOrdersApi = {
   list: ({ page = 1, pageSize = 20, search = "", status = "" } = {}) =>
     adminFetch(
-      `/api/AdminOrders${buildQuery({ page, pageSize, search, status })}`
+      `/api/AdminOrders${buildQuery({ page, pageSize, search, status })}`,
     ),
 
   detail: (id) => adminFetch(`/api/AdminOrders/${id}`),
@@ -303,14 +350,16 @@ export const adminOrdersApi = {
   courierWhatsappLink: (id, courierPhoneNumber) =>
     adminFetch(
       `/api/AdminOrders/${id}/courier-whatsapp-link?courierPhoneNumber=${encodeURIComponent(
-        courierPhoneNumber
-      )}`
+        courierPhoneNumber,
+      )}`,
     ),
 };
 
 export const adminUsersApi = {
   list: ({ page = 1, pageSize = 20, search = "", role = "" } = {}) =>
-    adminFetch(`/api/AdminUsers${buildQuery({ page, pageSize, search, role })}`),
+    adminFetch(
+      `/api/AdminUsers${buildQuery({ page, pageSize, search, role })}`,
+    ),
 
   detail: (id) => adminFetch(`/api/AdminUsers/${id}`),
 
@@ -336,7 +385,6 @@ export const adminUsersApi = {
     }),
 };
 
-
 export const adminAuditLogsApi = {
   list: ({ page = 1, pageSize = 20, search = "" } = {}) =>
     adminFetch(`/api/AdminAuditLogs${buildQuery({ page, pageSize, search })}`),
@@ -349,8 +397,12 @@ export const adminPromoPagesApi = {
   },
 
   detail: async (id) => {
-    const res1 = await adminFetch("/api/AdminPromoPages?type=1").catch(() => null);
-    const res2 = await adminFetch("/api/AdminPromoPages?type=2").catch(() => null);
+    const res1 = await adminFetch("/api/AdminPromoPages?type=1").catch(
+      () => null,
+    );
+    const res2 = await adminFetch("/api/AdminPromoPages?type=2").catch(
+      () => null,
+    );
 
     const items = [...listAdmin(res1), ...listAdmin(res2)];
     const promo = items.find((x) => String(x.id) === String(id));

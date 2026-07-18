@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiEdit3,
   FiImage,
@@ -12,6 +12,11 @@ import {
 } from "react-icons/fi";
 import { adminBrandsApi, listAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import {
+  IMAGE_ACCEPT,
+  prepareImageFile,
+  revokeImagePreview,
+} from "../../utils/imageFile";
 
 const emptyForm = {
   name: "",
@@ -20,6 +25,7 @@ const emptyForm = {
 };
 
 export default function AdminBrands() {
+  const previewRef = useRef("");
   const [brands, setBrands] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingBrand, setEditingBrand] = useState(null);
@@ -32,13 +38,14 @@ export default function AdminBrands() {
 
   useEffect(() => {
     loadBrands();
+  }, []);
 
-    return () => {
-      if (form.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(form.preview);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    previewRef.current = form.preview;
+  }, [form.preview]);
+
+  useEffect(() => {
+    return () => revokeImagePreview(previewRef.current);
   }, []);
 
   async function loadBrands() {
@@ -60,9 +67,7 @@ export default function AdminBrands() {
   }
 
   function resetForm() {
-    if (form.preview?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.preview);
-    }
+    revokeImagePreview(form.preview);
 
     setForm(emptyForm);
     setEditingBrand(null);
@@ -70,27 +75,31 @@ export default function AdminBrands() {
     setSuccess("");
   }
 
-  function selectImage(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function selectImage(e) {
+    const input = e.currentTarget;
+    const selectedFile = input.files?.[0];
+    input.value = "";
 
-    if (form.preview?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.preview);
+    if (!selectedFile) return;
+
+    try {
+      setError("");
+      const file = await prepareImageFile(selectedFile);
+
+      revokeImagePreview(form.preview);
+
+      setForm((prev) => ({
+        ...prev,
+        image: file,
+        preview: URL.createObjectURL(file),
+      }));
+    } catch (err) {
+      setError(err.message || "Şəkil hazırlana bilmədi.");
     }
-
-    setForm((prev) => ({
-      ...prev,
-      image: file,
-      preview: URL.createObjectURL(file),
-    }));
-
-    e.target.value = "";
   }
 
   function removeSelectedImage() {
-    if (form.preview?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.preview);
-    }
+    revokeImagePreview(form.preview);
 
     setForm((prev) => ({
       ...prev,
@@ -100,9 +109,7 @@ export default function AdminBrands() {
   }
 
   function startEdit(brand) {
-    if (form.preview?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.preview);
-    }
+    revokeImagePreview(form.preview);
 
     setEditingBrand(brand);
 
@@ -134,18 +141,18 @@ export default function AdminBrands() {
           name: form.name.trim(),
           image: form.image,
         });
-
-        setSuccess("Brend yeniləndi.");
       } else {
         await adminBrandsApi.create({
           name: form.name.trim(),
           image: form.image,
         });
-
-        setSuccess("Brend əlavə edildi.");
       }
 
+      const successMessage = editingBrand
+        ? "Brend yeniləndi."
+        : "Brend əlavə edildi.";
       resetForm();
+      setSuccess(successMessage);
       await loadBrands();
     } catch (err) {
       setError(err.message || "Brend yadda saxlanmadı.");
@@ -171,8 +178,7 @@ export default function AdminBrands() {
       await loadBrands();
     } catch (err) {
       setError(
-        err.message ||
-          "Brend silinmədi. Bu brendə bağlı məhsul ola bilər."
+        err.message || "Brend silinmədi. Bu brendə bağlı məhsul ola bilər.",
       );
     } finally {
       setSaving(false);
@@ -185,7 +191,9 @@ export default function AdminBrands() {
     if (!text) return brands;
 
     return brands.filter((brand) =>
-      String(brand.name || "").toLowerCase().includes(text)
+      String(brand.name || "")
+        .toLowerCase()
+        .includes(text),
     );
   }, [brands, search]);
 
@@ -276,7 +284,7 @@ export default function AdminBrands() {
 
               <input
                 type="file"
-                accept="image/*"
+                accept={IMAGE_ACCEPT}
                 onChange={selectImage}
                 className="hidden"
               />

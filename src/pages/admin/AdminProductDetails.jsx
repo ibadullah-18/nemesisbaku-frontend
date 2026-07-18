@@ -17,7 +17,7 @@ import {
 } from "react-icons/fi";
 import { adminProductsApi, unwrapAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { useLocation } from "react-router-dom";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
 
 function money(value) {
   return `${Number(value || 0).toFixed(2)} ₼`;
@@ -92,7 +92,7 @@ function getVariants(product) {
 function getTotalStock(product) {
   return getVariants(product).reduce(
     (sum, variant) => sum + Number(variant.stockCount || variant.stock || 0),
-    0
+    0,
   );
 }
 
@@ -168,12 +168,8 @@ export default function AdminProductDetails() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  
-  const location = useLocation();
 
-  const basePath = location.pathname.startsWith("/Admin")
-      ? "/Admin"
-      : "/SuperAdmin";
+  const basePath = getPanelBasePath();
   useEffect(() => {
     loadProduct();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +216,11 @@ export default function AdminProductDetails() {
   const warnings = useMemo(() => {
     const result = [];
 
-    if (!product?.categoryId && !product?.categoryName && !product?.category?.name) {
+    if (
+      !product?.categoryId &&
+      !product?.categoryName &&
+      !product?.category?.name
+    ) {
       result.push("Məhsulun kateqoriya məlumatı gəlmədi.");
     }
 
@@ -230,7 +230,9 @@ export default function AdminProductDetails() {
 
     variants.forEach((variant, index) => {
       if (isBrokenVariant(variant)) {
-        result.push(`Variant #${index + 1} üçün ölçü və ya rəng məlumatı tapılmadı.`);
+        result.push(
+          `Variant #${index + 1} üçün ölçü və ya rəng məlumatı tapılmadı.`,
+        );
       }
     });
 
@@ -281,7 +283,9 @@ export default function AdminProductDetails() {
           </h1>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-extrabold ${status.className}`}>
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-extrabold ${status.className}`}
+            >
               {status.icon}
               {status.label}
             </span>
@@ -361,10 +365,30 @@ export default function AdminProductDetails() {
       <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
         <main className="space-y-5">
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <InfoCard icon={<FiTag />} label="Qiymət" value={money(product.price)} />
-            <InfoCard icon={<FiTag />} label="Endirim qiyməti" value={product.discountPrice ? money(product.discountPrice) : "Yoxdur"} />
-            <InfoCard icon={<FiPackage />} label="Ümumi stok" value={getTotalStock(product)} />
-            <InfoCard icon={<FiEye />} label="Baxış sayı" value={product.viewCount ?? product.viewsCount ?? product.views ?? 0} />
+            <InfoCard
+              icon={<FiTag />}
+              label="Qiymət"
+              value={money(product.price)}
+            />
+            <InfoCard
+              icon={<FiTag />}
+              label="Endirim qiyməti"
+              value={
+                product.discountPrice ? money(product.discountPrice) : "Yoxdur"
+              }
+            />
+            <InfoCard
+              icon={<FiPackage />}
+              label="Ümumi stok"
+              value={getTotalStock(product)}
+            />
+            <InfoCard
+              icon={<FiEye />}
+              label="Baxış sayı"
+              value={
+                product.viewCount ?? product.viewsCount ?? product.views ?? 0
+              }
+            />
           </section>
 
           <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
@@ -419,7 +443,9 @@ export default function AdminProductDetails() {
                     </div>
 
                     <p className="mt-2 text-left text-xs font-extrabold text-zinc-500">
-                      {image.isMain || index === 0 ? "Əsas şəkil" : `Əlavə şəkil ${index + 1}`}
+                      {image.isMain || index === 0
+                        ? "Əsas şəkil"
+                        : `Əlavə şəkil ${index + 1}`}
                     </p>
                   </button>
                 ))}
@@ -525,12 +551,29 @@ export default function AdminProductDetails() {
             </h2>
 
             <div className="mt-5 space-y-3">
-              <MiniInfo label="Məhsul kodu" value={product.productCode || "Yoxdur"} />
+              <MiniInfo
+                label="Məhsul kodu"
+                value={product.productCode || "Yoxdur"}
+              />
               <MiniInfo label="Model" value={product.model || "Yoxdur"} />
-              <MiniInfo label="Kateqoriya" value={product.categoryName || product.category?.name || "Yoxdur"} />
-              <MiniInfo label="Brend" value={product.brandName || product.brand?.name || "Yoxdur"} />
-              <MiniInfo label="Endirim bölməsində görünsün" value={yesNo(product.isDiscounted || product.discountPrice)} />
-              <MiniInfo label="Önə çıxan məhsuldur" value={yesNo(product.isFeatured)} />
+              <MiniInfo
+                label="Kateqoriya"
+                value={
+                  product.categoryName || product.category?.name || "Yoxdur"
+                }
+              />
+              <MiniInfo
+                label="Brend"
+                value={product.brandName || product.brand?.name || "Yoxdur"}
+              />
+              <MiniInfo
+                label="Endirim bölməsində görünsün"
+                value={yesNo(product.isDiscounted || product.discountPrice)}
+              />
+              <MiniInfo
+                label="Önə çıxan məhsuldur"
+                value={yesNo(product.isFeatured)}
+              />
               <MiniInfo label="Yeni məhsuldur" value={yesNo(product.isNew)} />
             </div>
           </section>
@@ -545,9 +588,21 @@ export default function AdminProductDetails() {
 
             <div className="mt-5 space-y-3 text-sm font-bold">
               <SideRow label="Normal qiymət" value={money(product.price)} />
-              <SideRow label="Endirim qiyməti" value={product.discountPrice ? money(product.discountPrice) : "Yoxdur"} />
+              <SideRow
+                label="Endirim qiyməti"
+                value={
+                  product.discountPrice
+                    ? money(product.discountPrice)
+                    : "Yoxdur"
+                }
+              />
               <SideRow label="Stok" value={getTotalStock(product)} />
-              <SideRow label="Baxış sayı" value={product.viewCount ?? product.viewsCount ?? product.views ?? 0} />
+              <SideRow
+                label="Baxış sayı"
+                value={
+                  product.viewCount ?? product.viewsCount ?? product.views ?? 0
+                }
+              />
             </div>
           </section>
 

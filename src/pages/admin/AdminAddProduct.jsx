@@ -1,12 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  FiImage,
-  FiPlus,
-  FiTrash2,
-  FiUploadCloud,
-  FiX,
-} from "react-icons/fi";
+import { FiImage, FiPlus, FiTrash2, FiUploadCloud, FiX } from "react-icons/fi";
 import {
   adminBrandsApi,
   adminCategoriesApi,
@@ -16,8 +10,13 @@ import {
   adminSizesApi,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { isSuperAdmin } from "../../api/admin/adminAuth";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
 import { generateId } from "../../utils/generateId";
+import {
+  IMAGE_ACCEPT,
+  prepareImageFiles,
+  revokeImagePreview,
+} from "../../utils/imageFile";
 
 const emptyForm = {
   name: "",
@@ -26,8 +25,6 @@ const emptyForm = {
   model: "",
   price: "",
   discountPrice: "",
-  isDiscounted: false,
-  isFeatured: false,
   categoryId: "",
   brandId: "",
 };
@@ -108,14 +105,55 @@ function getSizeText(item) {
   return item?.value || item?.size || item?.sizeValue || item?.name || "—";
 }
 
+function getSizeSortValue(item) {
+  const text = String(getSizeText(item)).trim().replace(",", ".");
+  const match = text.match(/\d+(?:\.\d+)?/);
+  const value = match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+
+  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function sortSizesAscending(list) {
+  return [...list].sort((a, b) => {
+    const aValue = getSizeSortValue(a);
+    const bValue = getSizeSortValue(b);
+
+    if (aValue !== bValue) return aValue - bValue;
+
+    return String(getSizeText(a)).localeCompare(String(getSizeText(b)), "az", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
+}
+
+function sortVariantsBySize(list, sizes) {
+  const sizeOrder = new Map(
+    sizes.map((size, index) => [String(getOptionId(size)), index]),
+  );
+
+  return [...list].sort((a, b) => {
+    const aOrder = sizeOrder.get(String(a.sizeId)) ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = sizeOrder.get(String(b.sizeId)) ?? Number.MAX_SAFE_INTEGER;
+
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    return String(a.colorId).localeCompare(String(b.colorId), "az", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
+}
+
 function getColorText(item) {
   return item?.name || item?.colorName || "—";
 }
 
 export default function AdminAddProduct() {
   const navigate = useNavigate();
+  const imagesRef = useRef([]);
 
-  const basePath = isSuperAdmin() ? "/SuperAdmin" : "/Admin";
+  const basePath = getPanelBasePath();
   const [form, setForm] = useState(emptyForm);
   const [variants, setVariants] = useState([{ ...emptyVariant }]);
   const [images, setImages] = useState([]);
@@ -134,6 +172,16 @@ export default function AdminAddProduct() {
     loadOptions();
   }, []);
 
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
+    return () => {
+      imagesRef.current.forEach((image) => revokeImagePreview(image.preview));
+    };
+  }, []);
+
   async function loadOptions() {
     try {
       setLoading(true);
@@ -148,7 +196,7 @@ export default function AdminAddProduct() {
 
       setCategories(uniqueById(listOf(catRes)));
       setBrands(uniqueById(listOf(brandRes)));
-      setSizes(uniqueById(listOf(sizeRes)));
+      setSizes(sortSizesAscending(uniqueById(listOf(sizeRes))));
       setColors(uniqueById(listOf(colorRes)));
     } catch (err) {
       setError(err.message || "Məlumatlar yüklənmədi.");
@@ -164,8 +212,8 @@ export default function AdminAddProduct() {
   function updateVariant(index, key, value) {
     setVariants((prev) =>
       prev.map((variant, i) =>
-        i === index ? { ...variant, [key]: value } : variant
-      )
+        i === index ? { ...variant, [key]: value } : variant,
+      ),
     );
   }
 
@@ -177,26 +225,33 @@ export default function AdminAddProduct() {
     setVariants((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleImages(e) {
-    const files = Array.from(e.target.files || []);
+  async function handleImages(e) {
+    const input = e.currentTarget;
+    const selectedFiles = Array.from(input.files || []);
+    input.value = "";
 
-    const mapped = files.map((file) => ({
-      id: generateId(),
-      file,
-      preview: URL.createObjectURL(file),
-    }));
+    if (selectedFiles.length === 0) return;
 
-    setImages((prev) => [...prev, ...mapped]);
-    e.target.value = "";
+    try {
+      setError("");
+      const files = await prepareImageFiles(selectedFiles);
+      const mapped = files.map((file) => ({
+        id: generateId(),
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+
+      setImages((prev) => [...prev, ...mapped]);
+    } catch (err) {
+      setError(err.message || "Şəkillər hazırlana bilmədi.");
+    }
   }
 
   function removeImage(id) {
     setImages((prev) => {
       const target = prev.find((x) => x.id === id);
 
-      if (target?.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(target.preview);
-      }
+      revokeImagePreview(target?.preview);
 
       return prev.filter((x) => x.id !== id);
     });
@@ -241,26 +296,61 @@ export default function AdminAddProduct() {
     if (!form.categoryId) return setError("Kateqoriya seçilməlidir.");
     if (!form.brandId) return setError("Brend seçilməlidir.");
 
+    const discountPrice = form.discountPrice ? Number(form.discountPrice) : 0;
+
+    if (
+      !Number.isFinite(discountPrice) ||
+      discountPrice < 0 ||
+      (discountPrice > 0 && discountPrice >= Number(form.price))
+    ) {
+      return setError(
+        "Endirimli qiymət əsas qiymətdən aşağı və 0-dan böyük olmalıdır.",
+      );
+    }
+
+    const hasIncompleteVariant = variants.some(
+      (variant) =>
+        (variant.sizeId || variant.colorId || variant.stockCount !== "") &&
+        !(variant.sizeId && variant.colorId && variant.stockCount !== ""),
+    );
+
+    if (hasIncompleteVariant) {
+      return setError("Bütün variantlarda ölçü, rəng və stok doldurulmalıdır.");
+    }
+
     const validVariants = variants.filter(
-      (v) => v.sizeId && v.colorId && v.stockCount !== ""
+      (v) => v.sizeId && v.colorId && v.stockCount !== "",
     );
 
     if (validVariants.length === 0) {
       return setError("Ən azı 1 variant əlavə edilməlidir.");
     }
 
-    const preparedVariants = validVariants.map((variant) => ({
-      sizeId: variant.sizeId,
-      colorId: variant.colorId,
-      stockCount: Number(variant.stockCount),
-    }));
+    const preparedVariants = sortVariantsBySize(
+      validVariants.map((variant) => ({
+        sizeId: variant.sizeId,
+        colorId: variant.colorId,
+        stockCount: Number(variant.stockCount),
+      })),
+      sizes,
+    );
 
     const hasInvalidStock = preparedVariants.some(
-      (v) => Number.isNaN(v.stockCount) || v.stockCount < 0
+      (v) => Number.isNaN(v.stockCount) || v.stockCount < 0,
     );
 
     if (hasInvalidStock) {
       return setError("Stok sayı düzgün yazılmalıdır.");
+    }
+
+    const variantKeys = preparedVariants.map(
+      (variant) => `${variant.sizeId}:${variant.colorId}`,
+    );
+
+    if (new Set(variantKeys).size !== variantKeys.length) {
+      return setError(
+        "Eyni ölçü və rəng kombinasiyası iki dəfə əlavə edilə bilməz.",
+      );
     }
 
     const payload = {
@@ -269,9 +359,9 @@ export default function AdminAddProduct() {
       productCode: form.productCode.trim(),
       model: form.model.trim(),
       price: Number(form.price),
-      discountPrice: form.discountPrice ? Number(form.discountPrice) : 0,
-      isDiscounted: Boolean(form.isDiscounted),
-      isFeatured: Boolean(form.isFeatured),
+      discountPrice,
+      isDiscounted: discountPrice > 0,
+      isFeatured: false,
       categoryId: form.categoryId,
       brandId: form.brandId,
       variants: preparedVariants,
@@ -280,11 +370,7 @@ export default function AdminAddProduct() {
     try {
       setSaving(true);
 
-      console.log("CREATE PRODUCT PAYLOAD:", payload);
-
       const productRes = await adminProductsApi.create(payload);
-
-      console.log("CREATED PRODUCT RESPONSE:", productRes);
 
       const productId = getCreatedId(productRes);
 
@@ -385,7 +471,10 @@ export default function AdminAddProduct() {
               >
                 <option value="">Kateqoriya seç</option>
                 {categories.map((category) => (
-                  <option key={getOptionId(category)} value={getOptionId(category)}>
+                  <option
+                    key={getOptionId(category)}
+                    value={getOptionId(category)}
+                  >
                     {category.name || "Adsız kateqoriya"}
                   </option>
                 ))}
@@ -418,26 +507,6 @@ export default function AdminAddProduct() {
                 className="w-full resize-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-zinc-400"
               />
             </label>
-          </div>
-
-          <div className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-            <h2 className="mb-5 text-xl font-extrabold tracking-[-0.03em]">
-              Görünmə
-            </h2>
-
-            <div className="space-y-4">
-              <ToggleRow
-                title="Endirimli məhsul"
-                checked={form.isDiscounted}
-                onChange={() => updateForm("isDiscounted", !form.isDiscounted)}
-              />
-
-              <ToggleRow
-                title="Önə çıxan məhsul"
-                checked={form.isFeatured}
-                onChange={() => updateForm("isFeatured", !form.isFeatured)}
-              />
-            </div>
           </div>
 
           <div className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
@@ -492,7 +561,10 @@ export default function AdminAddProduct() {
                     >
                       <option value="">Ölçü seç</option>
                       {sizes.map((size) => (
-                        <option key={getOptionId(size)} value={getOptionId(size)}>
+                        <option
+                          key={getOptionId(size)}
+                          value={getOptionId(size)}
+                        >
                           {getSizeText(size)}
                         </option>
                       ))}
@@ -505,7 +577,10 @@ export default function AdminAddProduct() {
                     >
                       <option value="">Rəng seç</option>
                       {colors.map((color) => (
-                        <option key={getOptionId(color)} value={getOptionId(color)}>
+                        <option
+                          key={getOptionId(color)}
+                          value={getOptionId(color)}
+                        >
                           {getColorText(color)}
                         </option>
                       ))}
@@ -542,7 +617,7 @@ export default function AdminAddProduct() {
 
               <input
                 type="file"
-                accept="image/*"
+                accept={IMAGE_ACCEPT}
                 multiple
                 onChange={handleImages}
                 className="hidden"
@@ -598,10 +673,15 @@ export default function AdminAddProduct() {
               <SideRow label="Ad" value={form.name || "—"} />
               <SideRow label="Kod" value={form.productCode || "—"} />
               <SideRow label="Model" value={form.model || "—"} />
-              <SideRow label="Qiymət" value={form.price ? `${form.price} ₼` : "—"} />
+              <SideRow
+                label="Qiymət"
+                value={form.price ? `${form.price} ₼` : "—"}
+              />
               <SideRow
                 label="Endirim"
-                value={form.discountPrice ? `${form.discountPrice} ₼` : "Yoxdur"}
+                value={
+                  form.discountPrice ? `${form.discountPrice} ₼` : "Yoxdur"
+                }
               />
               <SideRow label="Variant sayı" value={variants.length} />
               <SideRow label="Şəkil sayı" value={images.length} />
@@ -655,34 +735,6 @@ function AdminSelect({ label, value, onChange, children }) {
         {children}
       </select>
     </label>
-  );
-}
-
-function ToggleRow({ title, checked, onChange }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={`flex w-full items-center justify-between rounded-[18px] border p-4 text-left transition ${
-        checked
-          ? "border-[#244989] bg-[#244989]/8"
-          : "border-zinc-100 bg-zinc-50"
-      }`}
-    >
-      <span className="text-sm font-extrabold text-zinc-900">{title}</span>
-
-      <span
-        className={`h-6 w-11 rounded-full p-1 transition ${
-          checked ? "bg-[#244989]" : "bg-zinc-300"
-        }`}
-      >
-        <span
-          className={`block h-4 w-4 rounded-full bg-white transition ${
-            checked ? "translate-x-5" : ""
-          }`}
-        />
-      </span>
-    </button>
   );
 }
 

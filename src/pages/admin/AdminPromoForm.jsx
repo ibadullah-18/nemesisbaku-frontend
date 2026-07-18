@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -19,7 +19,17 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { useLocation } from "react-router-dom";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
+import {
+  IMAGE_ACCEPT,
+  prepareImageFile,
+  revokeImagePreview,
+} from "../../utils/imageFile";
+import {
+  isEndAfterStart,
+  localDateTimeToIso,
+  toLocalDateTimeInput,
+} from "../../utils/dataTime";
 
 const emptyForm = {
   title: "",
@@ -32,11 +42,6 @@ const emptyForm = {
   previewUrl: "",
   productIds: [],
 };
-
-function toInputDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 16);
-}
 
 function getProductId(product) {
   return product?.id || product?.productId || "";
@@ -77,6 +82,7 @@ function money(value) {
 export default function AdminPromoForm({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const previewRef = useRef("");
 
   const isEdit = mode === "edit";
 
@@ -90,22 +96,20 @@ export default function AdminPromoForm({ mode }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const location = useLocation();
-
-  const basePath = location.pathname.startsWith("/Admin")
-      ? "/Admin"
-      : "/SuperAdmin";
+  const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadAll();
-
-    return () => {
-      if (form.previewUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(form.previewUrl);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, mode]);
+
+  useEffect(() => {
+    previewRef.current = form.previewUrl;
+  }, [form.previewUrl]);
+
+  useEffect(() => {
+    return () => revokeImagePreview(previewRef.current);
+  }, []);
 
   async function loadAll() {
     try {
@@ -126,18 +130,20 @@ export default function AdminPromoForm({ mode }) {
         const promoRes = await adminPromoPagesApi.detail(id);
         const promo = unwrapAdmin(promoRes);
 
+        revokeImagePreview(form.previewUrl);
         setForm({
           title: promo?.title || "",
           description: promo?.description || "",
           type: Number(promo?.type || 1),
-          startDate: toInputDate(promo?.startDate),
-          endDate: toInputDate(promo?.endDate),
+          startDate: toLocalDateTimeInput(promo?.startDate),
+          endDate: toLocalDateTimeInput(promo?.endDate),
           isActive: promo?.isActive ?? true,
           file: null,
           previewUrl: promo?.imageUrl || "",
           productIds: promo?.productIds || [],
         });
       } else {
+        revokeImagePreview(form.previewUrl);
         setForm(emptyForm);
       }
     } catch (err) {
@@ -151,21 +157,26 @@ export default function AdminPromoForm({ mode }) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleFileChange(e) {
+    const input = e.currentTarget;
+    const selectedFile = input.files?.[0];
+    input.value = "";
 
-    if (form.previewUrl?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.previewUrl);
+    if (!selectedFile) return;
+
+    try {
+      setError("");
+      const file = await prepareImageFile(selectedFile);
+      revokeImagePreview(form.previewUrl);
+
+      setForm((prev) => ({
+        ...prev,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+    } catch (err) {
+      setError(err.message || "Şəkil hazırlana bilmədi.");
     }
-
-    setForm((prev) => ({
-      ...prev,
-      file,
-      previewUrl: URL.createObjectURL(file),
-    }));
-
-    e.target.value = "";
   }
 
   function toggleProduct(productId) {
@@ -204,16 +215,30 @@ export default function AdminPromoForm({ mode }) {
       return setError("Ən azı 1 məhsul seçilməlidir.");
     }
 
-   const payload = {
-    title: form.title.trim(),
-    description: form.description.trim(),
-    type: Number(form.type),
-    startDate: new Date(form.startDate).toISOString(),
-    endDate: new Date(form.endDate).toISOString(),
-    isActive: Boolean(form.isActive),
-    file: form.file,
-    productIds: form.productIds,
-  };
+    let startDate;
+    let endDate;
+
+    try {
+      startDate = localDateTimeToIso(form.startDate);
+      endDate = localDateTimeToIso(form.endDate);
+    } catch (err) {
+      return setError(err.message);
+    }
+
+    if (!isEndAfterStart(startDate, endDate)) {
+      return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
+    }
+
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      type: Number(form.type),
+      startDate,
+      endDate,
+      isActive: Boolean(form.isActive),
+      file: form.file,
+      productIds: form.productIds,
+    };
 
     try {
       setSaving(true);
@@ -256,7 +281,9 @@ export default function AdminPromoForm({ mode }) {
   const selectedProducts = useMemo(() => {
     return form.productIds
       .map((productId) =>
-        products.find((product) => String(getProductId(product)) === String(productId))
+        products.find(
+          (product) => String(getProductId(product)) === String(productId),
+        ),
       )
       .filter(Boolean);
   }, [form.productIds, products]);
@@ -316,7 +343,10 @@ export default function AdminPromoForm({ mode }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <form
+        onSubmit={handleSubmit}
+        className="grid gap-5 xl:grid-cols-[1fr_420px]"
+      >
         <main className="space-y-5">
           <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
             <h2 className="mb-5 text-xl font-extrabold tracking-[-0.03em]">
@@ -398,7 +428,7 @@ export default function AdminPromoForm({ mode }) {
 
               <input
                 type="file"
-                accept="image/*"
+                accept={IMAGE_ACCEPT}
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -566,9 +596,7 @@ function ProductCard({ product, selected, onClick }) {
 
         <span
           className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-sm ${
-            selected
-              ? "bg-[#244989] text-white"
-              : "bg-white text-zinc-600"
+            selected ? "bg-[#244989] text-white" : "bg-white text-zinc-600"
           }`}
         >
           {selected ? <FiCheck /> : "+"}

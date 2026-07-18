@@ -1,33 +1,39 @@
-import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import {
-  getAdminAccessToken,
-  getAdminRoles,
-  getSuperAdminAccessToken,
-  getSuperAdminRoles,
+  getPanelLoginPath,
+  isPanelAuthenticated,
 } from "../../api/admin/adminAuth";
 
-export default function AdminProtectedRoute({ children, panel }) {
-  if (panel === "super") {
-    const token = getSuperAdminAccessToken();
-    const roles = getSuperAdminRoles();
+export default function AdminProtectedRoute({ panel, children }) {
+  const location = useLocation();
+  const [, forceAuthCheck] = useState(0);
 
-    if (!token || !roles.includes("SuperAdmin")) {
-      return <Navigate to="/SuperAdmin/login" replace />;
-    }
+  useEffect(() => {
+    const syncAuth = (event) => {
+      if (!event?.detail?.panel || event.detail.panel === panel) {
+        forceAuthCheck((value) => value + 1);
+      }
+    };
 
-    return children;
+    window.addEventListener("storage", syncAuth);
+    window.addEventListener("nemesis_admin_auth_changed", syncAuth);
+
+    return () => {
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("nemesis_admin_auth_changed", syncAuth);
+    };
+  }, [panel]);
+
+  if (!isPanelAuthenticated(panel)) {
+    return (
+      <Navigate
+        to={getPanelLoginPath(panel)}
+        replace
+        state={{ from: location.pathname }}
+      />
+    );
   }
 
-  if (panel === "admin") {
-    const token = getAdminAccessToken();
-    const roles = getAdminRoles();
-
-    if (!token || !roles.includes("Admin")) {
-      return <Navigate to="/Admin/login" replace />;
-    }
-
-    return children;
-  }
-
-  return <Navigate to="/" replace />;
+  return children;
 }

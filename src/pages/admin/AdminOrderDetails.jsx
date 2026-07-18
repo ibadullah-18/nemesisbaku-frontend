@@ -22,7 +22,7 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { useLocation } from "react-router-dom";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
 
 const ORDER_STATUSES = [
   { value: 1, label: "Gözləyir" },
@@ -44,7 +44,9 @@ function formatDate(value) {
 }
 
 function statusLabel(status) {
-  return ORDER_STATUSES.find((x) => Number(x.value) === Number(status))?.label || "—";
+  return (
+    ORDER_STATUSES.find((x) => Number(x.value) === Number(status))?.label || "—"
+  );
 }
 
 function deliveryTypeText(value) {
@@ -74,13 +76,26 @@ function getWhatsappLink(res) {
   );
 }
 
-function openWhatsapp(link, setError) {
+function openPendingWindow(setError) {
+  const popup = window.open("about:blank", "_blank");
+
+  if (!popup) {
+    setError("Brauzer yeni pəncərəni blokladı. Pop-up icazəsi verin.");
+    return null;
+  }
+
+  popup.opener = null;
+  return popup;
+}
+
+function openWhatsapp(link, setError, popup) {
   if (!link) {
+    popup?.close();
     setError("WhatsApp link gəlmədi.");
     return;
   }
 
-  window.open(link, "_blank", "noopener,noreferrer");
+  if (popup) popup.location.replace(link);
 }
 
 export default function AdminOrderDetails() {
@@ -98,11 +113,7 @@ export default function AdminOrderDetails() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const location = useLocation();
-
-  const basePath = location.pathname.startsWith("/Admin")
-      ? "/Admin"
-      : "/SuperAdmin";
+  const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadAll();
@@ -135,7 +146,7 @@ export default function AdminOrderDetails() {
       setSelectedCourierPhone(
         loadedCouriers.find((x) => x.isDefault)?.phoneNumber ||
           loadedCouriers[0]?.phoneNumber ||
-          ""
+          "",
       );
     } catch (err) {
       setError(err.message || "Sifariş məlumatları yüklənmədi.");
@@ -170,14 +181,18 @@ export default function AdminOrderDetails() {
   }
 
   async function sendStatusWhatsapp(status) {
+    const popup = openPendingWindow(setError);
+    if (!popup) return;
+
     try {
       setSaving(true);
       setError("");
       setSuccess("");
 
       const res = await adminOrdersApi.statusWhatsappLink(id, Number(status));
-      openWhatsapp(getWhatsappLink(res), setError);
+      openWhatsapp(getWhatsappLink(res), setError, popup);
     } catch (err) {
+      popup.close();
       setError(err.message || "Müştəri WhatsApp mesajı açıla bilmədi.");
     } finally {
       setSaving(false);
@@ -190,6 +205,9 @@ export default function AdminOrderDetails() {
       return;
     }
 
+    const popup = openPendingWindow(setError);
+    if (!popup) return;
+
     try {
       setSaving(true);
       setError("");
@@ -197,11 +215,12 @@ export default function AdminOrderDetails() {
 
       const res = await adminOrdersApi.courierWhatsappLink(
         id,
-        selectedCourierPhone
+        selectedCourierPhone,
       );
 
-      openWhatsapp(getWhatsappLink(res), setError);
+      openWhatsapp(getWhatsappLink(res), setError, popup);
     } catch (err) {
+      popup.close();
       setError(err.message || "Kuryer WhatsApp mesajı açıla bilmədi.");
     } finally {
       setSaving(false);
@@ -261,7 +280,8 @@ export default function AdminOrderDetails() {
             <Badge>{formatDate(order.createdAt)}</Badge>
             <Badge>{money(order.totalPrice)}</Badge>
             <Badge>
-              WhatsApp: {order.isWhatsappMessageSent ? "Göndərilib" : "Göndərilməyib"}
+              WhatsApp:{" "}
+              {order.isWhatsappMessageSent ? "Göndərilib" : "Göndərilməyib"}
             </Badge>
           </div>
         </div>
@@ -292,10 +312,26 @@ export default function AdminOrderDetails() {
       <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
         <main className="space-y-5">
           <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <InfoCard icon={<FiUser />} label="Müştəri" value={order.customerFullName || "—"} />
-            <InfoCard icon={<FiPhone />} label="Telefon" value={order.customerPhoneNumber || "—"} />
-            <InfoCard icon={<FiTruck />} label="Çatdırılma" value={deliveryTypeText(order.deliveryType)} />
-            <InfoCard icon={<FiCreditCard />} label="Ödəniş" value={paymentMethodText(order.paymentMethod)} />
+            <InfoCard
+              icon={<FiUser />}
+              label="Müştəri"
+              value={order.customerFullName || "—"}
+            />
+            <InfoCard
+              icon={<FiPhone />}
+              label="Telefon"
+              value={order.customerPhoneNumber || "—"}
+            />
+            <InfoCard
+              icon={<FiTruck />}
+              label="Çatdırılma"
+              value={deliveryTypeText(order.deliveryType)}
+            />
+            <InfoCard
+              icon={<FiCreditCard />}
+              label="Ödəniş"
+              value={paymentMethodText(order.paymentMethod)}
+            />
           </section>
 
           <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
@@ -401,10 +437,22 @@ export default function AdminOrderDetails() {
               <MiniInfo label="Bina" value={order.buildingNumber || "—"} />
               <MiniInfo label="Mərtəbə" value={order.floor || "—"} />
               <MiniInfo label="Mənzil" value={order.apartment || "—"} />
-              <MiniInfo label="Məsafə" value={`${order.deliveryDistanceKm || 0} km`} />
-              <MiniInfo label="Çatdırılma qiyməti" value={money(order.deliveryPrice)} />
-              <MiniInfo label="Çatdırılma tarixi" value={formatDate(order.deliveryDate)} />
-              <MiniInfo label="Saat aralığı" value={order.deliveryTimeRange || "—"} />
+              <MiniInfo
+                label="Məsafə"
+                value={`${order.deliveryDistanceKm || 0} km`}
+              />
+              <MiniInfo
+                label="Çatdırılma qiyməti"
+                value={money(order.deliveryPrice)}
+              />
+              <MiniInfo
+                label="Çatdırılma tarixi"
+                value={formatDate(order.deliveryDate)}
+              />
+              <MiniInfo
+                label="Saat aralığı"
+                value={order.deliveryTimeRange || "—"}
+              />
               <MiniInfo label="Latitude" value={order.latitude ?? "—"} />
               <MiniInfo label="Longitude" value={order.longitude ?? "—"} />
             </div>
@@ -412,7 +460,9 @@ export default function AdminOrderDetails() {
             {order.note && (
               <div className="mt-3 rounded-[20px] bg-zinc-50 p-4">
                 <p className="text-xs font-extrabold text-zinc-400">Qeyd</p>
-                <p className="mt-1 text-sm font-bold text-zinc-700">{order.note}</p>
+                <p className="mt-1 text-sm font-bold text-zinc-700">
+                  {order.note}
+                </p>
               </div>
             )}
           </section>
@@ -425,8 +475,14 @@ export default function AdminOrderDetails() {
             </h2>
 
             <div className="mt-5 space-y-3 text-sm font-bold">
-              <SideRow label="Məhsullar" value={money(order.totalProductPrice)} />
-              <SideRow label="Promo endirim" value={money(order.promoDiscountAmount)} />
+              <SideRow
+                label="Məhsullar"
+                value={money(order.totalProductPrice)}
+              />
+              <SideRow
+                label="Promo endirim"
+                value={money(order.promoDiscountAmount)}
+              />
               <SideRow label="Çatdırılma" value={money(order.deliveryPrice)} />
               <SideRow label="Yekun" value={money(order.totalPrice)} />
             </div>
@@ -496,7 +552,8 @@ export default function AdminOrderDetails() {
             </h2>
 
             <p className="mt-1 text-sm font-bold text-zinc-500">
-              Çatdırılmaya çıxan sifariş üçün kuryeri seç və WhatsApp mesajını aç.
+              Çatdırılmaya çıxan sifariş üçün kuryeri seç və WhatsApp mesajını
+              aç.
             </p>
 
             <div className="mt-5 space-y-4">
@@ -513,7 +570,9 @@ export default function AdminOrderDetails() {
                   <option value="">Kuryer seç</option>
                   {couriers.map((courier) => (
                     <option
-                      key={courier.id || courier.courierId || courier.phoneNumber}
+                      key={
+                        courier.id || courier.courierId || courier.phoneNumber
+                      }
                       value={courier.phoneNumber}
                     >
                       {courier.title} — {courier.phoneNumber}
@@ -540,7 +599,10 @@ export default function AdminOrderDetails() {
 
             <div className="mt-5 space-y-3">
               <MiniInfo label="Sifariş ID" value={order.id} />
-              <MiniInfo label="Yaradılma tarixi" value={formatDate(order.createdAt)} />
+              <MiniInfo
+                label="Yaradılma tarixi"
+                value={formatDate(order.createdAt)}
+              />
               <MiniInfo
                 label="WhatsApp göndərilmə tarixi"
                 value={formatDate(order.whatsappMessageSentAt)}

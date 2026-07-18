@@ -30,6 +30,44 @@ function getImageUrl(x) {
   );
 }
 
+function getVariantSizeValue(variant) {
+  if (!variant) return null;
+
+  return (
+    variant.sizeValue ||
+    variant.sizeName ||
+    variant.size?.value ||
+    variant.size?.name ||
+    (typeof variant.size === "string" || typeof variant.size === "number"
+      ? variant.size
+      : null)
+  );
+}
+
+function getNumericSize(value) {
+  const text = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  const match = text.match(/\d+(?:\.\d+)?/);
+  const number = match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+
+  return Number.isFinite(number) ? number : Number.POSITIVE_INFINITY;
+}
+
+function sortSizesAscending(values) {
+  return [...values].sort((a, b) => {
+    const aValue = getNumericSize(a);
+    const bValue = getNumericSize(b);
+
+    if (aValue !== bValue) return aValue - bValue;
+
+    return String(a).localeCompare(String(b), "az", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
+}
+
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
 
@@ -58,7 +96,10 @@ export default function ProductCard({ product }) {
     const rawImages = mergedProduct?.images || [];
     const list = rawImages.map(getImageUrl).filter(Boolean);
 
-    if (mergedProduct?.mainImageUrl && !list.includes(mergedProduct.mainImageUrl)) {
+    if (
+      mergedProduct?.mainImageUrl &&
+      !list.includes(mergedProduct.mainImageUrl)
+    ) {
       list.unshift(mergedProduct.mainImageUrl);
     }
 
@@ -74,17 +115,11 @@ export default function ProductCard({ product }) {
 
     const result = variants
       .filter((x) => Number(x.stockCount ?? x.stock ?? 0) > 0)
-      .map(
-        (x) =>
-          x.sizeValue ||
-          x.sizeName ||
-          x.size ||
-          x.size?.value ||
-          x.size?.name
-      )
-      .filter(Boolean);
+      .map(getVariantSizeValue)
+      .filter((value) => value !== null && value !== undefined && value !== "")
+      .map(String);
 
-    return [...new Set(result)];
+    return sortSizesAscending(new Set(result));
   }, [mergedProduct]);
 
   const price = Number(mergedProduct?.price || 0);
@@ -281,46 +316,46 @@ export default function ProductCard({ product }) {
     window.setTimeout(() => setDidSwipe(false), 80);
   }
 
-async function handleFavorite(e) {
-  e.preventDefault();
-  e.stopPropagation();
+  async function handleFavorite(e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-  if (!productId) return;
+    if (!productId) return;
 
-  if (!getAccessToken()) {
-    navigate("/login", {
-      state: {
-        returnUrl: window.location.pathname,
-      },
-    });
-    return;
-  }
-
-  try {
-    setActionLoading(true);
-
-    const nextFavorite = !favorite;
-
-    if (favorite) {
-      await favoritesApi.remove(productId);
-    } else {
-      await favoritesApi.add(productId);
+    if (!getAccessToken()) {
+      navigate("/login", {
+        state: {
+          returnUrl: window.location.pathname,
+        },
+      });
+      return;
     }
 
-    setFavorite(nextFavorite);
+    try {
+      setActionLoading(true);
 
-    window.dispatchEvent(
-      new CustomEvent("favorite_changed", {
-        detail: {
-          productId,
-          isFavorite: nextFavorite,
-        },
-      })
-    );
-  } finally {
-    setActionLoading(false);
+      const nextFavorite = !favorite;
+
+      if (favorite) {
+        await favoritesApi.remove(productId);
+      } else {
+        await favoritesApi.add(productId);
+      }
+
+      setFavorite(nextFavorite);
+
+      window.dispatchEvent(
+        new CustomEvent("favorite_changed", {
+          detail: {
+            productId,
+            isFavorite: nextFavorite,
+          },
+        }),
+      );
+    } finally {
+      setActionLoading(false);
+    }
   }
-}
 
   return (
     <NavLink
@@ -417,7 +452,9 @@ async function handleFavorite(e) {
               <span
                 key={index}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  activeImage === index ? "w-4 bg-zinc-950" : "w-1.5 bg-zinc-300"
+                  activeImage === index
+                    ? "w-4 bg-zinc-950"
+                    : "w-1.5 bg-zinc-300"
                 }`}
               />
             ))}

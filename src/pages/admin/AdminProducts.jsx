@@ -20,7 +20,7 @@ import {
   metaAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import { useLocation } from "react-router-dom";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
 
 function getProductId(product) {
   return product?.id || product?.productId;
@@ -101,7 +101,7 @@ function getTotalStock(product) {
 
   return variants.reduce(
     (sum, variant) => sum + Number(variant.stockCount || variant.stock || 0),
-    0
+    0,
   );
 }
 
@@ -157,11 +157,7 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const location = useLocation();
-
-  const basePath = location.pathname.startsWith("/Admin")
-      ? "/Admin"
-      : "/SuperAdmin";
+  const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadProducts(1);
@@ -227,10 +223,10 @@ export default function AdminProducts() {
   const counters = useMemo(() => {
     const total = products.length;
     const active = products.filter(
-      (p) => p.isActive !== false && !p.isDeleted
+      (p) => p.isActive !== false && !p.isDeleted,
     ).length;
     const discounted = products.filter(
-      (p) => p.isDiscounted || p.discountPrice
+      (p) => p.isDiscounted || p.discountPrice,
     ).length;
     const lowStock = products.filter((p) => getTotalStock(p) <= 2).length;
 
@@ -285,10 +281,29 @@ export default function AdminProducts() {
       )}
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <CounterCard icon={<FiPackage />} label="Bu səhifədə" value={counters.total} />
-        <CounterCard icon={<FiPackage />} label="Aktiv" value={counters.active} green />
-        <CounterCard icon={<FiTag />} label="Endirimli" value={counters.discounted} blue />
-        <CounterCard icon={<FiAlertTriangle />} label="Az stok" value={counters.lowStock} red />
+        <CounterCard
+          icon={<FiPackage />}
+          label="Bu səhifədə"
+          value={counters.total}
+        />
+        <CounterCard
+          icon={<FiPackage />}
+          label="Aktiv"
+          value={counters.active}
+          green
+        />
+        <CounterCard
+          icon={<FiTag />}
+          label="Endirimli"
+          value={counters.discounted}
+          blue
+        />
+        <CounterCard
+          icon={<FiAlertTriangle />}
+          label="Az stok"
+          value={counters.lowStock}
+          red
+        />
       </div>
 
       <div className="mb-5 grid gap-3 md:grid-cols-[1fr_130px]">

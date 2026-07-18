@@ -173,6 +173,7 @@ export default function AdminAuditLogs() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadLogs(1);
@@ -181,6 +182,7 @@ export default function AdminAuditLogs() {
   async function loadLogs(page = 1) {
     try {
       setLoading(true);
+      setError("");
 
       const res = await adminAuditLogsApi.list({
         page,
@@ -190,6 +192,9 @@ export default function AdminAuditLogs() {
 
       setLogs(listOf(res));
       setMeta(metaOf(res));
+    } catch (err) {
+      setLogs([]);
+      setError(err.message || "Audit loglar yüklənmədi.");
     } finally {
       setLoading(false);
     }
@@ -219,7 +224,7 @@ export default function AdminAuditLogs() {
       if (entity === "campaign") {
         const res = await adminCampaignsApi.list();
         const found = listOf(res).find(
-          (x) => String(x.id) === String(log.entityId)
+          (x) => String(x.id) === String(log.entityId),
         );
         setResolvedEntity(found || null);
         return;
@@ -228,7 +233,7 @@ export default function AdminAuditLogs() {
       if (entity === "brand") {
         const res = await adminBrandsApi.list();
         const found = listOf(res).find(
-          (x) => String(x.id) === String(log.entityId)
+          (x) => String(x.id) === String(log.entityId),
         );
         setResolvedEntity(found || null);
         return;
@@ -237,7 +242,7 @@ export default function AdminAuditLogs() {
       if (entity === "category") {
         const res = await adminCategoriesApi.list();
         const found = listOf(res).find(
-          (x) => String(x.id) === String(log.entityId)
+          (x) => String(x.id) === String(log.entityId),
         );
         setResolvedEntity(found || null);
         return;
@@ -269,6 +274,12 @@ export default function AdminAuditLogs() {
           və digər real məlumatlar göstərilir.
         </p>
       </div>
+
+      {error && (
+        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="mb-5 grid gap-3 md:grid-cols-[1fr_130px]">
         <div className="flex h-13 items-center gap-3 rounded-[16px] border border-zinc-100 bg-white px-4">
@@ -335,7 +346,7 @@ export default function AdminAuditLogs() {
                     <td className="px-5 py-4">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-extrabold ${actionClass(
-                          log.action
+                          log.action,
                         )}`}
                       >
                         {log.action || "—"}
@@ -480,10 +491,18 @@ function AuditLogModal({ log, resolvedEntity, onClose }) {
             value={resolvedTitle || `#${shortId(log.entityId)}`}
           />
           <Info icon={<FiGlobe />} label="IP Address" value={log.ipAddress} />
-          <Info icon={<FiClock />} label="Tarix" value={formatDate(log.createdAt)} />
+          <Info
+            icon={<FiClock />}
+            label="Tarix"
+            value={formatDate(log.createdAt)}
+          />
 
           {orderNumber && (
-            <Info icon={<FiHash />} label="Sifariş nömrəsi" value={orderNumber} />
+            <Info
+              icon={<FiHash />}
+              label="Sifariş nömrəsi"
+              value={orderNumber}
+            />
           )}
         </div>
 

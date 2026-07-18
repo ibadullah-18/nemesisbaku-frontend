@@ -21,7 +21,7 @@ import AdminOrders from "../pages/admin/AdminOrders";
 import AdminOrderDetails from "../pages/admin/AdminOrderDetails";
 import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 import AdminCategories from "../pages/admin/AdminCategories";
-import AdminBrands from "../pages/admin/AdminBrands"; 
+import AdminBrands from "../pages/admin/AdminBrands";
 import AdminUsers from "../pages/admin/AdminUsers";
 import AdminSizes from "../pages/admin/AdminSizes";
 import AdminColors from "../pages/admin/AdminColors";
@@ -80,18 +80,13 @@ function PageShell({ children }) {
   );
 }
 
-
-
-
 function Layout({ children }) {
   const location = useLocation();
 
   return (
     <>
       <Navbar />
-       <PageShell>
-         {children}
-       </PageShell>
+      <PageShell>{children}</PageShell>
       <Footer />
     </>
   );
@@ -324,113 +319,137 @@ export default function AppRoutes() {
         }
       />
 
-    <Route path="/SuperAdmin/login" element={<SuperAdminLogin />} />
+      <Route path="/SuperAdmin/login" element={<SuperAdminLogin />} />
 
-<Route
-    path="/SuperAdmin"
-      element={
-        <AdminProtectedRoute panel="super">
-          <AdminLayout basePath="/SuperAdmin" panelTitle="Super Admin Panel" />
-        </AdminProtectedRoute>
-      }
-    >
-  <Route index element={<Navigate to="/SuperAdmin/dashboard" replace />} />
+      <Route
+        path="/SuperAdmin"
+        element={
+          <AdminProtectedRoute panel="super">
+            <AdminLayout
+              basePath="/SuperAdmin"
+              panel="super"
+              panelTitle="Super Admin Panel"
+            />
+          </AdminProtectedRoute>
+        }
+      >
+        <Route
+          index
+          element={<Navigate to="/SuperAdmin/dashboard" replace />}
+        />
 
-  <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
 
-  <Route path="products" element={<AdminProducts />} />
-  <Route path="products/details/:id" element={<AdminProductDetails />} />
-  <Route path="add-product" element={<AdminAddProduct />} />
-  <Route path="products/:id" element={<AdminEditProduct />} />
+        <Route path="products" element={<AdminProducts />} />
+        <Route path="products/details/:id" element={<AdminProductDetails />} />
+        <Route path="add-product" element={<AdminAddProduct />} />
+        <Route path="products/:id" element={<AdminEditProduct />} />
 
-  <Route path="campaigns" element={<AdminCampaigns />} />
-  <Route path="campaigns/create" element={<AdminPromoForm mode="create" />} />
-  <Route path="campaigns/:id" element={<AdminPromoForm mode="edit" />} />
+        <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route
+          path="campaigns/create"
+          element={<AdminPromoForm mode="create" />}
+        />
+        <Route path="campaigns/:id" element={<AdminPromoForm mode="edit" />} />
 
-  <Route path="orders" element={<AdminOrders />} />
-  <Route path="orders/:id" element={<AdminOrderDetails />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="orders/:id" element={<AdminOrderDetails />} />
 
-  <Route path="audit-logs" element={<AdminAuditLogs />} />
+        <Route path="audit-logs" element={<AdminAuditLogs />} />
 
-  <Route path="categories" element={<AdminCategories />} />
-  <Route path="brands" element={<AdminBrands />} />
-  <Route path="sizes" element={<AdminSizes />} />
-  <Route path="colors" element={<AdminColors />} />
+        <Route path="categories" element={<AdminCategories />} />
+        <Route path="brands" element={<AdminBrands />} />
+        <Route path="sizes" element={<AdminSizes />} />
+        <Route path="colors" element={<AdminColors />} />
 
-  <Route path="users" element={<AdminUsers />} />
+        <Route path="users" element={<AdminUsers />} />
 
-  <Route path="promo-codes" element={<AdminPromoCodes />} />
+        <Route path="promo-codes" element={<AdminPromoCodes />} />
 
-  <Route
-    path="email-announcements"
-    element={<AdminEmailAnnouncements />}
-  />
+        <Route
+          path="email-announcements"
+          element={<AdminEmailAnnouncements />}
+        />
 
-  <Route path="couriers" element={<AdminCouriers />} />
+        <Route path="couriers" element={<AdminCouriers />} />
 
-  <Route path="home-sections" element={<AdminHomeSections />} />
+        <Route path="home-sections" element={<AdminHomeSections />} />
 
-  <Route
-    path="home-sections/create"
-    element={<AdminHomeSectionForm mode="create" />}
-  />
+        <Route
+          path="home-sections/create"
+          element={<AdminHomeSectionForm mode="create" />}
+        />
 
-  <Route
-    path="home-sections/:id"
-    element={<AdminHomeSectionForm mode="edit" />}
-  />
-</Route>
+        <Route
+          path="home-sections/:id"
+          element={<AdminHomeSectionForm mode="edit" />}
+        />
 
-<Route path="/Admin/login" element={<AdminLogin />} />
+        <Route
+          path="*"
+          element={<Navigate to="/SuperAdmin/dashboard" replace />}
+        />
+      </Route>
 
-<Route
-  path="/Admin"
-  element={
-    <AdminProtectedRoute panel="admin">
-      <AdminLayout basePath="/Admin" panelTitle="Admin Panel" />
-    </AdminProtectedRoute>
-  }
->
-  <Route index element={<Navigate to="/Admin/orders" replace />} />
+      <Route path="/Admin/login" element={<AdminLogin />} />
 
-  <Route path="orders" element={<AdminOrders />} />
-  <Route path="orders/:id" element={<AdminOrderDetails />} />
+      <Route
+        path="/Admin"
+        element={
+          <AdminProtectedRoute panel="admin">
+            <AdminLayout
+              basePath="/Admin"
+              panel="admin"
+              panelTitle="Admin Panel"
+            />
+          </AdminProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/Admin/orders" replace />} />
 
-  <Route path="couriers" element={<AdminCouriers />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="orders/:id" element={<AdminOrderDetails />} />
 
-  <Route path="products" element={<AdminProducts />} />
-  <Route path="products/details/:id" element={<AdminProductDetails />} />
-  <Route path="add-product" element={<AdminAddProduct />} />
-  <Route path="products/:id" element={<AdminEditProduct />} />
+        <Route path="couriers" element={<AdminCouriers />} />
 
-  <Route path="categories" element={<AdminCategories />} />
-  <Route path="brands" element={<AdminBrands />} />
-  <Route path="sizes" element={<AdminSizes />} />
-  <Route path="colors" element={<AdminColors />} />
+        <Route path="products" element={<AdminProducts />} />
+        <Route path="products/details/:id" element={<AdminProductDetails />} />
+        <Route path="add-product" element={<AdminAddProduct />} />
+        <Route path="products/:id" element={<AdminEditProduct />} />
 
-  <Route path="campaigns" element={<AdminCampaigns />} />
-  <Route path="campaigns/create" element={<AdminPromoForm mode="create" />} />
-  <Route path="campaigns/:id" element={<AdminPromoForm mode="edit" />} />
+        <Route path="categories" element={<AdminCategories />} />
+        <Route path="brands" element={<AdminBrands />} />
+        <Route path="sizes" element={<AdminSizes />} />
+        <Route path="colors" element={<AdminColors />} />
 
-  <Route path="home-sections" element={<AdminHomeSections />} />
+        <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route
+          path="campaigns/create"
+          element={<AdminPromoForm mode="create" />}
+        />
+        <Route path="campaigns/:id" element={<AdminPromoForm mode="edit" />} />
 
-  <Route
-    path="home-sections/create"
-    element={<AdminHomeSectionForm mode="create" />}
-  />
+        <Route path="home-sections" element={<AdminHomeSections />} />
 
-  <Route
-    path="home-sections/:id"
-    element={<AdminHomeSectionForm mode="edit" />}
-  />
+        <Route
+          path="home-sections/create"
+          element={<AdminHomeSectionForm mode="create" />}
+        />
 
-  <Route path="promo-codes" element={<AdminPromoCodes />} />
+        <Route
+          path="home-sections/:id"
+          element={<AdminHomeSectionForm mode="edit" />}
+        />
 
-  <Route
-    path="email-announcements"
-    element={<AdminEmailAnnouncements />}
-  />
-</Route>
+        <Route path="promo-codes" element={<AdminPromoCodes />} />
+
+        <Route
+          path="email-announcements"
+          element={<AdminEmailAnnouncements />}
+        />
+
+        <Route path="*" element={<Navigate to="/Admin/orders" replace />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
