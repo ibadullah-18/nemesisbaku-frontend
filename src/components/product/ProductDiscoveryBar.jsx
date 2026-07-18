@@ -904,16 +904,22 @@ function BrandButton({ active, name, image, onClick }) {
       className="group flex shrink-0 flex-col items-center gap-2"
     >
       <span
-        className={`grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full border transition duration-300 group-active:scale-95 ${
+        className={`grid h-[62px] w-[62px] place-items-center overflow-hidden rounded-full border p-[9px] transition duration-300 group-hover:-translate-y-0.5 group-active:scale-95 ${
           active
             ? "border-[#244989] bg-[#244989]/8 shadow-[0_10px_25px_rgba(36,73,137,0.14)]"
             : "border-zinc-100 bg-white shadow-[0_8px_22px_rgba(0,0,0,0.05)]"
         }`}
       >
         {image ? (
-          <img src={image} alt={name} className="h-full w-full object-cover" />
+          <img
+            src={image}
+            alt={name}
+            loading="lazy"
+            draggable="false"
+            className="block h-full w-full select-none object-contain object-center transition-transform duration-300 group-hover:scale-[1.04]"
+          />
         ) : (
-          <span className="text-lg font-extrabold text-zinc-400">
+          <span className="grid h-full w-full place-items-center text-lg font-extrabold text-zinc-400">
             {name?.charAt(0)}
           </span>
         )}
