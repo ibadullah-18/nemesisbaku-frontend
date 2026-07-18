@@ -131,6 +131,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
   const filterButtonRef = useRef(null);
   const openedAtRef = useRef(0);
+  const productsRequestIdRef = useRef(0);
 
   const dragData = useRef({
     pointerId: null,
@@ -169,6 +170,25 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   useEffect(() => {
     setPortalReady(true);
     loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    function resetDiscoveryFromLogo() {
+      productsRequestIdRef.current += 1;
+      setFilters({ ...emptyFilters });
+      setDraftFilters({ ...emptyFilters });
+      setBrandMounted(false);
+      setBrandClosing(false);
+      setFilterOpen(false);
+      setFilterClosing(false);
+      setLoading(false);
+    }
+
+    window.addEventListener("nemesis_home_reset", resetDiscoveryFromLogo);
+
+    return () => {
+      window.removeEventListener("nemesis_home_reset", resetDiscoveryFromLogo);
+    };
   }, []);
 
   useEffect(() => {
@@ -321,29 +341,42 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   async function loadInitialData() {
     try {
       setLoading(true);
-
-      const [optionsRes, productsRes] = await Promise.all([
-        getFilterOptions(),
-        getProducts(emptyFilters),
-      ]);
-
+      const optionsRes = await getFilterOptions();
       const options = normalizeFilterOptions(optionsRes);
 
       applyFilterOptions(options);
-
-      onProductsChange?.(normalizeProducts(productsRes));
+    } catch (err) {
+      console.error("Filter seçimləri yüklənmədi:", err);
     } finally {
       setLoading(false);
     }
   }
 
   async function loadProducts(nextFilters) {
+    const requestId = ++productsRequestIdRef.current;
+
     try {
       setLoading(true);
-      const res = await getProducts(nextFilters);
-      onProductsChange?.(normalizeProducts(res));
+      const res = await getProducts({
+        ...nextFilters,
+        page: 1,
+        pageSize: 500,
+      });
+
+      if (requestId !== productsRequestIdRef.current) return;
+
+      onProductsChange?.(normalizeProducts(res), {
+        active: true,
+        filters: nextFilters,
+      });
+    } catch (err) {
+      if (requestId === productsRequestIdRef.current) {
+        console.error("Məhsullar filterlə yüklənmədi:", err);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === productsRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -369,7 +402,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
   function selectBrand(brandId) {
     const next = {
-      ...filters,
+      ...emptyFilters,
       brandId,
     };
 
@@ -535,7 +568,8 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   }
 
   const activeBrandName =
-    brands.find((x) => x.id === filters.brandId)?.name || text.allBrands;
+    brands.find((x) => String(x.id) === String(filters.brandId))?.name ||
+    text.allBrands;
 
   const filterPortal =
     portalReady &&
@@ -874,7 +908,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
                 {brands.map((brand) => (
                   <BrandButton
                     key={brand.id}
-                    active={filters.brandId === brand.id}
+                    active={String(filters.brandId) === String(brand.id)}
                     name={brand.name}
                     image={
                       brand.logoUrl ||

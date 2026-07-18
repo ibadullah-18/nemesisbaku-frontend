@@ -63,12 +63,34 @@ function getErrorMessage(err, fallback = "Xəta baş verdi. Yenidən yoxlayın."
   );
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestWithRetry(request, attempts = 3) {
+  let lastError;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await request();
+    } catch (err) {
+      lastError = err;
+
+      if (attempt < attempts - 1) {
+        await wait(250 * (attempt + 1));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export default function HomePage() {
   const { text } = useLanguage();
 
   const allProductsRef = useRef(null);
   const errorTimerRef = useRef(null);
-  const ignoreDiscoveryChangesRef = useRef(true);
+  const homeRequestIdRef = useRef(0);
 
   const [campaigns, setCampaigns] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -179,7 +201,6 @@ export default function HomePage() {
   useEffect(() => {
     function resetHomeFilters() {
       setFilterActive(false);
-      ignoreDiscoveryChangesRef.current = true;
       loadHome();
 
       window.scrollTo({
@@ -245,7 +266,9 @@ export default function HomePage() {
   }
 
   async function loadHome() {
-    const shouldShowLoader = !sessionStorage.getItem(HOME_LOADED_KEY);
+    const requestId = ++homeRequestIdRef.current;
+    const shouldShowLoader =
+      products.length === 0 || !sessionStorage.getItem(HOME_LOADED_KEY);
     const startedAt = Date.now();
     const standardPageSize = getProductPageSize();
     const restoringProduct = Boolean(
@@ -258,39 +281,64 @@ export default function HomePage() {
         setLoading(true);
       }
 
-      setPage(1);
-      setAllProductsVisible(false);
+      setFilterActive(false);
 
-      const [campaignRes, bannerRes, homeSectionsRes, productsRes] =
-        await Promise.all([
-          getActiveCampaigns().catch(() => []),
-          getActiveBanners().catch(() => []),
-          getActiveHomeSections().catch(() => []),
-          getProducts({
-            page: 1,
-            pageSize: initialPageSize,
-          }).catch(() => []),
+      const [campaignResult, bannerResult, homeSectionsResult, productsResult] =
+        await Promise.allSettled([
+          requestWithRetry(() => getActiveCampaigns()),
+          requestWithRetry(() => getActiveBanners()),
+          requestWithRetry(() => getActiveHomeSections()),
+          requestWithRetry(() =>
+            getProducts({
+              page: 1,
+              pageSize: initialPageSize,
+            }),
+          ),
         ]);
 
-      const initialProducts = uniqueById(normalizeList(productsRes));
+      if (requestId !== homeRequestIdRef.current) return;
 
-      setCampaigns(uniqueById(normalizeList(campaignRes)));
-      setBanners(uniqueById(normalizeList(bannerRes)));
-      setHomeSections(uniqueById(normalizeList(homeSectionsRes)));
-      setProducts(initialProducts);
-      setPage(
-        restoringProduct
-          ? Math.max(1, Math.ceil(initialProducts.length / standardPageSize))
-          : 1,
-      );
-      setHasMore(initialProducts.length >= initialPageSize);
-      setFilterActive(false);
-      ignoreDiscoveryChangesRef.current = true;
+      if (campaignResult.status === "fulfilled") {
+        setCampaigns(uniqueById(normalizeList(campaignResult.value)));
+      }
 
-      setTimeout(() => {
-        ignoreDiscoveryChangesRef.current = false;
-      }, 1200);
-      sessionStorage.setItem(HOME_LOADED_KEY, "true");
+      if (bannerResult.status === "fulfilled") {
+        setBanners(uniqueById(normalizeList(bannerResult.value)));
+      }
+
+      if (homeSectionsResult.status === "fulfilled") {
+        setHomeSections(uniqueById(normalizeList(homeSectionsResult.value)));
+      }
+
+      if (productsResult.status === "fulfilled") {
+        const initialProducts = uniqueById(normalizeList(productsResult.value));
+
+        setAllProductsVisible(false);
+        setProducts(initialProducts);
+        setPage(
+          restoringProduct
+            ? Math.max(1, Math.ceil(initialProducts.length / standardPageSize))
+            : 1,
+        );
+        setHasMore(initialProducts.length >= initialPageSize);
+        sessionStorage.setItem(HOME_LOADED_KEY, "true");
+      }
+
+      const failedResult = [
+        campaignResult,
+        bannerResult,
+        homeSectionsResult,
+        productsResult,
+      ].find((result) => result.status === "rejected");
+
+      if (failedResult) {
+        showError(
+          getErrorMessage(
+            failedResult.reason,
+            "Bəzi məlumatlar yüklənmədi. Yenidən yoxlayın.",
+          ),
+        );
+      }
 
       if (shouldShowLoader) {
         const elapsed = Date.now() - startedAt;
@@ -303,7 +351,9 @@ export default function HomePage() {
     } catch (err) {
       showError(getErrorMessage(err, "Ana səhifə yüklənmədi."));
     } finally {
-      setLoading(false);
+      if (requestId === homeRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -336,10 +386,10 @@ export default function HomePage() {
   }
 
   function handleFilteredProducts(list) {
-    if (ignoreDiscoveryChangesRef.current) {
-      return;
-    }
-
+    // Filter nəticəsi gəldikdən sonra gecikmiş ana səhifə sorğusu bu siyahının
+    // üstünə yaza bilməsin.
+    homeRequestIdRef.current += 1;
+    setLoading(false);
     setFilterActive(true);
     setProducts(uniqueById(list));
     setPage(1);
