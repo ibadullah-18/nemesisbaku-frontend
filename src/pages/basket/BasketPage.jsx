@@ -28,7 +28,6 @@ const RELATED_PAGE_SIZE = 6;
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
 }
-
 function normalizeList(res) {
   const data = res?.data || res;
   return (
@@ -39,19 +38,16 @@ function normalizeList(res) {
     (Array.isArray(data) ? data : [])
   );
 }
-
 function money(value) {
   return Number(value || 0)
     .toFixed(2)
     .replace(".00", "");
 }
-
 function getImageUrl(x) {
   if (!x) return null;
   if (typeof x === "string") return x;
   return x.imageUrl || x.mainImageUrl || x.url || x.src || x.path || null;
 }
-
 function getProductImages(product, fallbackImage) {
   const raw = product?.images || [];
   const list = raw.map(getImageUrl).filter(Boolean);
