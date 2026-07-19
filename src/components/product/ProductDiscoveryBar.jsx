@@ -138,6 +138,7 @@ export default function ProductDiscoveryBar({
   const brandRowRef = useRef(null);
   const openedAtRef = useRef(0);
   const productsRequestIdRef = useRef(0);
+  const brandCloseTimerRef = useRef(null);
 
   const dragData = useRef({
     pointerId: null,
@@ -183,6 +184,7 @@ export default function ProductDiscoveryBar({
 
   useEffect(() => {
     function resetDiscoveryFromLogo() {
+      window.clearTimeout(brandCloseTimerRef.current);
       productsRequestIdRef.current += 1;
       setFilters({ ...emptyFilters });
       setDraftFilters({ ...emptyFilters });
@@ -198,6 +200,10 @@ export default function ProductDiscoveryBar({
     return () => {
       window.removeEventListener("nemesis_home_reset", resetDiscoveryFromLogo);
     };
+  }, []);
+
+  useEffect(() => {
+    return () => window.clearTimeout(brandCloseTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -418,6 +424,8 @@ export default function ProductDiscoveryBar({
   }
 
   function openBrands() {
+    window.clearTimeout(brandCloseTimerRef.current);
+
     if (brands.length === 0) {
       refreshFilterOptions().catch(() => {});
     }
@@ -427,16 +435,18 @@ export default function ProductDiscoveryBar({
   }
 
   function closeBrands() {
+    window.clearTimeout(brandCloseTimerRef.current);
     setBrandClosing(true);
 
-    setTimeout(() => {
+    brandCloseTimerRef.current = window.setTimeout(() => {
       setBrandMounted(false);
       setBrandClosing(false);
-    }, 360);
+    }, 170);
   }
 
   function toggleBrands() {
-    if (brandMounted) closeBrands();
+    if (brandClosing) openBrands();
+    else if (brandMounted) closeBrands();
     else openBrands();
   }
 
@@ -845,13 +855,11 @@ export default function ProductDiscoveryBar({
             from {
               grid-template-rows: 0fr;
               opacity: 0;
-              transform: translateY(-5px);
             }
 
             to {
               grid-template-rows: 1fr;
               opacity: 1;
-              transform: translateY(0);
             }
           }
 
@@ -859,13 +867,11 @@ export default function ProductDiscoveryBar({
             from {
               grid-template-rows: 1fr;
               opacity: 1;
-              transform: translateY(0);
             }
 
             to {
               grid-template-rows: 0fr;
               opacity: 0;
-              transform: translateY(-4px);
             }
           }
 
@@ -953,20 +959,20 @@ export default function ProductDiscoveryBar({
           <button
             type="button"
             onClick={toggleBrands}
-            className="group mx-auto flex items-center gap-2 px-2 py-1.5 text-zinc-950 transition duration-300 active:scale-[0.97]"
+            className="group mx-auto flex items-center gap-2 px-2 py-1.5 text-zinc-950 transition duration-200 active:scale-[0.97]"
           >
             <span className="relative text-[14px] font-semibold tracking-[0.16em]">
               {text.brands}
 
               <span
-                className={`absolute -bottom-1 left-1/2 h-px -translate-x-1/2 bg-zinc-950 transition-all duration-500 ${
+                className={`absolute -bottom-1 left-1/2 h-px -translate-x-1/2 bg-zinc-950 transition-all duration-200 ${
                   brandMounted ? "w-full" : "w-0 group-hover:w-1/2"
                 }`}
               />
             </span>
 
             <span
-              className={`text-[18px] transition-transform duration-300 ${
+              className={`text-[18px] transition-transform duration-200 ${
                 brandMounted ? "rotate-180" : "rotate-0"
               }`}
             >
@@ -976,13 +982,10 @@ export default function ProductDiscoveryBar({
 
           {brandMounted && (
             <div
-              style={{
-                willChange: "grid-template-rows, opacity, transform",
-              }}
               className={`mt-3 grid border-t border-zinc-100 ${
                 brandClosing
-                  ? "animate-[brandShelfClose_0.36s_cubic-bezier(0.4,0,1,1)_both]"
-                  : "animate-[brandShelfOpen_0.38s_cubic-bezier(0.22,1,0.36,1)_both]"
+                  ? "animate-[brandShelfClose_0.17s_ease-in_both]"
+                  : "animate-[brandShelfOpen_0.20s_cubic-bezier(0.22,1,0.36,1)_both]"
               }`}
             >
               <div className="min-h-0 overflow-hidden">
