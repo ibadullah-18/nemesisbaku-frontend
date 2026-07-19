@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
   FiChevronUp,
   FiSliders,
   FiX,
@@ -133,6 +135,7 @@ export default function ProductDiscoveryBar({
   const { text } = useLanguage();
 
   const filterButtonRef = useRef(null);
+  const brandRowRef = useRef(null);
   const openedAtRef = useRef(0);
   const productsRequestIdRef = useRef(0);
 
@@ -149,6 +152,9 @@ export default function ProductDiscoveryBar({
 
   const [brandMounted, setBrandMounted] = useState(false);
   const [brandClosing, setBrandClosing] = useState(false);
+  const [brandOverflow, setBrandOverflow] = useState(false);
+  const [canScrollBrandLeft, setCanScrollBrandLeft] = useState(false);
+  const [canScrollBrandRight, setCanScrollBrandRight] = useState(false);
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterClosing, setFilterClosing] = useState(false);
@@ -205,6 +211,34 @@ export default function ProductDiscoveryBar({
       window.removeEventListener("nemesis_nav_visibility", handleNavVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    if (!brandMounted) {
+      setBrandOverflow(false);
+      setCanScrollBrandLeft(false);
+      setCanScrollBrandRight(false);
+      return undefined;
+    }
+
+    const row = brandRowRef.current;
+    if (!row) return undefined;
+
+    const frame = window.requestAnimationFrame(updateBrandScrollState);
+    row.addEventListener("scroll", updateBrandScrollState, { passive: true });
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateBrandScrollState)
+        : null;
+
+    resizeObserver?.observe(row);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      row.removeEventListener("scroll", updateBrandScrollState);
+      resizeObserver?.disconnect();
+    };
+  }, [brandMounted, brands.length]);
 
   useEffect(() => {
     function refreshWhenPageBecomesActive() {
@@ -403,6 +437,38 @@ export default function ProductDiscoveryBar({
     else openBrands();
   }
 
+  function updateBrandScrollState() {
+    const row = brandRowRef.current;
+    if (!row) return;
+
+    const maxScrollLeft = Math.max(0, row.scrollWidth - row.clientWidth);
+    const hasOverflow = maxScrollLeft > 4;
+
+    setBrandOverflow(hasOverflow);
+    setCanScrollBrandLeft(hasOverflow && row.scrollLeft > 4);
+    setCanScrollBrandRight(
+      hasOverflow && row.scrollLeft < maxScrollLeft - 4,
+    );
+  }
+
+  function scrollBrands(direction) {
+    const row = brandRowRef.current;
+    if (!row) return;
+
+    const firstBrand = row.querySelector("[data-brand-item]");
+    const itemWidth = firstBrand?.getBoundingClientRect().width || 76;
+    const visibleItems = Math.max(
+      1,
+      Math.floor(row.clientWidth / (itemWidth + 20)) - 1,
+    );
+    const distance = (itemWidth + 16) * visibleItems;
+
+    row.scrollBy({
+      left: direction === "right" ? distance : -distance,
+      behavior: "smooth",
+    });
+  }
+
   function selectBrand(brandId) {
     const next = {
       ...emptyFilters,
@@ -575,9 +641,6 @@ export default function ProductDiscoveryBar({
       moved: false,
     };
   }
-
-  const activeBrandName =
-    brands.find((x) => String(x.id) === String(filters.brandId))?.name || "";
 
   const filterPortal =
     portalReady &&
@@ -775,38 +838,48 @@ export default function ProductDiscoveryBar({
     <>
       <style>
         {`
-          @keyframes brandBubbleOpen {
-            0% {
+          @keyframes brandShelfOpen {
+            from {
+              max-height: 0;
               opacity: 0;
-              transform: translateY(-18px) scale(0.94);
-              filter: blur(4px);
+              transform: translateY(-10px);
             }
 
-            60% {
+            to {
+              max-height: 96px;
               opacity: 1;
-              transform: translateY(4px) scale(1.015);
-              filter: blur(0);
-            }
-
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-              filter: blur(0);
+              transform: translateY(0);
             }
           }
 
-          @keyframes brandBubbleClose {
-            0% {
+          @keyframes brandShelfClose {
+            from {
+              max-height: 96px;
               opacity: 1;
-              transform: translateY(0) scale(1);
-              filter: blur(0);
+              transform: translateY(0);
             }
 
-            100% {
+            to {
+              max-height: 0;
               opacity: 0;
-              transform: translateY(-18px) scale(0.94);
-              filter: blur(4px);
+              transform: translateY(-8px);
             }
+          }
+
+          @keyframes brandArrowLeft {
+            0%, 100% { transform: translateX(1px); }
+            50% { transform: translateX(-4px); }
+          }
+
+          @keyframes brandArrowRight {
+            0%, 100% { transform: translateX(-1px); }
+            50% { transform: translateX(4px); }
+          }
+
+          @keyframes brandSelectedPop {
+            0% { transform: scale(0.84); }
+            58% { transform: scale(1.08); }
+            100% { transform: scale(1); }
           }
 
           @keyframes filterOpen {
@@ -877,12 +950,16 @@ export default function ProductDiscoveryBar({
           <button
             type="button"
             onClick={toggleBrands}
-            className={`mx-auto flex items-center gap-2 rounded-full bg-white px-4 py-2 text-zinc-950 transition duration-300 hover:bg-zinc-50 active:scale-[0.98] ${
-              brandMounted ? "shadow-[0_10px_30px_rgba(0,0,0,0.06)]" : ""
-            }`}
+            className="group mx-auto flex items-center gap-2 px-2 py-1.5 text-zinc-950 transition duration-300 active:scale-[0.97]"
           >
-            <span className="text-[15px] font-bold tracking-[0.08em]">
+            <span className="relative text-[14px] font-semibold tracking-[0.16em]">
               {text.brands}
+
+              <span
+                className={`absolute -bottom-1 left-1/2 h-px -translate-x-1/2 bg-zinc-950 transition-all duration-500 ${
+                  brandMounted ? "w-full" : "w-0 group-hover:w-1/2"
+                }`}
+              />
             </span>
 
             <span
@@ -894,35 +971,80 @@ export default function ProductDiscoveryBar({
             </span>
           </button>
 
-          {activeBrandName && (
-            <p className="mt-1 text-center text-xs font-semibold text-zinc-400">
-              {activeBrandName}
-            </p>
-          )}
-
           {brandMounted && (
             <div
-              className={`absolute left-4 right-4 top-[72px] z-40 rounded-[28px] border border-zinc-100 bg-white/96 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.10)] backdrop-blur-xl md:left-6 md:right-6 ${
+              className={`mt-3 overflow-hidden border-t border-zinc-100 ${
                 brandClosing
-                  ? "animate-[brandBubbleClose_0.34s_ease_both]"
-                  : "animate-[brandBubbleOpen_0.46s_cubic-bezier(0.22,1,0.36,1)_both]"
+                  ? "animate-[brandShelfClose_0.34s_cubic-bezier(0.4,0,1,1)_both]"
+                  : "animate-[brandShelfOpen_0.44s_cubic-bezier(0.22,1,0.36,1)_both]"
               }`}
             >
-              <div className="flex gap-4 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {brands.map((brand) => (
-                  <BrandButton
-                    key={brand.id}
-                    active={String(filters.brandId) === String(brand.id)}
-                    name={brand.name}
-                    image={
-                      brand.logoUrl ||
-                      brand.imageUrl ||
-                      brand.iconUrl ||
-                      brand.photoUrl
-                    }
-                    onClick={() => selectBrand(brand.id)}
-                  />
-                ))}
+              <div className="relative py-3">
+                <div
+                  ref={brandRowRef}
+                  className={`flex touch-pan-x gap-3 overflow-x-auto overscroll-x-contain px-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 [&::-webkit-scrollbar]:hidden ${
+                    brandOverflow ? "md:px-8" : ""
+                  }`}
+                >
+                  {brands.map((brand) => (
+                    <BrandButton
+                      key={brand.id}
+                      active={String(filters.brandId) === String(brand.id)}
+                      name={brand.name}
+                      image={
+                        brand.logoUrl ||
+                        brand.imageUrl ||
+                        brand.iconUrl ||
+                        brand.photoUrl
+                      }
+                      onClick={() => selectBrand(brand.id)}
+                    />
+                  ))}
+                </div>
+
+                {brandOverflow && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => scrollBrands("left")}
+                      disabled={!canScrollBrandLeft}
+                      className={`absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 place-items-center text-[30px] text-zinc-950 transition duration-300 md:grid ${
+                        canScrollBrandLeft
+                          ? "opacity-100 hover:-translate-x-1"
+                          : "pointer-events-none opacity-15"
+                      }`}
+                      aria-label="Brendləri sola sürüşdür"
+                    >
+                      <FiChevronLeft
+                        className={
+                          canScrollBrandLeft
+                            ? "animate-[brandArrowLeft_1.8s_ease-in-out_infinite]"
+                            : ""
+                        }
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => scrollBrands("right")}
+                      disabled={!canScrollBrandRight}
+                      className={`absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 place-items-center text-[30px] text-zinc-950 transition duration-300 md:grid ${
+                        canScrollBrandRight
+                          ? "opacity-100 hover:translate-x-1"
+                          : "pointer-events-none opacity-15"
+                      }`}
+                      aria-label="Brendləri sağa sürüşdür"
+                    >
+                      <FiChevronRight
+                        className={
+                          canScrollBrandRight
+                            ? "animate-[brandArrowRight_1.8s_ease-in-out_infinite]"
+                            : ""
+                        }
+                      />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -939,13 +1061,16 @@ function BrandButton({ active, name, image, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="group flex shrink-0 flex-col items-center gap-2"
+      data-brand-item
+      aria-label={name}
+      title={name}
+      className="group grid h-[54px] w-[54px] shrink-0 place-items-center transition duration-500 hover:-translate-y-1 active:scale-[0.95] md:h-[64px] md:w-[64px]"
     >
       <span
-        className={`grid h-[62px] w-[62px] place-items-center overflow-hidden rounded-full border p-[9px] transition duration-300 group-hover:-translate-y-0.5 group-active:scale-95 ${
+        className={`grid h-[46px] w-[46px] place-items-center overflow-hidden rounded-full border bg-white p-[8px] transition-all duration-500 md:h-[54px] md:w-[54px] md:p-[9px] ${
           active
-            ? "border-[#244989] bg-[#244989]/8 shadow-[0_10px_25px_rgba(36,73,137,0.14)]"
-            : "border-zinc-100 bg-white shadow-[0_8px_22px_rgba(0,0,0,0.05)]"
+            ? "border-zinc-700 animate-[brandSelectedPop_0.48s_cubic-bezier(0.22,1,0.36,1)_both]"
+            : "border-zinc-100 group-hover:border-zinc-300"
         }`}
       >
         {image ? (
@@ -954,21 +1079,11 @@ function BrandButton({ active, name, image, onClick }) {
             alt={name}
             loading="lazy"
             draggable="false"
-            className="block h-full w-full select-none object-contain object-center transition-transform duration-300 group-hover:scale-[1.04]"
+            className="block h-full w-full select-none object-contain object-center transition-transform duration-500 group-hover:scale-[1.06]"
           />
         ) : (
-          <span className="grid h-full w-full place-items-center text-lg font-extrabold text-zinc-400">
-            {name?.charAt(0)}
-          </span>
+          <span className="h-2 w-2 rounded-full bg-zinc-300" />
         )}
-      </span>
-
-      <span
-        className={`max-w-[72px] truncate text-center text-xs font-bold transition ${
-          active ? "text-[#244989]" : "text-zinc-600"
-        }`}
-      >
-        {name}
       </span>
     </button>
   );

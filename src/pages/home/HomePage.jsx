@@ -98,6 +98,7 @@ export default function HomePage() {
   const [bannerDetail, setBannerDetail] = useState(null);
   const [homeSections, setHomeSections] = useState([]);
   const [products, setProducts] = useState([]);
+  const [productsAnimationVersion, setProductsAnimationVersion] = useState(0);
   const [filterActive, setFilterActive] = useState(false);
 
   const [allProductsVisible, setAllProductsVisible] = useState(false);
@@ -319,6 +320,7 @@ export default function HomePage() {
 
         setAllProductsVisible(false);
         setProducts(initialProducts);
+        setProductsAnimationVersion((prev) => prev + 1);
         setPage(
           restoringProduct
             ? Math.max(1, Math.ceil(initialProducts.length / standardPageSize))
@@ -398,6 +400,7 @@ export default function HomePage() {
     setFilterLoading(false);
     setFilterActive(true);
     setProducts(uniqueById(list));
+    setProductsAnimationVersion((prev) => prev + 1);
     setPage(1);
     setHasMore(false);
     setAllProductsVisible(false);
@@ -437,6 +440,7 @@ export default function HomePage() {
       const brandProducts = uniqueById(normalizeList(res));
 
       setProducts(brandProducts);
+      setProductsAnimationVersion((prev) => prev + 1);
       setPage(1);
       setHasMore(false);
       setAllProductsVisible(false);
@@ -488,8 +492,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#fafafa] text-zinc-950">
-      {filterLoading && <AppLoader text={text.loading} />}
-
       <style>
         {`
           @keyframes bannerBackdropIn {
@@ -531,6 +533,19 @@ export default function HomePage() {
             to {
               opacity: 1;
               transform: translateY(0) scale(1);
+            }
+          }
+
+          @keyframes filteredProductsIn {
+            from {
+              opacity: 0;
+              transform: translateY(18px);
+              filter: blur(5px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+              filter: blur(0);
             }
           }
 
@@ -616,7 +631,11 @@ export default function HomePage() {
         {products.length > 0 && (
           <section
             ref={allProductsRef}
-            className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11"
+            className={`mx-auto max-w-[1180px] px-5 py-8 transition-all duration-300 md:px-8 md:py-11 ${
+              filterLoading
+                ? "pointer-events-none translate-y-1 opacity-35"
+                : "translate-y-0 opacity-100"
+            }`}
           >
             <div
               className="mb-5 flex items-end justify-between gap-4"
@@ -648,7 +667,14 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div
+              key={`products-grid-${productsAnimationVersion}`}
+              className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+              style={{
+                animation:
+                  "filteredProductsIn 0.5s cubic-bezier(0.22,1,0.36,1) both",
+              }}
+            >
               {products.map((product, index) => {
                 const delay = Math.min(index, 11) * 0.045;
 
