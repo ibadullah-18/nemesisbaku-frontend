@@ -46,14 +46,6 @@ function uniqueById(list) {
   return [...map.values()];
 }
 
-function getProductImage(product) {
-  return product?.mainImageUrl || product?.imageUrl || product?.image || "";
-}
-
-function money(value) {
-  return `${Number(value || 0).toFixed(2)} ₼`;
-}
-
 function getErrorMessage(err, fallback = "Xəta baş verdi. Yenidən yoxlayın.") {
   return (
     err?.response?.data?.message ||
@@ -129,6 +121,11 @@ export default function HomePage() {
   const MIN_LOADER_TIME = 750;
 
   useEffect(() => {
+    // Fast Refresh və ya əvvəlki versiyadan qalan inline scroll kilidini təmizlə.
+    releaseBannerScroll();
+  }, []);
+
+  useEffect(() => {
     loadHome();
     trackVisit("/").catch(() => {});
   }, []);
@@ -179,14 +176,9 @@ export default function HomePage() {
   }, [activeBanner]);
 
   useEffect(() => {
-    if (!showBannerPopup) return;
-
-    const oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = oldOverflow;
-    };
+    // Banner qlobal body/html scroll stilinə toxunmur. Hər state dəyişikliyində
+    // əvvəlki versiyadan qala biləcək kilidi yalnız təmizləyirik.
+    releaseBannerScroll();
   }, [showBannerPopup]);
 
   useEffect(() => {
@@ -479,10 +471,61 @@ export default function HomePage() {
     return 12; // komputer/planset: 3 sıra x 4 məhsul
   }
 
+  function releaseBannerScroll() {
+    const body = document.body;
+    const root = document.documentElement;
+    const storedScrollY = Number(body.dataset.nemesisBannerScrollY);
+    const lockedTop = Math.abs(Number.parseFloat(body.style.top || "0"));
+    const savedScrollY = Number.isFinite(storedScrollY)
+      ? storedScrollY
+      : lockedTop || window.scrollY;
+
+    // Köhnə dəyəri geri yazmırıq: o dəyər də `hidden/fixed` qala bilər.
+    // Banner və əvvəlki versiyaların yarada biləcəyi bütün inline kilidləri silirik.
+    [
+      "position",
+      "top",
+      "left",
+      "right",
+      "width",
+      "height",
+      "max-height",
+      "overflow",
+      "overflow-y",
+      "overscroll-behavior",
+      "overscroll-behavior-y",
+      "touch-action",
+      "padding-right",
+    ].forEach((property) => body.style.removeProperty(property));
+
+    [
+      "position",
+      "height",
+      "max-height",
+      "overflow",
+      "overflow-y",
+      "overscroll-behavior",
+      "overscroll-behavior-y",
+      "touch-action",
+    ].forEach((property) => root.style.removeProperty(property));
+
+    body.classList.remove("overflow-hidden", "fixed", "inset-0", "w-full");
+    root.classList.remove("overflow-hidden");
+
+    delete body.dataset.nemesisBannerOpen;
+    delete body.dataset.nemesisBannerScrollY;
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
+    });
+  }
+
   function closeBannerPopup() {
     setClosingBannerPopup(true);
 
     setTimeout(() => {
+      // Effektin cleanup-u brauzerdə geciksə belə səhifə kilidli qalmasın.
+      releaseBannerScroll();
       setShowBannerPopup(false);
       setClosingBannerPopup(false);
     }, 320);
@@ -774,7 +817,6 @@ export default function HomePage() {
 
 function BannerPopup({ banner, closing, onClose }) {
   const navigate = useNavigate();
-  const products = uniqueById(banner?.products || []).slice(0, 4);
 
   function openBanner() {
     if (!banner?.id) return;
@@ -788,14 +830,15 @@ function BannerPopup({ banner, closing, onClose }) {
 
   const popup = (
     <div
-      className={`fixed left-0 top-0 z-[999999] flex h-screen w-screen items-center justify-center bg-black/50 px-3 ${
+      style={{ touchAction: "none", overscrollBehavior: "contain" }}
+      className={`fixed inset-0 z-[999999] flex h-dvh w-screen items-center justify-center bg-black/55 p-3 md:p-6 ${
         closing
           ? "animate-[bannerBackdropOut_0.32s_ease_both]"
           : "animate-[bannerBackdropIn_0.38s_ease_both]"
       }`}
     >
       <div
-        className={`relative w-full max-w-[430px] overflow-hidden rounded-[30px] bg-[#efe7da] shadow-[0_34px_100px_rgba(0,0,0,0.34)] md:max-w-[920px] ${
+        className={`relative w-full max-w-[440px] overflow-hidden rounded-[18px] bg-[#f4f1ec] shadow-[0_30px_90px_rgba(0,0,0,0.32)] md:max-w-[960px] md:rounded-[22px] ${
           closing
             ? "animate-[bannerPopupOut_0.32s_ease_both]"
             : "animate-[bannerPopupIn_0.48s_cubic-bezier(0.22,1,0.36,1)_both]"
@@ -804,103 +847,36 @@ function BannerPopup({ banner, closing, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-40 grid h-8 w-8 place-items-center rounded-full bg-black/85 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-md transition active:scale-[0.94] md:right-4 md:top-4 md:h-10 md:w-10"
+          className="absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full bg-black/85 text-white transition hover:rotate-90 active:scale-[0.94] md:right-4 md:top-4 md:h-10 md:w-10"
           aria-label="Bağla"
         >
           <FiX />
         </button>
 
-        <div className="relative min-h-[560px] overflow-hidden md:min-h-[560px]">
+        <div className="relative grid max-h-[86dvh] min-h-[220px] place-items-center overflow-hidden bg-[#f4f1ec]">
           {banner.imageUrl ? (
             <img
               src={banner.imageUrl}
-              alt={banner.title}
-              className="absolute inset-0 h-full w-full object-cover opacity-85"
+              alt={banner.title || "nemesisbaku banner"}
+              className="block h-auto max-h-[86dvh] w-full object-contain"
               draggable="false"
             />
           ) : (
-            <div className="absolute inset-0 grid place-items-center text-zinc-400">
+            <div className="grid h-[320px] w-full place-items-center text-zinc-400 md:h-[460px]">
               <FiImage className="text-[54px]" />
             </div>
           )}
 
-          <div className="absolute inset-0 bg-[#efe7da]/40" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#efe7da]/95 via-[#efe7da]/50 to-transparent" />
-
-          <div className="relative z-10 flex min-h-[560px] flex-col justify-end p-4 md:p-8">
-            <div className="max-w-[270px] text-left md:max-w-[430px]">
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.34em] text-zinc-700 md:text-xs">
-                nemesisbaku
-              </p>
-
-              <h2 className="text-[42px] font-extrabold leading-[0.92] tracking-[-0.065em] text-zinc-950 md:text-[72px]">
-                {banner.title}
-              </h2>
-
-              {banner.description && (
-                <p className="mt-3 max-w-[360px] text-xs font-semibold leading-5 text-zinc-700 md:text-sm md:leading-6">
-                  {banner.description}
-                </p>
-              )}
-
-              <button
-                type="button"
-                onClick={openBanner}
-                className="mt-5 inline-flex h-11 items-center gap-4 rounded-[10px] bg-zinc-950 px-6 text-xs font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:gap-6 active:scale-[0.97] md:h-14 md:rounded-[14px] md:px-8 md:text-sm"
-              >
-                Kəşf et
-                <FiChevronRight className="text-lg md:text-xl" />
-              </button>
-            </div>
-
-            {products.length > 0 && (
-              <div className="mt-6 grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
-                {products.map((product, index) => (
-                  <button
-                    key={product.id || `banner-product-${index}`}
-                    type="button"
-                    onClick={openBanner}
-                    className={`group overflow-hidden rounded-[14px] bg-white/92 text-left shadow-[0_16px_42px_rgba(0,0,0,0.13)] transition active:scale-[0.97] md:rounded-[18px] ${
-                      index > 1 ? "hidden md:block" : ""
-                    }`}
-                  >
-                    <div className="h-20 bg-zinc-100 md:h-28">
-                      {getProductImage(product) ? (
-                        <img
-                          src={getProductImage(product)}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                          draggable="false"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-zinc-300">
-                          <FiImage />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-2 md:p-3">
-                      <p className="line-clamp-1 text-[11px] font-extrabold text-zinc-950 md:text-xs">
-                        {product.name || "Məhsul"}
-                      </p>
-
-                      <div className="mt-1 flex items-center gap-1">
-                        <span className="text-[11px] font-extrabold text-zinc-950 md:text-xs">
-                          {money(product.discountPrice || product.price)}
-                        </span>
-
-                        {product.discountPrice ? (
-                          <span className="text-[9px] font-bold text-zinc-400 line-through md:text-[10px]">
-                            {money(product.price)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={openBanner}
+            className="absolute bottom-3 left-3 z-20 inline-flex h-9 items-center gap-2 rounded-full border border-white/80 bg-white/92 py-1 pl-4 pr-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-zinc-950 backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white active:scale-[0.97] md:bottom-5 md:left-5 md:h-11 md:pl-5 md:pr-2 md:text-[10px]"
+          >
+            Kəşf et
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-zinc-950 text-[13px] text-white md:h-8 md:w-8 md:text-base">
+              <FiChevronRight />
+            </span>
+          </button>
         </div>
       </div>
     </div>

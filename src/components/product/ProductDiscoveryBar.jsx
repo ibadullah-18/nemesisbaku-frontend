@@ -418,7 +418,10 @@ export default function ProductDiscoveryBar({
   }
 
   function openBrands() {
-    refreshFilterOptions().catch(() => {});
+    if (brands.length === 0) {
+      refreshFilterOptions().catch(() => {});
+    }
+
     setBrandClosing(false);
     setBrandMounted(true);
   }
@@ -429,7 +432,7 @@ export default function ProductDiscoveryBar({
     setTimeout(() => {
       setBrandMounted(false);
       setBrandClosing(false);
-    }, 340);
+    }, 360);
   }
 
   function toggleBrands() {
@@ -840,13 +843,13 @@ export default function ProductDiscoveryBar({
         {`
           @keyframes brandShelfOpen {
             from {
-              max-height: 0;
+              grid-template-rows: 0fr;
               opacity: 0;
-              transform: translateY(-10px);
+              transform: translateY(-5px);
             }
 
             to {
-              max-height: 96px;
+              grid-template-rows: 1fr;
               opacity: 1;
               transform: translateY(0);
             }
@@ -854,15 +857,15 @@ export default function ProductDiscoveryBar({
 
           @keyframes brandShelfClose {
             from {
-              max-height: 96px;
+              grid-template-rows: 1fr;
               opacity: 1;
               transform: translateY(0);
             }
 
             to {
-              max-height: 0;
+              grid-template-rows: 0fr;
               opacity: 0;
-              transform: translateY(-8px);
+              transform: translateY(-4px);
             }
           }
 
@@ -944,7 +947,7 @@ export default function ProductDiscoveryBar({
         style={{
           top: navVisible ? (window.innerWidth >= 768 ? 72 : 62) : 0,
         }}
-        className="sticky z-30 border-b border-zinc-100 bg-white/95 backdrop-blur-xl transition-all duration-500"
+        className="sticky z-30 border-b border-zinc-100 bg-white transition-all duration-500"
       >
         <div className="relative mx-auto max-w-[1180px] px-4 py-3 md:px-6">
           <button
@@ -973,78 +976,81 @@ export default function ProductDiscoveryBar({
 
           {brandMounted && (
             <div
-              className={`mt-3 overflow-hidden border-t border-zinc-100 ${
+              style={{
+                willChange: "grid-template-rows, opacity, transform",
+              }}
+              className={`mt-3 grid border-t border-zinc-100 ${
                 brandClosing
-                  ? "animate-[brandShelfClose_0.34s_cubic-bezier(0.4,0,1,1)_both]"
-                  : "animate-[brandShelfOpen_0.44s_cubic-bezier(0.22,1,0.36,1)_both]"
+                  ? "animate-[brandShelfClose_0.36s_cubic-bezier(0.4,0,1,1)_both]"
+                  : "animate-[brandShelfOpen_0.38s_cubic-bezier(0.22,1,0.36,1)_both]"
               }`}
             >
-              <div className="relative py-3">
-                <div
-                  ref={brandRowRef}
-                  className={`flex touch-pan-x gap-3 overflow-x-auto overscroll-x-contain px-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 [&::-webkit-scrollbar]:hidden ${
-                    brandOverflow ? "md:px-8" : ""
-                  }`}
-                >
-                  {brands.map((brand) => (
-                    <BrandButton
-                      key={brand.id}
-                      active={String(filters.brandId) === String(brand.id)}
-                      name={brand.name}
-                      image={
-                        brand.logoUrl ||
-                        brand.imageUrl ||
-                        brand.iconUrl ||
-                        brand.photoUrl
-                      }
-                      onClick={() => selectBrand(brand.id)}
-                    />
-                  ))}
-                </div>
+              <div className="min-h-0 overflow-hidden">
+                <div className="relative py-3">
+                  <div
+                    ref={brandRowRef}
+                    className="flex touch-pan-x gap-3 overflow-x-auto overscroll-x-contain px-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 md:px-8 [&::-webkit-scrollbar]:hidden"
+                  >
+                    {brands.map((brand) => (
+                      <BrandButton
+                        key={brand.id}
+                        active={String(filters.brandId) === String(brand.id)}
+                        name={brand.name}
+                        image={
+                          brand.logoUrl ||
+                          brand.imageUrl ||
+                          brand.iconUrl ||
+                          brand.photoUrl
+                        }
+                        onClick={() => selectBrand(brand.id)}
+                      />
+                    ))}
+                  </div>
 
-                {brandOverflow && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => scrollBrands("left")}
-                      disabled={!canScrollBrandLeft}
-                      className={`absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 place-items-center text-[30px] text-zinc-950 transition duration-300 md:grid ${
-                        canScrollBrandLeft
-                          ? "opacity-100 hover:-translate-x-1"
-                          : "pointer-events-none opacity-15"
-                      }`}
-                      aria-label="Brendləri sola sürüşdür"
-                    >
-                      <FiChevronLeft
-                        className={
+                  {brandOverflow && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => scrollBrands("left")}
+                        disabled={!canScrollBrandLeft}
+                        className={`absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 place-items-center text-[30px] text-zinc-950 transition duration-300 md:grid ${
                           canScrollBrandLeft
-                            ? "animate-[brandArrowLeft_1.8s_ease-in-out_infinite]"
-                            : ""
-                        }
-                      />
-                    </button>
+                            ? "opacity-100 hover:-translate-x-1"
+                            : "pointer-events-none opacity-15"
+                        }`}
+                        aria-label="Brendləri sola sürüşdür"
+                      >
+                        <FiChevronLeft
+                          className={
+                            canScrollBrandLeft
+                              ? "animate-[brandArrowLeft_1.8s_ease-in-out_infinite]"
+                              : ""
+                          }
+                        />
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => scrollBrands("right")}
-                      disabled={!canScrollBrandRight}
-                      className={`absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 place-items-center text-[30px] text-zinc-950 transition duration-300 md:grid ${
-                        canScrollBrandRight
-                          ? "opacity-100 hover:translate-x-1"
-                          : "pointer-events-none opacity-15"
-                      }`}
-                      aria-label="Brendləri sağa sürüşdür"
-                    >
-                      <FiChevronRight
-                        className={
+                      <button
+                        type="button"
+                        onClick={() => scrollBrands("right")}
+                        disabled={!canScrollBrandRight}
+                        className={`absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 place-items-center text-[30px] text-zinc-950 transition duration-300 md:grid ${
                           canScrollBrandRight
-                            ? "animate-[brandArrowRight_1.8s_ease-in-out_infinite]"
-                            : ""
-                        }
-                      />
-                    </button>
-                  </>
-                )}
+                            ? "opacity-100 hover:translate-x-1"
+                            : "pointer-events-none opacity-15"
+                        }`}
+                        aria-label="Brendləri sağa sürüşdür"
+                      >
+                        <FiChevronRight
+                          className={
+                            canScrollBrandRight
+                              ? "animate-[brandArrowRight_1.8s_ease-in-out_infinite]"
+                              : ""
+                          }
+                        />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

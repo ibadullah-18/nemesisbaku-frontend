@@ -270,14 +270,14 @@ function handlePointerUp(e) {
         )}
 
         <div
-          className="overflow-hidden rounded-[32px] touch-pan-y select-none"
+          className="touch-pan-y select-none overflow-hidden rounded-[16px] md:rounded-[24px]"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           onWheel={pauseAndResumeLater}
         >
-          <div className="overflow-hidden rounded-[32px]">
+          <div className="overflow-hidden rounded-[16px] md:rounded-[24px]">
             <div
               onTransitionEnd={handleTransitionEnd}
               className={`flex ${
@@ -325,7 +325,7 @@ function PromoCard({ promo, text }) {
     <NavLink
       to={getPromoLink(promo)}
       draggable="false"
-      className="group relative block aspect-[5/2] overflow-hidden rounded-[20px] bg-[#efe7da] shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:rounded-[32px]"
+      className="group relative block aspect-[5/2] overflow-hidden rounded-[16px] bg-[#efe7da] shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:rounded-[24px]"
     >
       <img
         src={promo.imageUrl}
