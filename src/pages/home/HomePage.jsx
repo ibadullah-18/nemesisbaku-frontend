@@ -91,6 +91,7 @@ export default function HomePage() {
   const allProductsRef = useRef(null);
   const errorTimerRef = useRef(null);
   const homeRequestIdRef = useRef(0);
+  const brandRequestIdRef = useRef(0);
 
   const [campaigns, setCampaigns] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -109,6 +110,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(
     !sessionStorage.getItem("nemesis_home_loaded_once"),
   );
+  const [filterLoading, setFilterLoading] = useState(false);
   const [moreLoading, setMoreLoading] = useState(false);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -200,6 +202,8 @@ export default function HomePage() {
 
   useEffect(() => {
     function resetHomeFilters() {
+      brandRequestIdRef.current += 1;
+      setFilterLoading(false);
       setFilterActive(false);
       loadHome();
 
@@ -389,7 +393,9 @@ export default function HomePage() {
     // Filter nəticəsi gəldikdən sonra gecikmiş ana səhifə sorğusu bu siyahının
     // üstünə yaza bilməsin.
     homeRequestIdRef.current += 1;
+    brandRequestIdRef.current += 1;
     setLoading(false);
+    setFilterLoading(false);
     setFilterActive(true);
     setProducts(uniqueById(list));
     setPage(1);
@@ -404,6 +410,55 @@ export default function HomePage() {
         block: "start",
       });
     }, 80);
+  }
+
+  async function handleBrandChange(brandId) {
+    if (!brandId) return;
+
+    const requestId = ++brandRequestIdRef.current;
+
+    // Ana səhifənin gecikmiş cavabı brend nəticəsini əvəz etməsin.
+    homeRequestIdRef.current += 1;
+    setLoading(false);
+    setFilterActive(true);
+    setFilterLoading(true);
+
+    try {
+      const res = await requestWithRetry(() =>
+        getProducts({
+          brandId,
+          page: 1,
+          pageSize: 100,
+        }),
+      );
+
+      if (requestId !== brandRequestIdRef.current) return;
+
+      const brandProducts = uniqueById(normalizeList(res));
+
+      setProducts(brandProducts);
+      setPage(1);
+      setHasMore(false);
+      setAllProductsVisible(false);
+
+      window.setTimeout(() => {
+        if (requestId !== brandRequestIdRef.current) return;
+
+        setAllProductsVisible(true);
+        allProductsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 80);
+    } catch (err) {
+      if (requestId === brandRequestIdRef.current) {
+        showError(getErrorMessage(err, "Brend məhsulları yüklənmədi."));
+      }
+    } finally {
+      if (requestId === brandRequestIdRef.current) {
+        setFilterLoading(false);
+      }
+    }
   }
   function scrollToTop() {
     window.scrollTo({
@@ -433,6 +488,8 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#fafafa] text-zinc-950">
+      {filterLoading && <AppLoader text={text.loading} />}
+
       <style>
         {`
           @keyframes bannerBackdropIn {
@@ -519,7 +576,10 @@ export default function HomePage() {
 
       <div className="relative min-h-screen bg-[#fafafa]">
         <div className="relative z-30 animate-[softHomeIn_0.45s_ease_both]">
-          <ProductDiscoveryBar onProductsChange={handleFilteredProducts} />
+          <ProductDiscoveryBar
+            onProductsChange={handleFilteredProducts}
+            onBrandChange={handleBrandChange}
+          />
         </div>
 
         {!filterActive && (

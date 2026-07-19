@@ -126,7 +126,10 @@ function normalizeFilterOptions(res) {
   };
 }
 
-export default function ProductDiscoveryBar({ onProductsChange }) {
+export default function ProductDiscoveryBar({
+  onProductsChange,
+  onBrandChange,
+}) {
   const { text } = useLanguage();
 
   const filterButtonRef = useRef(null);
@@ -408,7 +411,13 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
 
     setFilters(next);
     setDraftFilters(next);
-    loadProducts(next);
+
+    if (onBrandChange) {
+      onBrandChange(brandId);
+    } else {
+      loadProducts(next);
+    }
+
     closeBrands();
   }
 
@@ -568,8 +577,7 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
   }
 
   const activeBrandName =
-    brands.find((x) => String(x.id) === String(filters.brandId))?.name ||
-    text.allBrands;
+    brands.find((x) => String(x.id) === String(filters.brandId))?.name || "";
 
   const filterPortal =
     portalReady &&
@@ -886,9 +894,11 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
             </span>
           </button>
 
-          <p className="mt-1 text-center text-xs font-semibold text-zinc-400">
-            {activeBrandName}
-          </p>
+          {activeBrandName && (
+            <p className="mt-1 text-center text-xs font-semibold text-zinc-400">
+              {activeBrandName}
+            </p>
+          )}
 
           {brandMounted && (
             <div
@@ -899,12 +909,6 @@ export default function ProductDiscoveryBar({ onProductsChange }) {
               }`}
             >
               <div className="flex gap-4 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <BrandButton
-                  active={!filters.brandId}
-                  name={text.allBrands}
-                  onClick={() => selectBrand("")}
-                />
-
                 {brands.map((brand) => (
                   <BrandButton
                     key={brand.id}
