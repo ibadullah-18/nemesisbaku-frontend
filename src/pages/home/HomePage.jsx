@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { FiArrowUp, FiChevronRight, FiImage, FiX } from "react-icons/fi";
@@ -16,6 +16,81 @@ import {
   trackVisit,
 } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
+
+const HOME_VIEW_STATE_KEY = "nemesis_home_view_state_v2";
+const HOME_RETURN_PRODUCT_KEY = "nemesis_return_product_id";
+const HOME_RETURN_SCROLL_KEY = "nemesis_return_scroll_y";
+const HOME_VIEW_MAX_AGE = 30 * 60 * 1000;
+
+const defaultDiscoveryFilters = {
+  categoryId: "",
+  brandId: "",
+  sizeId: "",
+  colorId: "",
+  minPrice: "",
+  maxPrice: "",
+  isDiscounted: null,
+};
+
+let homeViewMemoryCache = null;
+
+function normalizeDiscoveryFilters(filters) {
+  return {
+    ...defaultDiscoveryFilters,
+    ...(filters || {}),
+    isDiscounted: filters?.isDiscounted === true ? true : null,
+  };
+}
+
+function readRestorableHomeState() {
+  const hasReturnMarker = Boolean(
+    sessionStorage.getItem(HOME_RETURN_PRODUCT_KEY) ||
+      sessionStorage.getItem(HOME_RETURN_SCROLL_KEY),
+  );
+
+  if (!hasReturnMarker) return null;
+
+  try {
+    const stored = homeViewMemoryCache ||
+      JSON.parse(sessionStorage.getItem(HOME_VIEW_STATE_KEY) || "null");
+
+    if (!stored || Date.now() - Number(stored.savedAt || 0) > HOME_VIEW_MAX_AGE) {
+      clearHomeViewState();
+      return null;
+    }
+
+    return {
+      ...stored,
+      campaigns: Array.isArray(stored.campaigns) ? stored.campaigns : [],
+      banners: Array.isArray(stored.banners) ? stored.banners : [],
+      homeSections: Array.isArray(stored.homeSections)
+        ? stored.homeSections
+        : [],
+      products: Array.isArray(stored.products) ? stored.products : [],
+      discoveryFilters: normalizeDiscoveryFilters(stored.discoveryFilters),
+    };
+  } catch {
+    clearHomeViewState();
+    return null;
+  }
+}
+
+function storeHomeViewState(snapshot) {
+  homeViewMemoryCache = snapshot;
+
+  try {
+    sessionStorage.setItem(HOME_VIEW_STATE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // sessionStorage limiti dolsa belə SPA daxilində yaddaş cache-i işləyəcək.
+  }
+}
+
+function clearHomeViewState() {
+  homeViewMemoryCache = null;
+  sessionStorage.removeItem(HOME_VIEW_STATE_KEY);
+  sessionStorage.removeItem(HOME_RETURN_PRODUCT_KEY);
+  sessionStorage.removeItem(HOME_RETURN_SCROLL_KEY);
+}
 
 function normalizeList(res) {
   const data = res?.data ?? res;
@@ -79,29 +154,51 @@ async function requestWithRetry(request, attempts = 3) {
 
 export default function HomePage() {
   const { text } = useLanguage();
+  const [restoredHomeState] = useState(readRestorableHomeState);
+  const restoredFromDetails = Boolean(restoredHomeState);
 
   const allProductsRef = useRef(null);
   const errorTimerRef = useRef(null);
   const homeRequestIdRef = useRef(0);
   const brandRequestIdRef = useRef(0);
+  const latestHomeStateRef = useRef(null);
+  const productNavigationSavedRef = useRef(false);
 
-  const [campaigns, setCampaigns] = useState([]);
-  const [banners, setBanners] = useState([]);
+  const [campaigns, setCampaigns] = useState(
+    () => restoredHomeState?.campaigns || [],
+  );
+  const [banners, setBanners] = useState(
+    () => restoredHomeState?.banners || [],
+  );
   const [bannerDetail, setBannerDetail] = useState(null);
-  const [homeSections, setHomeSections] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [homeSections, setHomeSections] = useState(
+    () => restoredHomeState?.homeSections || [],
+  );
+  const [products, setProducts] = useState(
+    () => restoredHomeState?.products || [],
+  );
   const [productsAnimationVersion, setProductsAnimationVersion] = useState(0);
-  const [filterActive, setFilterActive] = useState(false);
+  const [filterActive, setFilterActive] = useState(
+    () => restoredHomeState?.filterActive === true,
+  );
+  const [discoveryFilters, setDiscoveryFilters] = useState(() =>
+    normalizeDiscoveryFilters(restoredHomeState?.discoveryFilters),
+  );
 
-  const [allProductsVisible, setAllProductsVisible] = useState(false);
+  const [allProductsVisible, setAllProductsVisible] = useState(
+    restoredFromDetails,
+  );
 
   const [showBannerPopup, setShowBannerPopup] = useState(false);
   const [closingBannerPopup, setClosingBannerPopup] = useState(false);
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(() => restoredHomeState?.page || 1);
+  const [hasMore, setHasMore] = useState(
+    () => restoredHomeState?.hasMore ?? true,
+  );
   const [loading, setLoading] = useState(
-    !sessionStorage.getItem("nemesis_home_loaded_once"),
+    !restoredFromDetails &&
+      !sessionStorage.getItem("nemesis_home_loaded_once"),
   );
   const [filterLoading, setFilterLoading] = useState(false);
   const [moreLoading, setMoreLoading] = useState(false);
@@ -120,13 +217,27 @@ export default function HomePage() {
   const HOME_LOADED_KEY = "nemesis_home_loaded_once";
   const MIN_LOADER_TIME = 750;
 
+  latestHomeStateRef.current = {
+    campaigns,
+    banners,
+    homeSections,
+    products,
+    page,
+    hasMore,
+    filterActive,
+    discoveryFilters,
+  };
+
   useEffect(() => {
     // Fast Refresh və ya əvvəlki versiyadan qalan inline scroll kilidini təmizlə.
     releaseBannerScroll();
   }, []);
 
   useEffect(() => {
-    loadHome();
+    if (!restoredFromDetails) {
+      loadHome();
+    }
+
     trackVisit("/").catch(() => {});
   }, []);
 
@@ -196,8 +307,10 @@ export default function HomePage() {
   useEffect(() => {
     function resetHomeFilters() {
       brandRequestIdRef.current += 1;
+      clearHomeViewState();
       setFilterLoading(false);
       setFilterActive(false);
+      setDiscoveryFilters({ ...defaultDiscoveryFilters });
       loadHome();
 
       window.scrollTo({
@@ -213,38 +326,84 @@ export default function HomePage() {
       window.removeEventListener("nemesis_home_reset", resetHomeFilters);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (!restoredFromDetails) return undefined;
+
+    const storedScrollY = Number(
+      restoredHomeState?.scrollY ??
+        sessionStorage.getItem(HOME_RETURN_SCROLL_KEY) ??
+        0,
+    );
+    const safeScrollY = Number.isFinite(storedScrollY) ? storedScrollY : 0;
+
+    const restoreScroll = () => {
+      window.scrollTo({ top: safeScrollY, left: 0, behavior: "auto" });
+    };
+
+    const frame = window.requestAnimationFrame(restoreScroll);
+    const settleTimer = window.setTimeout(restoreScroll, 120);
+    const imageSettleTimer = window.setTimeout(restoreScroll, 360);
+    const cleanupTimer = window.setTimeout(() => {
+      sessionStorage.removeItem(HOME_RETURN_PRODUCT_KEY);
+      sessionStorage.removeItem(HOME_RETURN_SCROLL_KEY);
+    }, 650);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(imageSettleTimer);
+      window.clearTimeout(cleanupTimer);
+    };
+  }, [restoredFromDetails, restoredHomeState]);
+
   useEffect(() => {
-    if (loading || products.length === 0) return;
-
-    const productId = sessionStorage.getItem("nemesis_return_product_id");
-    const scrollY = sessionStorage.getItem("nemesis_return_scroll_y");
-
-    if (!productId && !scrollY) return;
-
-    const timer = window.setTimeout(() => {
-      const card = productId
-        ? document.querySelector(`[data-home-product-id="${productId}"]`)
-        : null;
-
-      if (card) {
-        card.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      } else if (scrollY) {
-        window.scrollTo({
-          top: Number(scrollY),
-          left: 0,
-          behavior: "smooth",
-        });
+    return () => {
+      if (
+        !productNavigationSavedRef.current &&
+        (sessionStorage.getItem(HOME_RETURN_PRODUCT_KEY) ||
+          sessionStorage.getItem(HOME_RETURN_SCROLL_KEY))
+      ) {
+        persistCurrentHomeView();
       }
+    };
+  }, []);
 
-      sessionStorage.removeItem("nemesis_return_product_id");
-      sessionStorage.removeItem("nemesis_return_scroll_y");
-    }, 900);
+  function persistCurrentHomeView(productId = "") {
+    const scrollY = Math.max(0, window.scrollY || 0);
+    const snapshot = {
+      ...latestHomeStateRef.current,
+      scrollY,
+      productId,
+      savedAt: Date.now(),
+    };
 
-    return () => window.clearTimeout(timer);
-  }, [loading, products.length]);
+    storeHomeViewState(snapshot);
+    sessionStorage.setItem(HOME_RETURN_SCROLL_KEY, String(scrollY));
+
+    if (productId) {
+      sessionStorage.setItem(HOME_RETURN_PRODUCT_KEY, productId);
+    }
+  }
+
+  function rememberHomeBeforeProductOpen(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const link = target.closest('a[href*="/products/"]');
+    if (!link) return;
+
+    try {
+      const url = new URL(link.href, window.location.origin);
+      const match = url.pathname.match(/^\/products\/([^/]+)\/?$/i);
+      if (!match) return;
+
+      productNavigationSavedRef.current = true;
+      persistCurrentHomeView(decodeURIComponent(match[1]));
+    } catch {
+      // Etibarlı məhsul linki deyilsə keçidi dəyişmirik.
+    }
+  }
 
   function showError(message) {
     clearTimeout(errorTimerRef.current);
@@ -388,6 +547,7 @@ export default function HomePage() {
       brandRequestIdRef.current += 1;
       setFilterLoading(false);
       setFilterActive(false);
+      setDiscoveryFilters({ ...defaultDiscoveryFilters });
       loadHome();
       return;
     }
@@ -399,6 +559,7 @@ export default function HomePage() {
     setLoading(false);
     setFilterLoading(false);
     setFilterActive(meta.active ?? true);
+    setDiscoveryFilters(normalizeDiscoveryFilters(meta.filters));
     setProducts(uniqueById(list));
     setProductsAnimationVersion((prev) => prev + 1);
     setPage(1);
@@ -424,6 +585,10 @@ export default function HomePage() {
     homeRequestIdRef.current += 1;
     setLoading(false);
     setFilterActive(true);
+    setDiscoveryFilters({
+      ...defaultDiscoveryFilters,
+      brandId,
+    });
     setFilterLoading(true);
 
     try {
@@ -484,9 +649,17 @@ export default function HomePage() {
     const root = document.documentElement;
     const storedScrollY = Number(body.dataset.nemesisBannerScrollY);
     const lockedTop = Math.abs(Number.parseFloat(body.style.top || "0"));
-    const savedScrollY = Number.isFinite(storedScrollY)
-      ? storedScrollY
-      : lockedTop || window.scrollY;
+    const returnScrollY = Number(
+      sessionStorage.getItem(HOME_RETURN_SCROLL_KEY),
+    );
+    const hasReturnScroll =
+      sessionStorage.getItem(HOME_RETURN_SCROLL_KEY) !== null &&
+      Number.isFinite(returnScrollY);
+    const savedScrollY = hasReturnScroll
+      ? returnScrollY
+      : Number.isFinite(storedScrollY)
+        ? storedScrollY
+        : lockedTop || window.scrollY;
 
     // Köhnə dəyəri geri yazmırıq: o dəyər də `hidden/fixed` qala bilər.
     // Banner və əvvəlki versiyaların yarada biləcəyi bütün inline kilidləri silirik.
@@ -542,7 +715,10 @@ export default function HomePage() {
   if (loading) return <AppLoader text={text.loading} />;
 
   return (
-    <main className="min-h-screen bg-[#fafafa] text-zinc-950">
+    <main
+      onClickCapture={rememberHomeBeforeProductOpen}
+      className="min-h-screen bg-[#fafafa] text-zinc-950"
+    >
       <style>
         {`
           @keyframes bannerBackdropIn {
@@ -635,16 +811,30 @@ export default function HomePage() {
       </style>
 
       <div className="relative min-h-screen bg-[#fafafa]">
-        <div className="relative z-30 animate-[softHomeIn_0.45s_ease_both]">
+        <div
+          className={
+            restoredFromDetails
+              ? "relative z-30"
+              : "relative z-30 animate-[softHomeIn_0.45s_ease_both]"
+          }
+        >
           <ProductDiscoveryBar
             onProductsChange={handleFilteredProducts}
             onBrandChange={handleBrandChange}
+            initialFilters={discoveryFilters}
+            restoreView={restoredFromDetails}
           />
         </div>
 
         {!filterActive && (
           <>
-            <div className="relative z-10 animate-[softHomeIn_0.55s_ease_both]">
+            <div
+              className={
+                restoredFromDetails
+                  ? "relative z-10"
+                  : "relative z-10 animate-[softHomeIn_0.55s_ease_both]"
+              }
+            >
               <HomePromoSlider promos={sliderCampaigns} />
             </div>
 
@@ -658,9 +848,13 @@ export default function HomePage() {
                 .map((section, index) => (
                   <div
                     key={section.id || `section-wrap-${index}`}
-                    style={{
-                      animation: `softHomeIn 0.55s ease ${index * 0.06}s both`,
-                    }}
+                    style={
+                      restoredFromDetails
+                        ? undefined
+                        : {
+                            animation: `softHomeIn 0.55s ease ${index * 0.06}s both`,
+                          }
+                    }
                   >
                     <ProductSection
                       title={section.title}
@@ -687,8 +881,9 @@ export default function HomePage() {
               style={{
                 opacity: 1,
                 visibility: "visible",
-                animation:
-                  "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) both",
+                animation: restoredFromDetails
+                  ? "none"
+                  : "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) both",
               }}
             >
               <div className="w-full">
@@ -716,8 +911,9 @@ export default function HomePage() {
               key={`products-grid-${productsAnimationVersion}`}
               className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
               style={{
-                animation:
-                  "filteredProductsIn 0.5s cubic-bezier(0.22,1,0.36,1) both",
+                animation: restoredFromDetails
+                  ? "none"
+                  : "filteredProductsIn 0.5s cubic-bezier(0.22,1,0.36,1) both",
               }}
             >
               {products.map((product, index) => {
@@ -731,7 +927,9 @@ export default function HomePage() {
                       opacity: 1,
                       visibility: "visible",
                       backfaceVisibility: "hidden",
-                      animation: `homeProductReveal 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
+                      animation: restoredFromDetails
+                        ? "none"
+                        : `homeProductReveal 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
                     }}
                   >
                     <ProductCard product={product} />

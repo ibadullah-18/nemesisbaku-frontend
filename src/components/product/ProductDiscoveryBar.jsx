@@ -25,6 +25,49 @@ const emptyFilters = {
   isDiscounted: null,
 };
 
+const FILTER_POSITION_KEY = "nemesis_filter_button_position";
+
+let filterOptionsMemoryCache = null;
+
+function normalizeSavedFilters(filters) {
+  return {
+    ...emptyFilters,
+    ...(filters || {}),
+    isDiscounted: filters?.isDiscounted === true ? true : null,
+  };
+}
+
+function getInitialFilterPosition() {
+  const fallback = {
+    x: window.innerWidth - (window.innerWidth < 768 ? 58 : 63),
+    y: 90,
+  };
+
+  try {
+    const stored = JSON.parse(
+      sessionStorage.getItem(FILTER_POSITION_KEY) || "null",
+    );
+    const filterSize = getFilterSize();
+
+    if (!Number.isFinite(stored?.x) || !Number.isFinite(stored?.y)) {
+      return fallback;
+    }
+
+    return {
+      x: Math.min(
+        Math.max(stored.x, 12),
+        window.innerWidth - filterSize - 12,
+      ),
+      y: Math.min(
+        Math.max(stored.y, 82),
+        window.innerHeight - filterSize - 14,
+      ),
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 function getFilterSize() {
   return window.innerWidth < 768 ? 46 : 54;
 }
@@ -216,6 +259,8 @@ function normalizeFilterOptions(res) {
 export default function ProductDiscoveryBar({
   onProductsChange,
   onBrandChange,
+  initialFilters,
+  restoreView = false,
 }) {
   const { text } = useLanguage();
 
@@ -250,23 +295,40 @@ export default function ProductDiscoveryBar({
 
   const [loading, setLoading] = useState(false);
 
-  const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [sizes, setSizes] = useState([]);
-  const [colors, setColors] = useState([]);
+  const [categories, setCategories] = useState(
+    () => filterOptionsMemoryCache?.categories || [],
+  );
+  const [brands, setBrands] = useState(
+    () => filterOptionsMemoryCache?.brands || [],
+  );
+  const [sizes, setSizes] = useState(
+    () => filterOptionsMemoryCache?.sizes || [],
+  );
+  const [colors, setColors] = useState(
+    () => filterOptionsMemoryCache?.colors || [],
+  );
 
-  const [filters, setFilters] = useState(emptyFilters);
-  const [draftFilters, setDraftFilters] = useState(emptyFilters);
+  const [filters, setFilters] = useState(() =>
+    normalizeSavedFilters(initialFilters),
+  );
+  const [draftFilters, setDraftFilters] = useState(() =>
+    normalizeSavedFilters(initialFilters),
+  );
 
-  const [filterPos, setFilterPos] = useState(() => ({
-    x: window.innerWidth - (window.innerWidth < 768 ? 58 : 63),
-    y: 90,
-  }));
+  const [filterPos, setFilterPos] = useState(getInitialFilterPosition);
 
   useEffect(() => {
     setPortalReady(true);
-    loadInitialData();
+    loadInitialData(restoreView || Boolean(filterOptionsMemoryCache));
   }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTER_POSITION_KEY, JSON.stringify(filterPos));
+    } catch {
+      // Mövqe yadda saxlanmasa filter düyməsi standart yerdə açılacaq.
+    }
+  }, [filterPos]);
 
   useEffect(() => {
     function resetDiscoveryFromLogo() {
@@ -463,6 +525,7 @@ export default function ProductDiscoveryBar({
   }, [filterOpen]);
 
   function applyFilterOptions(options) {
+    filterOptionsMemoryCache = options;
     setCategories(options.categories);
     setBrands(options.brands);
     setSizes(options.sizes);
@@ -477,9 +540,9 @@ export default function ProductDiscoveryBar({
     return options;
   }
 
-  async function loadInitialData() {
+  async function loadInitialData(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const optionsRes = await getFilterOptions();
       const options = normalizeFilterOptions(optionsRes);
 
@@ -487,7 +550,7 @@ export default function ProductDiscoveryBar({
     } catch (err) {
       console.error("Filter seçimləri yüklənmədi:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -603,9 +666,9 @@ export default function ProductDiscoveryBar({
     setIsDragging(false);
     refreshFilterOptions().catch(() => {});
     openedAtRef.current = Date.now();
-    // Brend ayrıca seçim rejimidir. Modal açılarkən görünməyən köhnə brandId
-    // kateqoriya/rəng nəticələrini səssizcə məhdudlaşdırmasın.
-    setDraftFilters({ ...filters, brandId: "" });
+    // Seçilmiş brendi saxla: modal filterləri həmin brend daxilində işləyəcək.
+    // Brend seçilməyibsə brandId boş qalır və filter bütün məhsullara tətbiq olunur.
+    setDraftFilters({ ...filters });
     setFilterClosing(false);
     setFilterOpen(true);
   }
@@ -636,7 +699,6 @@ export default function ProductDiscoveryBar({
   function applyFilter() {
     const nextFilters = {
       ...draftFilters,
-      brandId: "",
       isDiscounted: draftFilters.isDiscounted === true ? true : null,
     };
 

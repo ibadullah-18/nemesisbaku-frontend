@@ -44,7 +44,6 @@ import CheckoutPage from "../pages/checkout/CheckoutPage";
 import OrderSuccessPage from "../pages/checkout/OrderSuccessPage";
 import OrderFailedPage from "../pages/checkout/OrderFailedPage";
 import AccountSettingsPage from "../pages/profile/AccountSettingsPage";
-import LoyaltyCardPage from "../pages/profile/LoyaltyCardPage";
 import SecuritySettingsPage from "../pages/profile/SecuritySettingsPage";
 import PromoPage from "../pages/promo/PromoPage";
 
@@ -232,15 +231,6 @@ export default function AppRoutes() {
       />
 
       <Route
-        path="/profile/loyalty-card"
-        element={
-          <Layout>
-            <LoyaltyCardPage />
-          </Layout>
-        }
-      />
-
-      <Route
         path="/profile/settings/security"
         element={
           <Layout>
@@ -337,6 +327,7 @@ export default function AppRoutes() {
           <AdminProtectedRoute panel="super">
             <AdminLayout
               basePath="/SuperAdmin"
+              panel="super"
               panelTitle="Super Admin Panel"
             />
           </AdminProtectedRoute>
@@ -393,6 +384,11 @@ export default function AppRoutes() {
           path="home-sections/:id"
           element={<AdminHomeSectionForm mode="edit" />}
         />
+
+        <Route
+          path="*"
+          element={<Navigate to="/SuperAdmin/dashboard" replace />}
+        />
       </Route>
 
       <Route path="/Admin/login" element={<AdminLogin />} />
@@ -401,7 +397,11 @@ export default function AppRoutes() {
         path="/Admin"
         element={
           <AdminProtectedRoute panel="admin">
-            <AdminLayout basePath="/Admin" panelTitle="Admin Panel" />
+            <AdminLayout
+              basePath="/Admin"
+              panel="admin"
+              panelTitle="Admin Panel"
+            />
           </AdminProtectedRoute>
         }
       >
@@ -447,6 +447,8 @@ export default function AppRoutes() {
           path="email-announcements"
           element={<AdminEmailAnnouncements />}
         />
+
+        <Route path="*" element={<Navigate to="/Admin/orders" replace />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
