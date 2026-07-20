@@ -20,10 +20,16 @@ const emptyFilters = {
   colorId: "",
   minPrice: "",
   maxPrice: "",
-  isDiscounted: false,
+  // null = endirim statusuna görə filter yoxdur; true = yalnız endirimli.
+  // `false` backend-ə göndərilsə bütün endirimli məhsullar səhvən gizlənirdi.
+  isDiscounted: null,
 };
 
-const FILTER_SIZE = window.innerWidth < 768 ? 46 : 54;
+const LONG_PRESS_MS = 1500;
+
+function getFilterSize() {
+  return window.innerWidth < 768 ? 46 : 54;
+}
 
 function normalizeProducts(res) {
   const data = res?.data ?? res;
@@ -38,6 +44,84 @@ function normalizeProducts(res) {
     nestedData?.result ||
     (Array.isArray(nestedData) ? nestedData : [])
   );
+}
+
+function hasActiveFilters(filters) {
+  return Boolean(
+    filters?.categoryId ||
+      filters?.brandId ||
+      filters?.sizeId ||
+      filters?.colorId ||
+      String(filters?.minPrice || "").trim() ||
+      String(filters?.maxPrice || "").trim() ||
+      filters?.isDiscounted === true,
+  );
+}
+
+function buildServerFilters(filters) {
+  const query = {
+    page: 1,
+    pageSize: 500,
+  };
+
+  if (filters?.categoryId) query.categoryId = filters.categoryId;
+  if (filters?.brandId) query.brandId = filters.brandId;
+  if (filters?.sizeId) query.sizeId = filters.sizeId;
+  if (filters?.colorId) query.colorId = filters.colorId;
+
+  // false göndərmirik: false "endirim filteri yoxdur" deməkdir.
+  if (filters?.isDiscounted === true) query.isDiscounted = true;
+
+  // Min/Max backend-ə göndərilmir. Bəzi backend sorğuları yalnız əsas Price-a
+  // baxdığı üçün endirimli məhsulun real satış qiyməti səhv hesablanırdı.
+  return query;
+}
+
+function parsePrice(value) {
+  const number = Number(String(value ?? "").trim().replace(",", "."));
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function getCurrentSalePrice(product) {
+  const price = Number(product?.price);
+  const discountPrice = Number(product?.discountPrice);
+  const hasDiscount =
+    product?.isDiscounted === true &&
+    Number.isFinite(discountPrice) &&
+    discountPrice > 0;
+
+  if (hasDiscount) return discountPrice;
+  return Number.isFinite(price) ? price : 0;
+}
+
+function filterByCurrentSalePrice(products, filters) {
+  let minPrice = parsePrice(filters?.minPrice);
+  let maxPrice = parsePrice(filters?.maxPrice);
+
+  if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+    [minPrice, maxPrice] = [maxPrice, minPrice];
+  }
+
+  if (minPrice === null && maxPrice === null) return products;
+
+  return products.filter((product) => {
+    const currentPrice = getCurrentSalePrice(product);
+
+    if (minPrice !== null && currentPrice < minPrice) return false;
+    if (maxPrice !== null && currentPrice > maxPrice) return false;
+    return true;
+  });
+}
+
+function normalizePriceInput(value) {
+  const cleaned = String(value || "")
+    .replace(",", ".")
+    .replace(/[^\d.]/g, "");
+  const [whole = "", ...decimalParts] = cleaned.split(".");
+
+  return decimalParts.length > 0
+    ? `${whole}.${decimalParts.join("")}`
+    : whole;
 }
 
 function pickOptionList(...candidates) {
@@ -139,6 +223,10 @@ export default function ProductDiscoveryBar({
   const openedAtRef = useRef(0);
   const productsRequestIdRef = useRef(0);
   const brandCloseTimerRef = useRef(null);
+  const filterCloseTimerRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const dragFrameRef = useRef(null);
+  const pendingFilterPosRef = useRef(null);
 
   const dragData = useRef({
     pointerId: null,
@@ -147,6 +235,8 @@ export default function ProductDiscoveryBar({
     startLeft: 0,
     startTop: 0,
     moved: false,
+    longPressActive: false,
+    cancelled: false,
   });
 
   const [navVisible, setNavVisible] = useState(true);
@@ -160,6 +250,7 @@ export default function ProductDiscoveryBar({
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterClosing, setFilterClosing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -185,6 +276,9 @@ export default function ProductDiscoveryBar({
   useEffect(() => {
     function resetDiscoveryFromLogo() {
       window.clearTimeout(brandCloseTimerRef.current);
+      window.clearTimeout(filterCloseTimerRef.current);
+      window.clearTimeout(longPressTimerRef.current);
+      window.cancelAnimationFrame(dragFrameRef.current);
       productsRequestIdRef.current += 1;
       setFilters({ ...emptyFilters });
       setDraftFilters({ ...emptyFilters });
@@ -192,6 +286,8 @@ export default function ProductDiscoveryBar({
       setBrandClosing(false);
       setFilterOpen(false);
       setFilterClosing(false);
+      setIsDragging(false);
+      setIsLongPressing(false);
       setLoading(false);
     }
 
@@ -203,7 +299,12 @@ export default function ProductDiscoveryBar({
   }, []);
 
   useEffect(() => {
-    return () => window.clearTimeout(brandCloseTimerRef.current);
+    return () => {
+      window.clearTimeout(brandCloseTimerRef.current);
+      window.clearTimeout(filterCloseTimerRef.current);
+      window.clearTimeout(longPressTimerRef.current);
+      window.cancelAnimationFrame(dragFrameRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -267,11 +368,16 @@ export default function ProductDiscoveryBar({
 
   useEffect(() => {
     function keepInsideScreen() {
+      const filterSize = getFilterSize();
+
       setFilterPos((prev) => ({
-        x: Math.min(Math.max(prev.x, 12), window.innerWidth - FILTER_SIZE - 12),
+        x: Math.min(
+          Math.max(prev.x, 12),
+          window.innerWidth - filterSize - 12,
+        ),
         y: Math.min(
           Math.max(prev.y, 82),
-          window.innerHeight - FILTER_SIZE - 14,
+          window.innerHeight - filterSize - 14,
         ),
       }));
     }
@@ -400,16 +506,18 @@ export default function ProductDiscoveryBar({
 
     try {
       setLoading(true);
-      const res = await getProducts({
-        ...nextFilters,
-        page: 1,
-        pageSize: 500,
-      });
+      const res = await getProducts(buildServerFilters(nextFilters));
 
       if (requestId !== productsRequestIdRef.current) return;
 
-      onProductsChange?.(normalizeProducts(res), {
-        active: true,
+      const products = filterByCurrentSalePrice(
+        normalizeProducts(res),
+        nextFilters,
+      );
+      const active = hasActiveFilters(nextFilters);
+
+      onProductsChange?.(products, {
+        active,
         filters: nextFilters,
       });
     } catch (err) {
@@ -501,9 +609,15 @@ export default function ProductDiscoveryBar({
   }
 
   function openFilter() {
+    window.clearTimeout(filterCloseTimerRef.current);
+    window.clearTimeout(longPressTimerRef.current);
+    setIsLongPressing(false);
+    setIsDragging(false);
     refreshFilterOptions().catch(() => {});
     openedAtRef.current = Date.now();
-    setDraftFilters(filters);
+    // Brend ayrıca seçim rejimidir. Modal açılarkən görünməyən köhnə brandId
+    // kateqoriya/rəng nəticələrini səssizcə məhdudlaşdırmasın.
+    setDraftFilters({ ...filters, brandId: "" });
     setFilterClosing(false);
     setFilterOpen(true);
   }
@@ -512,41 +626,68 @@ export default function ProductDiscoveryBar({
     const justOpened = Date.now() - openedAtRef.current < 450;
     if (justOpened) return;
 
+    window.clearTimeout(filterCloseTimerRef.current);
     setFilterClosing(true);
 
-    setTimeout(() => {
+    filterCloseTimerRef.current = window.setTimeout(() => {
       setFilterOpen(false);
       setFilterClosing(false);
     }, 300);
   }
 
   function forceCloseFilter() {
+    window.clearTimeout(filterCloseTimerRef.current);
     setFilterClosing(true);
 
-    setTimeout(() => {
+    filterCloseTimerRef.current = window.setTimeout(() => {
       setFilterOpen(false);
       setFilterClosing(false);
     }, 300);
   }
 
   function applyFilter() {
-    setFilters(draftFilters);
-    loadProducts(draftFilters);
+    const nextFilters = {
+      ...draftFilters,
+      brandId: "",
+      isDiscounted: draftFilters.isDiscounted === true ? true : null,
+    };
+
+    setFilters(nextFilters);
+    setDraftFilters(nextFilters);
+    loadProducts(nextFilters);
     forceCloseFilter();
   }
 
   function resetFilter() {
-    setFilters(emptyFilters);
-    setDraftFilters(emptyFilters);
-    loadProducts(emptyFilters);
+    const nextFilters = { ...emptyFilters };
+
+    productsRequestIdRef.current += 1;
+    setFilters(nextFilters);
+    setDraftFilters(nextFilters);
+
+    if (onProductsChange) {
+      onProductsChange([], {
+        active: false,
+        reset: true,
+        filters: nextFilters,
+      });
+    } else {
+      loadProducts(nextFilters);
+    }
+
     forceCloseFilter();
   }
 
   function handleFilterPointerDown(e) {
-    if (filterOpen) return;
+    if (filterOpen || (e.pointerType === "mouse" && e.button !== 0)) return;
 
     e.preventDefault();
     e.stopPropagation();
+
+    window.clearTimeout(longPressTimerRef.current);
+    window.cancelAnimationFrame(dragFrameRef.current);
+    dragFrameRef.current = null;
+    pendingFilterPosRef.current = null;
 
     const button = filterButtonRef.current;
     if (!button) return;
@@ -558,15 +699,30 @@ export default function ProductDiscoveryBar({
       startLeft: filterPos.x,
       startTop: filterPos.y,
       moved: false,
+      longPressActive: false,
+      cancelled: false,
     };
 
-    setIsDragging(true);
+    setIsLongPressing(true);
+    setIsDragging(false);
 
     try {
       button.setPointerCapture(e.pointerId);
     } catch {
       // ignore
     }
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      const data = dragData.current;
+
+      if (data.pointerId !== e.pointerId || data.cancelled) return;
+
+      data.longPressActive = true;
+      setIsLongPressing(false);
+      setIsDragging(true);
+
+      if (navigator.vibrate) navigator.vibrate(28);
+    }, LONG_PRESS_MS);
   }
 
   function handleFilterPointerMove(e) {
@@ -580,21 +736,43 @@ export default function ProductDiscoveryBar({
     const diffY = e.clientY - data.startY;
     const distance = Math.sqrt(diffX * diffX + diffY * diffY);
 
-    if (distance < 8 && !data.moved) return;
+    if (!data.longPressActive) {
+      if (distance > 12) {
+        data.cancelled = true;
+        window.clearTimeout(longPressTimerRef.current);
+        setIsLongPressing(false);
+      }
+
+      return;
+    }
+
+    if (distance < 3 && !data.moved) return;
 
     data.moved = true;
+    const filterSize = getFilterSize();
 
     const nextX = Math.min(
       Math.max(data.startLeft + diffX, 12),
-      window.innerWidth - FILTER_SIZE - 12,
+      window.innerWidth - filterSize - 12,
     );
 
     const nextY = Math.min(
       Math.max(data.startTop + diffY, 82),
-      window.innerHeight - FILTER_SIZE - 14,
+      window.innerHeight - filterSize - 14,
     );
 
-    setFilterPos({ x: nextX, y: nextY });
+    pendingFilterPosRef.current = { x: nextX, y: nextY };
+
+    if (dragFrameRef.current === null) {
+      dragFrameRef.current = window.requestAnimationFrame(() => {
+        if (pendingFilterPosRef.current) {
+          setFilterPos(pendingFilterPosRef.current);
+        }
+
+        pendingFilterPosRef.current = null;
+        dragFrameRef.current = null;
+      });
+    }
   }
 
   function handleFilterPointerUp(e) {
@@ -603,6 +781,7 @@ export default function ProductDiscoveryBar({
 
     e.preventDefault();
     e.stopPropagation();
+    window.clearTimeout(longPressTimerRef.current);
 
     try {
       filterButtonRef.current?.releasePointerCapture(e.pointerId);
@@ -610,9 +789,11 @@ export default function ProductDiscoveryBar({
       // ignore
     }
 
-    setIsDragging(false);
+    const shouldOpen =
+      !data.longPressActive && !data.cancelled && !data.moved;
 
-    const shouldOpen = !data.moved;
+    setIsDragging(false);
+    setIsLongPressing(false);
 
     dragData.current = {
       pointerId: null,
@@ -621,12 +802,12 @@ export default function ProductDiscoveryBar({
       startLeft: 0,
       startTop: 0,
       moved: false,
+      longPressActive: false,
+      cancelled: false,
     };
 
     if (shouldOpen) {
-      setTimeout(() => {
-        openFilter();
-      }, 80);
+      window.setTimeout(openFilter, 0);
     }
   }
 
@@ -636,6 +817,7 @@ export default function ProductDiscoveryBar({
 
     e.preventDefault();
     e.stopPropagation();
+    window.clearTimeout(longPressTimerRef.current);
 
     try {
       filterButtonRef.current?.releasePointerCapture(e.pointerId);
@@ -644,6 +826,7 @@ export default function ProductDiscoveryBar({
     }
 
     setIsDragging(false);
+    setIsLongPressing(false);
 
     dragData.current = {
       pointerId: null,
@@ -652,6 +835,8 @@ export default function ProductDiscoveryBar({
       startLeft: 0,
       startTop: 0,
       moved: false,
+      longPressActive: false,
+      cancelled: false,
     };
   }
 
@@ -670,6 +855,7 @@ export default function ProductDiscoveryBar({
             e.preventDefault();
             e.stopPropagation();
           }}
+          onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
           style={{
             position: "fixed",
@@ -679,11 +865,17 @@ export default function ProductDiscoveryBar({
             WebkitUserSelect: "none",
             userSelect: "none",
           }}
-          className={`z-[70] grid h-[46px] w-[46px] place-items-center rounded-full border border-zinc-100 bg-white text-[21px] text-zinc-950 shadow-[0_12px_30px_rgba(0,0,0,0.14)] transition-all duration-300 md:h-[54px] md:w-[54px] md:text-[25px] md:shadow-[0_14px_38px_rgba(0,0,0,0.16)] ${
+          className={`z-[70] grid h-[46px] w-[46px] place-items-center rounded-full border border-zinc-100 bg-white text-[21px] text-zinc-950 shadow-[0_12px_30px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,background-color,color,border-color] duration-200 md:h-[54px] md:w-[54px] md:text-[25px] md:shadow-[0_14px_38px_rgba(0,0,0,0.16)] ${
             filterOpen
               ? "scale-[1.14] bg-black text-white shadow-[0_18px_48px_rgba(36,73,137,0.28)]"
               : ""
-          } ${isDragging ? "cursor-grabbing scale-105" : "cursor-grab"}`}
+          } ${
+            isDragging
+              ? "cursor-grabbing scale-105 ring-4 ring-zinc-950/10"
+              : isLongPressing
+                ? "cursor-grab scale-[1.04] ring-4 ring-zinc-950/8"
+                : "cursor-pointer"
+          }`}
           aria-label="Filter"
         >
           <FiSliders className="pointer-events-none" />
@@ -781,7 +973,7 @@ export default function ProductDiscoveryBar({
                       onChange={(e) =>
                         setDraftFilters((prev) => ({
                           ...prev,
-                          minPrice: e.target.value.replace(/[^\d.]/g, ""),
+                          minPrice: normalizePriceInput(e.target.value),
                         }))
                       }
                       placeholder={text.minPrice}
@@ -794,7 +986,7 @@ export default function ProductDiscoveryBar({
                       onChange={(e) =>
                         setDraftFilters((prev) => ({
                           ...prev,
-                          maxPrice: e.target.value.replace(/[^\d.]/g, ""),
+                          maxPrice: normalizePriceInput(e.target.value),
                         }))
                       }
                       placeholder={text.maxPrice}

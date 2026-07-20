@@ -383,14 +383,22 @@ export default function HomePage() {
     }
   }
 
-  function handleFilteredProducts(list) {
+  function handleFilteredProducts(list, meta = {}) {
+    if (meta.reset || meta.active === false) {
+      brandRequestIdRef.current += 1;
+      setFilterLoading(false);
+      setFilterActive(false);
+      loadHome();
+      return;
+    }
+
     // Filter nəticəsi gəldikdən sonra gecikmiş ana səhifə sorğusu bu siyahının
     // üstünə yaza bilməsin.
     homeRequestIdRef.current += 1;
     brandRequestIdRef.current += 1;
     setLoading(false);
     setFilterLoading(false);
-    setFilterActive(true);
+    setFilterActive(meta.active ?? true);
     setProducts(uniqueById(list));
     setProductsAnimationVersion((prev) => prev + 1);
     setPage(1);
