@@ -25,8 +25,6 @@ const emptyFilters = {
   isDiscounted: null,
 };
 
-const LONG_PRESS_MS = 1500;
-
 function getFilterSize() {
   return window.innerWidth < 768 ? 46 : 54;
 }
@@ -78,7 +76,10 @@ function buildServerFilters(filters) {
 }
 
 function parsePrice(value) {
-  const number = Number(String(value ?? "").trim().replace(",", "."));
+  const normalized = String(value ?? "").trim().replace(",", ".");
+  if (normalized === "") return null;
+
+  const number = Number(normalized);
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
@@ -224,9 +225,6 @@ export default function ProductDiscoveryBar({
   const productsRequestIdRef = useRef(0);
   const brandCloseTimerRef = useRef(null);
   const filterCloseTimerRef = useRef(null);
-  const longPressTimerRef = useRef(null);
-  const dragFrameRef = useRef(null);
-  const pendingFilterPosRef = useRef(null);
 
   const dragData = useRef({
     pointerId: null,
@@ -235,8 +233,6 @@ export default function ProductDiscoveryBar({
     startLeft: 0,
     startTop: 0,
     moved: false,
-    longPressActive: false,
-    cancelled: false,
   });
 
   const [navVisible, setNavVisible] = useState(true);
@@ -250,7 +246,6 @@ export default function ProductDiscoveryBar({
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterClosing, setFilterClosing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [isLongPressing, setIsLongPressing] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -277,8 +272,6 @@ export default function ProductDiscoveryBar({
     function resetDiscoveryFromLogo() {
       window.clearTimeout(brandCloseTimerRef.current);
       window.clearTimeout(filterCloseTimerRef.current);
-      window.clearTimeout(longPressTimerRef.current);
-      window.cancelAnimationFrame(dragFrameRef.current);
       productsRequestIdRef.current += 1;
       setFilters({ ...emptyFilters });
       setDraftFilters({ ...emptyFilters });
@@ -287,7 +280,6 @@ export default function ProductDiscoveryBar({
       setFilterOpen(false);
       setFilterClosing(false);
       setIsDragging(false);
-      setIsLongPressing(false);
       setLoading(false);
     }
 
@@ -302,8 +294,6 @@ export default function ProductDiscoveryBar({
     return () => {
       window.clearTimeout(brandCloseTimerRef.current);
       window.clearTimeout(filterCloseTimerRef.current);
-      window.clearTimeout(longPressTimerRef.current);
-      window.cancelAnimationFrame(dragFrameRef.current);
     };
   }, []);
 
@@ -610,8 +600,6 @@ export default function ProductDiscoveryBar({
 
   function openFilter() {
     window.clearTimeout(filterCloseTimerRef.current);
-    window.clearTimeout(longPressTimerRef.current);
-    setIsLongPressing(false);
     setIsDragging(false);
     refreshFilterOptions().catch(() => {});
     openedAtRef.current = Date.now();
@@ -684,11 +672,6 @@ export default function ProductDiscoveryBar({
     e.preventDefault();
     e.stopPropagation();
 
-    window.clearTimeout(longPressTimerRef.current);
-    window.cancelAnimationFrame(dragFrameRef.current);
-    dragFrameRef.current = null;
-    pendingFilterPosRef.current = null;
-
     const button = filterButtonRef.current;
     if (!button) return;
 
@@ -699,30 +682,15 @@ export default function ProductDiscoveryBar({
       startLeft: filterPos.x,
       startTop: filterPos.y,
       moved: false,
-      longPressActive: false,
-      cancelled: false,
     };
 
-    setIsLongPressing(true);
-    setIsDragging(false);
+    setIsDragging(true);
 
     try {
       button.setPointerCapture(e.pointerId);
     } catch {
       // ignore
     }
-
-    longPressTimerRef.current = window.setTimeout(() => {
-      const data = dragData.current;
-
-      if (data.pointerId !== e.pointerId || data.cancelled) return;
-
-      data.longPressActive = true;
-      setIsLongPressing(false);
-      setIsDragging(true);
-
-      if (navigator.vibrate) navigator.vibrate(28);
-    }, LONG_PRESS_MS);
   }
 
   function handleFilterPointerMove(e) {
@@ -736,17 +704,7 @@ export default function ProductDiscoveryBar({
     const diffY = e.clientY - data.startY;
     const distance = Math.sqrt(diffX * diffX + diffY * diffY);
 
-    if (!data.longPressActive) {
-      if (distance > 12) {
-        data.cancelled = true;
-        window.clearTimeout(longPressTimerRef.current);
-        setIsLongPressing(false);
-      }
-
-      return;
-    }
-
-    if (distance < 3 && !data.moved) return;
+    if (distance < 8 && !data.moved) return;
 
     data.moved = true;
     const filterSize = getFilterSize();
@@ -761,18 +719,7 @@ export default function ProductDiscoveryBar({
       window.innerHeight - filterSize - 14,
     );
 
-    pendingFilterPosRef.current = { x: nextX, y: nextY };
-
-    if (dragFrameRef.current === null) {
-      dragFrameRef.current = window.requestAnimationFrame(() => {
-        if (pendingFilterPosRef.current) {
-          setFilterPos(pendingFilterPosRef.current);
-        }
-
-        pendingFilterPosRef.current = null;
-        dragFrameRef.current = null;
-      });
-    }
+    setFilterPos({ x: nextX, y: nextY });
   }
 
   function handleFilterPointerUp(e) {
@@ -781,7 +728,6 @@ export default function ProductDiscoveryBar({
 
     e.preventDefault();
     e.stopPropagation();
-    window.clearTimeout(longPressTimerRef.current);
 
     try {
       filterButtonRef.current?.releasePointerCapture(e.pointerId);
@@ -789,11 +735,9 @@ export default function ProductDiscoveryBar({
       // ignore
     }
 
-    const shouldOpen =
-      !data.longPressActive && !data.cancelled && !data.moved;
+    const shouldOpen = !data.moved;
 
     setIsDragging(false);
-    setIsLongPressing(false);
 
     dragData.current = {
       pointerId: null,
@@ -802,12 +746,10 @@ export default function ProductDiscoveryBar({
       startLeft: 0,
       startTop: 0,
       moved: false,
-      longPressActive: false,
-      cancelled: false,
     };
 
     if (shouldOpen) {
-      window.setTimeout(openFilter, 0);
+      window.setTimeout(openFilter, 80);
     }
   }
 
@@ -817,7 +759,6 @@ export default function ProductDiscoveryBar({
 
     e.preventDefault();
     e.stopPropagation();
-    window.clearTimeout(longPressTimerRef.current);
 
     try {
       filterButtonRef.current?.releasePointerCapture(e.pointerId);
@@ -826,7 +767,6 @@ export default function ProductDiscoveryBar({
     }
 
     setIsDragging(false);
-    setIsLongPressing(false);
 
     dragData.current = {
       pointerId: null,
@@ -835,8 +775,6 @@ export default function ProductDiscoveryBar({
       startLeft: 0,
       startTop: 0,
       moved: false,
-      longPressActive: false,
-      cancelled: false,
     };
   }
 
@@ -872,9 +810,7 @@ export default function ProductDiscoveryBar({
           } ${
             isDragging
               ? "cursor-grabbing scale-105 ring-4 ring-zinc-950/10"
-              : isLongPressing
-                ? "cursor-grab scale-[1.04] ring-4 ring-zinc-950/8"
-                : "cursor-pointer"
+              : "cursor-grab"
           }`}
           aria-label="Filter"
         >

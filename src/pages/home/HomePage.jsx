@@ -578,25 +578,19 @@ export default function HomePage() {
 
           @keyframes homeProductReveal {
             from {
-              opacity: 0;
               transform: translateY(22px) scale(0.985);
             }
             to {
-              opacity: 1;
               transform: translateY(0) scale(1);
             }
           }
 
           @keyframes filteredProductsIn {
             from {
-              opacity: 0;
               transform: translateY(18px);
-              filter: blur(5px);
             }
             to {
-              opacity: 1;
               transform: translateY(0);
-              filter: blur(0);
             }
           }
 
