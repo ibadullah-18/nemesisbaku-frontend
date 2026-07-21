@@ -11,7 +11,6 @@ import {
 } from "react-icons/fi";
 import { getFilterOptions, getProducts } from "../../api/productApi";
 import { useLanguage } from "../../i18n/LanguageContext";
-import AppLoader from "../common/AppLoader";
 
 const emptyFilters = {
   categoryId: "",
@@ -28,6 +27,40 @@ const emptyFilters = {
 const FILTER_POSITION_KEY = "nemesis_filter_button_position";
 
 let filterOptionsMemoryCache = null;
+let filterOptionsCachedAt = 0;
+
+function releaseStaleFilterPageLock() {
+  const body = document.body;
+  const root = document.documentElement;
+
+  if (body.dataset.nemesisFilterOpen !== "true") return null;
+
+  const lockedTop = Math.abs(Number.parseFloat(body.style.top || "0"));
+  const scrollY = lockedTop || window.scrollY;
+
+  [
+    "position",
+    "top",
+    "left",
+    "right",
+    "width",
+    "overflow",
+    "overscroll-behavior-y",
+    "padding-right",
+  ].forEach((property) => body.style.removeProperty(property));
+
+  ["overflow", "overscroll-behavior-y"].forEach((property) =>
+    root.style.removeProperty(property),
+  );
+
+  delete body.dataset.nemesisFilterOpen;
+
+  window.requestAnimationFrame(() => {
+    window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
+  });
+
+  return scrollY;
+}
 
 function normalizeSavedFilters(filters) {
   return {
@@ -258,9 +291,8 @@ function normalizeFilterOptions(res) {
 
 export default function ProductDiscoveryBar({
   onProductsChange,
-  onBrandChange,
+  onLoadingChange,
   initialFilters,
-  restoreView = false,
 }) {
   const { text } = useLanguage();
 
@@ -318,8 +350,9 @@ export default function ProductDiscoveryBar({
   const [filterPos, setFilterPos] = useState(getInitialFilterPosition);
 
   useEffect(() => {
+    releaseStaleFilterPageLock();
     setPortalReady(true);
-    loadInitialData(restoreView || Boolean(filterOptionsMemoryCache));
+    loadInitialData();
   }, []);
 
   useEffect(() => {
@@ -343,6 +376,7 @@ export default function ProductDiscoveryBar({
       setFilterClosing(false);
       setIsDragging(false);
       setLoading(false);
+      onLoadingChange?.(false);
     }
 
     window.addEventListener("nemesis_home_reset", resetDiscoveryFromLogo);
@@ -402,7 +436,7 @@ export default function ProductDiscoveryBar({
   useEffect(() => {
     function refreshWhenPageBecomesActive() {
       if (document.visibilityState === "visible") {
-        refreshFilterOptions().catch(() => {});
+        refreshFilterOptions(true).catch(() => {});
       }
     }
 
@@ -443,15 +477,16 @@ export default function ProductDiscoveryBar({
 
     const body = document.body;
     const root = document.documentElement;
-    const savedScrollY = window.scrollY;
+
+    // Köhnə versiyadan `position: fixed` qalıbsa yeni modal açılmamışdan əvvəl
+    // onu təmizlə. Cari versiya body-ni fixed etmir və scroll mövqeyini itirmir.
+    const recoveredScrollY = releaseStaleFilterPageLock();
+    const savedScrollY = Number.isFinite(recoveredScrollY)
+      ? recoveredScrollY
+      : window.scrollY;
     const scrollbarWidth = window.innerWidth - root.clientWidth;
 
     const previousBodyStyles = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
       overflow: body.style.overflow,
       overscrollBehaviorY: body.style.overscrollBehaviorY,
       paddingRight: body.style.paddingRight,
@@ -462,14 +497,7 @@ export default function ProductDiscoveryBar({
       overscrollBehaviorY: root.style.overscrollBehaviorY,
     };
 
-    const previousFilterOpenFlag = body.dataset.nemesisFilterOpen;
-
     body.dataset.nemesisFilterOpen = "true";
-    body.style.position = "fixed";
-    body.style.top = `-${savedScrollY}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
     body.style.overflow = "hidden";
     body.style.overscrollBehaviorY = "none";
 
@@ -502,11 +530,6 @@ export default function ProductDiscoveryBar({
       document.removeEventListener("wheel", blockBackgroundScroll);
       document.removeEventListener("touchmove", blockBackgroundScroll);
 
-      body.style.position = previousBodyStyles.position;
-      body.style.top = previousBodyStyles.top;
-      body.style.left = previousBodyStyles.left;
-      body.style.right = previousBodyStyles.right;
-      body.style.width = previousBodyStyles.width;
       body.style.overflow = previousBodyStyles.overflow;
       body.style.overscrollBehaviorY = previousBodyStyles.overscrollBehaviorY;
       body.style.paddingRight = previousBodyStyles.paddingRight;
@@ -514,11 +537,7 @@ export default function ProductDiscoveryBar({
       root.style.overflow = previousRootStyles.overflow;
       root.style.overscrollBehaviorY = previousRootStyles.overscrollBehaviorY;
 
-      if (previousFilterOpenFlag === undefined) {
-        delete body.dataset.nemesisFilterOpen;
-      } else {
-        body.dataset.nemesisFilterOpen = previousFilterOpenFlag;
-      }
+      delete body.dataset.nemesisFilterOpen;
 
       window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
     };
@@ -526,13 +545,23 @@ export default function ProductDiscoveryBar({
 
   function applyFilterOptions(options) {
     filterOptionsMemoryCache = options;
+    filterOptionsCachedAt = Date.now();
     setCategories(options.categories);
     setBrands(options.brands);
     setSizes(options.sizes);
     setColors(options.colors);
   }
 
-  async function refreshFilterOptions() {
+  async function refreshFilterOptions(force = false) {
+    const cacheIsFresh =
+      filterOptionsMemoryCache &&
+      Date.now() - filterOptionsCachedAt < 2 * 60 * 1000;
+
+    if (!force && cacheIsFresh) {
+      applyFilterOptions(filterOptionsMemoryCache);
+      return filterOptionsMemoryCache;
+    }
+
     const optionsRes = await getFilterOptions();
     const options = normalizeFilterOptions(optionsRes);
 
@@ -540,17 +569,11 @@ export default function ProductDiscoveryBar({
     return options;
   }
 
-  async function loadInitialData(silent = false) {
+  async function loadInitialData() {
     try {
-      if (!silent) setLoading(true);
-      const optionsRes = await getFilterOptions();
-      const options = normalizeFilterOptions(optionsRes);
-
-      applyFilterOptions(options);
+      await refreshFilterOptions();
     } catch (err) {
       console.error("Filter seçimləri yüklənmədi:", err);
-    } finally {
-      if (!silent) setLoading(false);
     }
   }
 
@@ -559,6 +582,7 @@ export default function ProductDiscoveryBar({
 
     try {
       setLoading(true);
+      onLoadingChange?.(true);
       const res = await getProducts(buildServerFilters(nextFilters));
 
       if (requestId !== productsRequestIdRef.current) return;
@@ -580,6 +604,7 @@ export default function ProductDiscoveryBar({
     } finally {
       if (requestId === productsRequestIdRef.current) {
         setLoading(false);
+        onLoadingChange?.(false);
       }
     }
   }
@@ -588,7 +613,7 @@ export default function ProductDiscoveryBar({
     window.clearTimeout(brandCloseTimerRef.current);
 
     if (brands.length === 0) {
-      refreshFilterOptions().catch(() => {});
+      refreshFilterOptions(true).catch(() => {});
     }
 
     setBrandClosing(false);
@@ -644,19 +669,17 @@ export default function ProductDiscoveryBar({
   }
 
   function selectBrand(brandId) {
-    const next = {
-      ...emptyFilters,
+    // Brend yalnız mövcud filterlərin üstünə əlavə olunur. Category, ölçü,
+    // rəng, qiymət və endirim istifadəçi özü sıfırlayana qədər qorunur.
+    const next = normalizeSavedFilters({
+      ...filters,
       brandId,
-    };
+    });
 
     setFilters(next);
     setDraftFilters(next);
 
-    if (onBrandChange) {
-      onBrandChange(brandId);
-    } else {
-      loadProducts(next);
-    }
+    loadProducts(next);
 
     closeBrands();
   }
@@ -712,6 +735,8 @@ export default function ProductDiscoveryBar({
     const nextFilters = { ...emptyFilters };
 
     productsRequestIdRef.current += 1;
+    setLoading(false);
+    onLoadingChange?.(false);
     setFilters(nextFilters);
     setDraftFilters(nextFilters);
 
@@ -1025,9 +1050,10 @@ export default function ProductDiscoveryBar({
                 <button
                   type="button"
                   onClick={applyFilter}
-                  className="h-[52px] rounded-[16px] bg-black text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98]"
+                  disabled={loading}
+                  className="h-[52px] rounded-[16px] bg-black text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98] disabled:cursor-wait disabled:opacity-65"
                 >
-                  {text.applyFilter}
+                  {loading ? text.loading : text.applyFilter}
                 </button>
               </div>
             </div>
@@ -1136,8 +1162,6 @@ export default function ProductDiscoveryBar({
           }
         `}
       </style>
-
-      {loading && <AppLoader text={text.loading} />}
 
       <section
         style={{

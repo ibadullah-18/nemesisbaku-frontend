@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { FiArrowUp, FiChevronRight, FiImage, FiX } from "react-icons/fi";
+import {
+  FiArrowUp,
+  FiChevronRight,
+  FiImage,
+  FiPackage,
+  FiX,
+} from "react-icons/fi";
 import ProductDiscoveryBar from "../../components/product/ProductDiscoveryBar";
 import ProductCard from "../../components/product/ProductCard";
 import ProductSection from "../../components/home/ProductSection";
@@ -30,6 +36,12 @@ const defaultDiscoveryFilters = {
   minPrice: "",
   maxPrice: "",
   isDiscounted: null,
+};
+
+const noProductsFallback = {
+  az: "Məhsul yoxdur",
+  ru: "Товаров нет",
+  en: "No products found",
 };
 
 let homeViewMemoryCache = null;
@@ -153,14 +165,13 @@ async function requestWithRetry(request, attempts = 3) {
 }
 
 export default function HomePage() {
-  const { text } = useLanguage();
+  const { text, lang } = useLanguage();
   const [restoredHomeState] = useState(readRestorableHomeState);
   const restoredFromDetails = Boolean(restoredHomeState);
 
   const allProductsRef = useRef(null);
   const errorTimerRef = useRef(null);
   const homeRequestIdRef = useRef(0);
-  const brandRequestIdRef = useRef(0);
   const latestHomeStateRef = useRef(null);
   const productNavigationSavedRef = useRef(false);
 
@@ -178,6 +189,9 @@ export default function HomePage() {
     () => restoredHomeState?.products || [],
   );
   const [productsAnimationVersion, setProductsAnimationVersion] = useState(0);
+  const [resultAnimationsEnabled, setResultAnimationsEnabled] = useState(
+    !restoredFromDetails,
+  );
   const [filterActive, setFilterActive] = useState(
     () => restoredHomeState?.filterActive === true,
   );
@@ -214,6 +228,8 @@ export default function HomePage() {
   const sliderCampaigns = campaigns;
 
   const descHasText = Boolean(text.allProductsDesc);
+  const noProductsText =
+    text.noProducts || noProductsFallback[lang] || noProductsFallback.az;
   const HOME_LOADED_KEY = "nemesis_home_loaded_once";
   const MIN_LOADER_TIME = 750;
 
@@ -306,11 +322,11 @@ export default function HomePage() {
 
   useEffect(() => {
     function resetHomeFilters() {
-      brandRequestIdRef.current += 1;
       clearHomeViewState();
       setFilterLoading(false);
       setFilterActive(false);
       setDiscoveryFilters({ ...defaultDiscoveryFilters });
+      setResultAnimationsEnabled(true);
       loadHome();
 
       window.scrollTo({
@@ -424,7 +440,7 @@ export default function HomePage() {
   async function loadHome() {
     const requestId = ++homeRequestIdRef.current;
     const shouldShowLoader =
-      products.length === 0 || !sessionStorage.getItem(HOME_LOADED_KEY);
+      products.length === 0 && !sessionStorage.getItem(HOME_LOADED_KEY);
     const startedAt = Date.now();
     const standardPageSize = getProductPageSize();
     const restoringProduct = Boolean(
@@ -544,10 +560,10 @@ export default function HomePage() {
 
   function handleFilteredProducts(list, meta = {}) {
     if (meta.reset || meta.active === false) {
-      brandRequestIdRef.current += 1;
       setFilterLoading(false);
       setFilterActive(false);
       setDiscoveryFilters({ ...defaultDiscoveryFilters });
+      setResultAnimationsEnabled(true);
       loadHome();
       return;
     }
@@ -555,11 +571,11 @@ export default function HomePage() {
     // Filter nəticəsi gəldikdən sonra gecikmiş ana səhifə sorğusu bu siyahının
     // üstünə yaza bilməsin.
     homeRequestIdRef.current += 1;
-    brandRequestIdRef.current += 1;
     setLoading(false);
     setFilterLoading(false);
     setFilterActive(meta.active ?? true);
     setDiscoveryFilters(normalizeDiscoveryFilters(meta.filters));
+    setResultAnimationsEnabled(true);
     setProducts(uniqueById(list));
     setProductsAnimationVersion((prev) => prev + 1);
     setPage(1);
@@ -568,66 +584,7 @@ export default function HomePage() {
 
     setTimeout(() => {
       setAllProductsVisible(true);
-
-      allProductsRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
     }, 80);
-  }
-
-  async function handleBrandChange(brandId) {
-    if (!brandId) return;
-
-    const requestId = ++brandRequestIdRef.current;
-
-    // Ana səhifənin gecikmiş cavabı brend nəticəsini əvəz etməsin.
-    homeRequestIdRef.current += 1;
-    setLoading(false);
-    setFilterActive(true);
-    setDiscoveryFilters({
-      ...defaultDiscoveryFilters,
-      brandId,
-    });
-    setFilterLoading(true);
-
-    try {
-      const res = await requestWithRetry(() =>
-        getProducts({
-          brandId,
-          page: 1,
-          pageSize: 100,
-        }),
-      );
-
-      if (requestId !== brandRequestIdRef.current) return;
-
-      const brandProducts = uniqueById(normalizeList(res));
-
-      setProducts(brandProducts);
-      setProductsAnimationVersion((prev) => prev + 1);
-      setPage(1);
-      setHasMore(false);
-      setAllProductsVisible(false);
-
-      window.setTimeout(() => {
-        if (requestId !== brandRequestIdRef.current) return;
-
-        setAllProductsVisible(true);
-        allProductsRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 80);
-    } catch (err) {
-      if (requestId === brandRequestIdRef.current) {
-        showError(getErrorMessage(err, "Brend məhsulları yüklənmədi."));
-      }
-    } finally {
-      if (requestId === brandRequestIdRef.current) {
-        setFilterLoading(false);
-      }
-    }
   }
   function scrollToTop() {
     window.scrollTo({
@@ -647,6 +604,10 @@ export default function HomePage() {
   function releaseBannerScroll() {
     const body = document.body;
     const root = document.documentElement;
+
+    // Filter modalı açıqdırsa onun scroll qaydalarına toxunma.
+    if (body.dataset.nemesisFilterOpen === "true") return;
+
     const storedScrollY = Number(body.dataset.nemesisBannerScrollY);
     const lockedTop = Math.abs(Number.parseFloat(body.style.top || "0"));
     const returnScrollY = Number(
@@ -753,20 +714,35 @@ export default function HomePage() {
           }
 
           @keyframes homeProductReveal {
-            from {
-              transform: translateY(22px) scale(0.985);
+            0% {
+              transform: translateY(28px) scale(0.955);
             }
-            to {
+            68% {
+              transform: translateY(-3px) scale(1.008);
+            }
+            100% {
               transform: translateY(0) scale(1);
             }
           }
 
           @keyframes filteredProductsIn {
             from {
-              transform: translateY(18px);
+              transform: translateY(14px) scale(0.992);
             }
             to {
-              transform: translateY(0);
+              transform: translateY(0) scale(1);
+            }
+          }
+
+          @keyframes emptyProductsIn {
+            0% {
+              transform: translateY(24px) scale(0.94);
+            }
+            65% {
+              transform: translateY(-3px) scale(1.015);
+            }
+            100% {
+              transform: translateY(0) scale(1);
             }
           }
 
@@ -820,9 +796,8 @@ export default function HomePage() {
         >
           <ProductDiscoveryBar
             onProductsChange={handleFilteredProducts}
-            onBrandChange={handleBrandChange}
+            onLoadingChange={setFilterLoading}
             initialFilters={discoveryFilters}
-            restoreView={restoredFromDetails}
           />
         </div>
 
@@ -872,7 +847,7 @@ export default function HomePage() {
             ref={allProductsRef}
             className={`mx-auto max-w-[1180px] px-5 py-8 transition-all duration-300 md:px-8 md:py-11 ${
               filterLoading
-                ? "pointer-events-none translate-y-1 opacity-35"
+                ? "opacity-60"
                 : "translate-y-0 opacity-100"
             }`}
           >
@@ -881,7 +856,7 @@ export default function HomePage() {
               style={{
                 opacity: 1,
                 visibility: "visible",
-                animation: restoredFromDetails
+                animation: !resultAnimationsEnabled
                   ? "none"
                   : "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) both",
               }}
@@ -911,13 +886,13 @@ export default function HomePage() {
               key={`products-grid-${productsAnimationVersion}`}
               className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
               style={{
-                animation: restoredFromDetails
+                animation: !resultAnimationsEnabled
                   ? "none"
                   : "filteredProductsIn 0.5s cubic-bezier(0.22,1,0.36,1) both",
               }}
             >
               {products.map((product, index) => {
-                const delay = Math.min(index, 11) * 0.045;
+                const delay = Math.min(index, 15) * 0.035;
 
                 return (
                   <div
@@ -927,9 +902,11 @@ export default function HomePage() {
                       opacity: 1,
                       visibility: "visible",
                       backfaceVisibility: "hidden",
-                      animation: restoredFromDetails
+                      transformOrigin: "center bottom",
+                      willChange: "transform",
+                      animation: !resultAnimationsEnabled
                         ? "none"
-                        : `homeProductReveal 0.58s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
+                        : `homeProductReveal 0.62s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
                     }}
                   >
                     <ProductCard product={product} />
@@ -988,6 +965,31 @@ export default function HomePage() {
                 </button>
               </div>
             )}
+          </section>
+        )}
+
+        {filterActive && !filterLoading && products.length === 0 && (
+          <section
+            key={`empty-products-${productsAnimationVersion}`}
+            className="mx-auto grid min-h-[calc(100dvh-190px)] max-w-[1180px] place-items-center px-5 py-12 md:px-8"
+          >
+            <div
+              className="text-center"
+              style={{
+                transformOrigin: "center",
+                animation: resultAnimationsEnabled
+                  ? "emptyProductsIn 0.58s cubic-bezier(0.22,1,0.36,1) both"
+                  : "none",
+              }}
+            >
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-zinc-200 bg-white text-[27px] text-zinc-400 md:h-[72px] md:w-[72px] md:text-[30px]">
+                <FiPackage />
+              </div>
+
+              <p className="mt-5 text-[20px] font-extrabold tracking-[-0.025em] text-zinc-950 md:text-[24px]">
+                {noProductsText}
+              </p>
+            </div>
           </section>
         )}
       </div>
