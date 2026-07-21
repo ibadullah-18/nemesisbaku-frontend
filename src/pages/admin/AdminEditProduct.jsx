@@ -52,6 +52,11 @@ const emptyVariant = {
   isNewVariant: true,
 };
 
+function normalizeDescription(value) {
+  const description = String(value || "").replace(/\r\n?/g, "\n");
+  return description.trim() ? description : "";
+}
+
 function localUnwrap(res) {
   return res?.data?.data ?? res?.data ?? res;
 }
@@ -709,7 +714,7 @@ export default function AdminEditProduct() {
 
       const payload = {
         name: form.name.trim(),
-        description: form.description.trim(),
+        description: normalizeDescription(form.description),
         productCode: form.productCode.trim(),
         model: form.model.trim(),
         price: Number(form.price),
@@ -884,6 +889,7 @@ export default function AdminEditProduct() {
                 value={form.description}
                 onChange={(e) => updateForm("description", e.target.value)}
                 rows={5}
+                wrap="soft"
                 className="w-full resize-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-zinc-400"
               />
             </label>

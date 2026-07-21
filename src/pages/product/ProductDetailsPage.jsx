@@ -331,8 +331,10 @@ export default function ProductDetailsPage() {
   const price = Number(product?.price || 0);
   const discountPrice = Number(product?.discountPrice || 0);
   const hasDiscount = discountPrice > 0 && discountPrice < price;
-  const description = product?.description || "";
-  const shouldClampDescription = description.length > 155;
+  const description = String(product?.description || "").replace(/\r\n?/g, "\n");
+  const descriptionLineCount = description.split("\n").length;
+  const shouldClampDescription =
+    description.length > 155 || descriptionLineCount > 3;
 
   function chooseColor(colorName) {
     setSelectedColor(colorName);
@@ -654,7 +656,7 @@ export default function ProductDetailsPage() {
                         shouldClampDescription ? "max-h-[84px]" : ""
                       }`}
                     >
-                      <p className="text-[15px] font-normal leading-7 text-zinc-500">
+                      <p className="whitespace-pre-wrap break-words text-[15px] font-normal leading-7 text-zinc-500">
                         {description}
                       </p>
 
@@ -672,7 +674,7 @@ export default function ProductDetailsPage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-[15px] font-normal leading-7 text-zinc-500">
+                      <p className="whitespace-pre-wrap break-words text-[15px] font-normal leading-7 text-zinc-500">
                         {description}
                       </p>
 
