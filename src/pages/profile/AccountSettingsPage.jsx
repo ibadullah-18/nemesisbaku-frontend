@@ -29,19 +29,25 @@ const loyaltyText = {
   az: {
     notAdded: "Əlavə edilməyib",
     active: "Aktiv loyallıq kartı",
-    add: "Loyallıq kartı əlavə et",
+    add: "Yeni loyallıq kartı yarat",
+    codeLabel: "Loyallıq kartının kodu",
+    codePlaceholder: "Məsələn: 2331221",
     desc: "5% cashback, Apple Wallet və Google Wallet dəstəyi haqqında məlumat al.",
   },
   en: {
     notAdded: "Not added",
     active: "Active loyalty card",
-    add: "Add loyalty card",
+    add: "Create a new loyalty card",
+    codeLabel: "Loyalty card code",
+    codePlaceholder: "For example: 2331221",
     desc: "Learn about 5% cashback and Apple Wallet or Google Wallet support.",
   },
   ru: {
     notAdded: "Не добавлена",
     active: "Активная карта лояльности",
-    add: "Добавить карту лояльности",
+    add: "Создать новую карту лояльности",
+    codeLabel: "Код карты лояльности",
+    codePlaceholder: "Например: 2331221",
     desc: "Узнайте о кешбэке 5% и поддержке Apple Wallet и Google Wallet.",
   },
 };
@@ -59,6 +65,12 @@ function normalizeLoyaltyCode(value) {
   const code = String(value || "").trim();
 
   return code && code.toLowerCase() !== "string" ? code : "";
+}
+
+function normalizeLoyaltyInput(value) {
+  return String(value || "")
+    .replace(/\s/g, "")
+    .slice(0, 32);
 }
 
 export default function AccountSettingsPage() {
@@ -186,6 +198,7 @@ export default function AccountSettingsPage() {
     e.preventDefault();
 
     const phone = normalizePhone(form.phoneNumber);
+    const loyaltyCardCode = normalizeLoyaltyCode(form.loyaltyCardCode);
 
     if (phone.length !== 9) {
       showToast(text.phoneError || "Telefon nömrəsi 9 rəqəm olmalıdır.");
@@ -201,7 +214,7 @@ export default function AccountSettingsPage() {
         dateOfBirth: form.dateOfBirth
           ? new Date(form.dateOfBirth).toISOString()
           : "",
-        loyaltyCardCode: form.loyaltyCardCode,
+        loyaltyCardCode,
         profileImage: form.profileImage,
       });
 
@@ -333,7 +346,11 @@ export default function AccountSettingsPage() {
 
             <LoyaltyCardField
               label={text.loyaltyCard}
-              code={normalizeLoyaltyCode(form.loyaltyCardCode)}
+              savedCode={normalizeLoyaltyCode(profile?.loyaltyCardCode)}
+              value={form.loyaltyCardCode}
+              onChange={(value) =>
+                update("loyaltyCardCode", normalizeLoyaltyInput(value))
+              }
               copy={loyalty}
               onAdd={() => navigate("/profile/loyalty-card")}
             />
@@ -434,31 +451,63 @@ function ReadOnlyInput({ label, value, hint }) {
   );
 }
 
-function LoyaltyCardField({ label, code, copy, onAdd }) {
+function LoyaltyCardField({
+  label,
+  savedCode,
+  value,
+  onChange,
+  copy,
+  onAdd,
+}) {
   return (
     <div className="rounded-[18px] border border-zinc-100 bg-zinc-50 p-4 md:col-span-2">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-white text-xl text-zinc-950 shadow-sm">
-            <FiCreditCard />
-          </div>
+      <div className="flex items-start gap-3">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-white text-xl text-zinc-950 shadow-sm">
+          <FiCreditCard />
+        </div>
 
+        <div className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
             <p className="text-sm font-medium text-zinc-800">{label}</p>
             <p
               className={`mt-1 truncate text-sm ${
-                code ? "font-semibold text-zinc-950" : "text-zinc-400"
+                savedCode
+                  ? "font-semibold text-zinc-950"
+                  : "text-zinc-400"
               }`}
             >
-              {code || copy.notAdded}
+              {savedCode || copy.notAdded}
             </p>
             <p className="mt-1 text-xs leading-5 text-zinc-400">
-              {code ? copy.active : copy.desc}
+              {savedCode ? copy.active : copy.desc}
             </p>
           </div>
         </div>
+      </div>
 
-        {!code && (
+      <div
+        className={`mt-4 grid gap-3 sm:items-end ${
+          savedCode ? "" : "sm:grid-cols-[minmax(0,1fr)_auto]"
+        }`}
+      >
+        <label className="block">
+          <span className="mb-2 block text-xs font-semibold text-zinc-600">
+            {copy.codeLabel}
+          </span>
+
+          <input
+            type="text"
+            value={value || ""}
+            onChange={(event) => onChange(event.target.value)}
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={32}
+            placeholder={copy.codePlaceholder}
+            className="h-11 w-full rounded-[14px] border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-zinc-950"
+          />
+        </label>
+
+        {!savedCode && (
           <button
             type="button"
             onClick={onAdd}

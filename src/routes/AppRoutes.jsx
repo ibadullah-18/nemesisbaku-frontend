@@ -45,7 +45,9 @@ import OrderSuccessPage from "../pages/checkout/OrderSuccessPage";
 import OrderFailedPage from "../pages/checkout/OrderFailedPage";
 import AccountSettingsPage from "../pages/profile/AccountSettingsPage";
 import SecuritySettingsPage from "../pages/profile/SecuritySettingsPage";
+import LoyaltyCardInfoPage from "../pages/profile/LoyaltyCardPage";
 import PromoPage from "../pages/promo/PromoPage";
+import NotFoundPage from "../pages/error/NotFoundPage";
 
 import InfoAddressPage from "../pages/info/InfoAddressPage";
 import DeliveryPage from "../pages/info/DeliveryPage";
@@ -89,6 +91,18 @@ function Layout({ children }) {
       <PageShell>{children}</PageShell>
       <Footer />
     </>
+  );
+}
+
+function NotFoundRedirect() {
+  const location = useLocation();
+
+  return (
+    <Navigate
+      to="/404"
+      replace
+      state={{ from: `${location.pathname}${location.search}` }}
+    />
   );
 }
 
@@ -240,6 +254,15 @@ export default function AppRoutes() {
       />
 
       <Route
+        path="/profile/loyalty-card"
+        element={
+          <Layout>
+            <LoyaltyCardInfoPage />
+          </Layout>
+        }
+      />
+
+      <Route
         path="/infoAddress"
         element={
           <Layout>
@@ -319,6 +342,15 @@ export default function AppRoutes() {
         }
       />
 
+      <Route
+        path="/404"
+        element={
+          <Layout>
+            <NotFoundPage />
+          </Layout>
+        }
+      />
+
       <Route path="/SuperAdmin/login" element={<SuperAdminLogin />} />
 
       <Route
@@ -387,7 +419,7 @@ export default function AppRoutes() {
 
         <Route
           path="*"
-          element={<Navigate to="/SuperAdmin/dashboard" replace />}
+          element={<NotFoundRedirect />}
         />
       </Route>
 
@@ -448,10 +480,10 @@ export default function AppRoutes() {
           element={<AdminEmailAnnouncements />}
         />
 
-        <Route path="*" element={<Navigate to="/Admin/orders" replace />} />
+        <Route path="*" element={<NotFoundRedirect />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundRedirect />} />
     </Routes>
   );
 }
