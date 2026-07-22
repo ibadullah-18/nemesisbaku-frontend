@@ -12,8 +12,9 @@ export default function ProductSection({ title, subtitle, products }) {
     if (!row) return;
 
     const card = row.querySelector("[data-product-item]");
-    const cardWidth = card?.clientWidth || 240;
-    const gap = 16;
+    const cardWidth = card?.getBoundingClientRect().width || 240;
+    const styles = window.getComputedStyle(row);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 16;
 
     row.scrollBy({
       left: direction === "right" ? cardWidth + gap : -(cardWidth + gap),
@@ -55,13 +56,17 @@ export default function ProductSection({ title, subtitle, products }) {
         <div className="overflow-hidden md:overflow-visible">
           <div
             ref={rowRef}
-            className="flex touch-pan-x justify-start gap-3 overflow-x-auto overscroll-x-contain pb-3 scroll-smooth [-ms-overflow-style:auto] [scrollbar-width:thin] md:gap-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-track]:bg-transparent"
+            className="flex justify-start gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-3 scroll-smooth md:gap-4 [-ms-overflow-style:auto] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-track]:bg-transparent"
+            style={{
+              touchAction: "auto",
+              WebkitOverflowScrolling: "touch",
+            }}
           >
             {products.map((product) => (
               <div
                 key={product.id}
                 data-product-item
-                className="w-[47%] min-w-[47%] sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]"
+                className="w-[47%] min-w-[47%] shrink-0 sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]"
               >
                 <ProductCard product={product} />
               </div>
