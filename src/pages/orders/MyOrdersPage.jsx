@@ -168,7 +168,7 @@ export default function MyOrdersPage() {
 
   if (loading) {
     return createPortal(
-      <div className="fixed inset-0 z-[9999999999] grid min-h-screen w-screen place-items-center bg-[#fafafa]">
+      <div className="fixed inset-0 z-[9999999999] grid h-dvh w-full place-items-center overflow-hidden bg-[#fafafa]">
         <AppLoader text={text.loading} />
       </div>,
       document.body,
@@ -176,8 +176,8 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
+    <main className="min-h-dvh w-full overflow-x-clip bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
+      <div className="mx-auto w-full min-w-0 max-w-[1180px]">
         <button
           type="button"
           onClick={() => navigate("/profile")}
@@ -223,7 +223,7 @@ export default function MyOrdersPage() {
             </div>
           </div>
         ) : (
-          <section className="grid gap-3">
+          <section className="grid min-w-0 gap-3">
             {orders.map((order, index) => (
               <OrderCard
                 key={order.id}
@@ -263,11 +263,11 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
   return (
     <article
       onClick={onOpen}
-      className="group cursor-pointer animate-[orderCard_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-4 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)]"
+      className="group w-full min-w-0 cursor-pointer overflow-hidden rounded-[18px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition animate-[orderCard_.42s_cubic-bezier(.22,1,.36,1)_both] hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] sm:p-4"
       style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
     >
-      <div className="flex items-start gap-4">
-        <div className="flex shrink-0 -space-x-4 pt-1">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-4">
+        <div className="order-2 flex max-w-full min-w-0 shrink-0 -space-x-3 overflow-hidden py-1 sm:order-1 sm:-space-x-4 sm:pt-1">
           {visibleItems.length > 0 ? (
             visibleItems.map((item, itemIndex) => {
               const image = getItemFinalImage(item, productDetails);
@@ -275,7 +275,7 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
               return (
                 <div
                   key={item.id || getProductId(item) || itemIndex}
-                  className="relative h-16 w-16 overflow-hidden rounded-[16px] bg-zinc-100 ring-2 ring-white"
+                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[14px] bg-zinc-100 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px]"
                   title={getItemName(item)}
                 >
                   {image ? (
@@ -294,53 +294,53 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
               );
             })
           ) : (
-            <div className="grid h-16 w-16 place-items-center rounded-[16px] bg-zinc-100 text-zinc-300 ring-2 ring-white">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[14px] bg-zinc-100 text-zinc-300 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px]">
               <FiPackage />
             </div>
           )}
 
           {extraCount > 0 && (
-            <div className="relative grid h-16 w-16 place-items-center rounded-[16px] bg-zinc-950 text-sm font-medium text-white ring-2 ring-white">
+            <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-[14px] bg-zinc-950 text-xs font-medium text-white ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px] sm:text-sm">
               +{extraCount}
             </div>
           )}
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="order-1 min-w-0 sm:order-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
             {text.orderNumber}
           </p>
 
-          <h2 className="mt-1 truncate text-lg font-medium tracking-[-0.025em] text-zinc-950">
+          <h2 className="mt-1 truncate text-base font-medium tracking-[-0.025em] text-zinc-950 sm:text-lg">
             {order.orderNumber}
           </h2>
 
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-1.5 text-xs text-zinc-500 sm:mt-2 sm:text-sm">
             {formatDateTime(order.createdAt)}
           </p>
 
           {items.length > 0 && (
-            <p className="mt-2 line-clamp-1 text-sm font-medium text-zinc-500">
+            <p className="mt-2 line-clamp-2 break-words text-xs font-medium leading-5 text-zinc-500 sm:line-clamp-1 sm:text-sm">
               {items.map(getItemName).join(", ")}
             </p>
           )}
         </div>
 
-        <div className="shrink-0 text-right">
+        <div className="order-3 flex min-w-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
           <span
-            className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium ${status.color}`}
+            className={`inline-flex max-w-[58%] items-center justify-center rounded-full border px-2.5 py-1.5 text-center text-[11px] font-medium leading-4 sm:max-w-none sm:px-3 sm:text-xs ${status.color}`}
           >
             {status.label}
           </span>
 
-          <p className="mt-3 text-xl font-medium text-zinc-950">
+          <p className="shrink-0 whitespace-nowrap text-lg font-medium text-zinc-950 sm:mt-3 sm:text-xl">
             {money(order.totalPrice)} ₼
           </p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4">
-        <p className="text-sm font-medium text-zinc-400">
+      <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 sm:mt-4 sm:pt-4">
+        <p className="min-w-0 truncate text-xs font-medium text-zinc-400 sm:text-sm">
           {text.viewOrderDetails}
         </p>
 
