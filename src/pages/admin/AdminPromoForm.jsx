@@ -33,7 +33,20 @@ const emptyForm = {
   isActive: true,
   file: null,
   previewUrl: "",
+  mobileFile: null,
+  mobilePreviewUrl: "",
   productIds: [],
+};
+
+const PROMO_IMAGE_VARIANTS = {
+  desktop: {
+    fileKey: "file",
+    previewKey: "previewUrl",
+  },
+  mobile: {
+    fileKey: "mobileFile",
+    previewKey: "mobilePreviewUrl",
+  },
 };
 
 function getProductId(product) {
@@ -75,7 +88,8 @@ function money(value) {
 export default function AdminPromoForm({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const previewRef = useRef("");
+  const desktopPreviewRef = useRef("");
+  const mobilePreviewRef = useRef("");
 
   const isEdit = mode === "edit";
 
@@ -97,11 +111,15 @@ export default function AdminPromoForm({ mode }) {
   }, [id, mode]);
 
   useEffect(() => {
-    previewRef.current = form.previewUrl;
-  }, [form.previewUrl]);
+    desktopPreviewRef.current = form.previewUrl;
+    mobilePreviewRef.current = form.mobilePreviewUrl;
+  }, [form.previewUrl, form.mobilePreviewUrl]);
 
   useEffect(() => {
-    return () => revokeImagePreview(previewRef.current);
+    return () => {
+      revokeImagePreview(desktopPreviewRef.current);
+      revokeImagePreview(mobilePreviewRef.current);
+    };
   }, []);
 
   async function loadAll() {
@@ -123,17 +141,21 @@ export default function AdminPromoForm({ mode }) {
         const promoRes = await adminPromoPagesApi.detail(id);
         const promo = unwrapAdmin(promoRes);
 
-        revokeImagePreview(form.previewUrl);
+        revokeImagePreview(desktopPreviewRef.current);
+        revokeImagePreview(mobilePreviewRef.current);
         setForm({
           type: Number(promo?.type || 1),
           startDate: toLocalDateTimeInput(promo?.startDate),
           isActive: promo?.isActive ?? true,
           file: null,
           previewUrl: promo?.imageUrl || "",
+          mobileFile: null,
+          mobilePreviewUrl: promo?.mobileImageUrl || promo?.imageUrl || "",
           productIds: promo?.productIds || [],
         });
       } else {
-        revokeImagePreview(form.previewUrl);
+        revokeImagePreview(desktopPreviewRef.current);
+        revokeImagePreview(mobilePreviewRef.current);
         setForm(emptyForm);
       }
     } catch (err) {
@@ -147,7 +169,7 @@ export default function AdminPromoForm({ mode }) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleFileChange(e) {
+  async function handleFileChange(e, variantName) {
     const input = e.currentTarget;
     const selectedFile = input.files?.[0];
     input.value = "";
@@ -157,13 +179,17 @@ export default function AdminPromoForm({ mode }) {
     try {
       setError("");
       const file = await prepareImageFile(selectedFile);
-      revokeImagePreview(form.previewUrl);
+      const variant = PROMO_IMAGE_VARIANTS[variantName];
 
-      setForm((prev) => ({
-        ...prev,
-        file,
-        previewUrl: URL.createObjectURL(file),
-      }));
+      setForm((prev) => {
+        revokeImagePreview(prev[variant.previewKey]);
+
+        return {
+          ...prev,
+          [variant.fileKey]: file,
+          [variant.previewKey]: URL.createObjectURL(file),
+        };
+      });
     } catch (err) {
       setError(err.message || "Şəkil hazırlana bilmədi.");
     }
@@ -198,7 +224,12 @@ export default function AdminPromoForm({ mode }) {
     setSuccess("");
 
     if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
-    if (!form.file && !form.previewUrl) return setError("Şəkil seçilməlidir.");
+    if (!form.file && !form.previewUrl) {
+      return setError("Kompüter şəkli seçilməlidir.");
+    }
+    if (!form.mobileFile && !form.mobilePreviewUrl) {
+      return setError("Telefon şəkli seçilməlidir.");
+    }
     if (form.productIds.length === 0) {
       return setError("Ən azı 1 məhsul seçilməlidir.");
     }
@@ -215,6 +246,7 @@ export default function AdminPromoForm({ mode }) {
       startDate,
       isActive: Boolean(form.isActive),
       file: form.file,
+      mobileFile: form.mobileFile,
       productIds: form.productIds,
     };
 
@@ -292,7 +324,8 @@ export default function AdminPromoForm({ mode }) {
           </h1>
 
           <p className="mt-1 text-sm font-medium text-zinc-500">
-            Campaign və Banner üçün şəkil, başlama tarixi və məhsul seçimi.
+            Campaign və Banner üçün ayrı kompüter və telefon şəkilləri,
+            başlama tarixi və məhsul seçimi.
           </p>
         </div>
 
@@ -362,38 +395,26 @@ export default function AdminPromoForm({ mode }) {
 
           <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
             <h2 className="mb-5 text-xl font-extrabold tracking-[-0.03em]">
-              Promo şəkli
+              Promo şəkilləri
             </h2>
 
-            <label className="block cursor-pointer rounded-[22px] border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center transition hover:border-zinc-400">
-              <FiUploadCloud className="mx-auto text-[34px] text-zinc-400" />
-
-              <p className="mt-3 text-sm font-extrabold text-zinc-700">
-                Şəkil seç
-              </p>
-
-              <p className="mt-1 text-xs font-bold text-zinc-400">
-                Tövsiyə: 1600 × 640 px (5:2), JPG/PNG/WEBP, maksimum 10 MB.
-                Bütün vacib məzmunu şəkilin içində yerləşdirin.
-              </p>
-
-              <input
-                type="file"
-                accept={IMAGE_ACCEPT}
-                onChange={handleFileChange}
-                className="hidden"
+            <div className="grid gap-5 lg:grid-cols-2">
+              <PromoImageField
+                title="Kompüter şəkli *"
+                description="Tövsiyə olunan ölçü: 2000 × 800 px (5:2). Yaxın ölçü və eyni nisbətli şəkillər də qəbul olunur."
+                previewUrl={form.previewUrl}
+                previewClassName="aspect-[5/2]"
+                onChange={(event) => handleFileChange(event, "desktop")}
               />
-            </label>
 
-            {form.previewUrl && (
-              <div className="mt-4 overflow-hidden rounded-[24px] border border-zinc-100 bg-zinc-50">
-                <img
-                  src={form.previewUrl}
-                  alt="Promo preview"
-                  className="aspect-[5/2] w-full object-contain"
-                />
-              </div>
-            )}
+              <PromoImageField
+                title="Telefon şəkli *"
+                description="Tövsiyə olunan ölçü: 1080 × 1620 px (2:3). Yaxın ölçü və eyni nisbətli şəkillər də qəbul olunur."
+                previewUrl={form.mobilePreviewUrl}
+                previewClassName="mx-auto aspect-[2/3] max-w-[260px]"
+                onChange={(event) => handleFileChange(event, "mobile")}
+              />
+            </div>
           </section>
 
           <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
@@ -576,6 +597,49 @@ function ProductCard({ product, selected, onClick }) {
         </div>
       </div>
     </button>
+  );
+}
+
+function PromoImageField({
+  title,
+  description,
+  previewUrl,
+  previewClassName,
+  onChange,
+}) {
+  return (
+    <div className="rounded-[24px] border border-zinc-100 bg-zinc-50 p-4">
+      <label className="block cursor-pointer rounded-[20px] border border-dashed border-zinc-200 bg-white p-5 text-center transition hover:border-zinc-400">
+        <FiUploadCloud className="mx-auto text-[32px] text-zinc-400" />
+
+        <p className="mt-3 text-sm font-extrabold text-zinc-800">{title}</p>
+
+        <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
+          {description}
+          <br />
+          JPG/PNG/WEBP, maksimum 10 MB.
+        </p>
+
+        <input
+          type="file"
+          accept={IMAGE_ACCEPT}
+          onChange={onChange}
+          className="hidden"
+        />
+      </label>
+
+      {previewUrl && (
+        <div
+          className={`mt-4 overflow-hidden rounded-[20px] border border-zinc-100 bg-white ${previewClassName}`}
+        >
+          <img
+            src={previewUrl}
+            alt={`${title} önizləməsi`}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

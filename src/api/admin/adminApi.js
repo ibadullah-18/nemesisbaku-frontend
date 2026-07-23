@@ -411,6 +411,10 @@ export const adminPromoPagesApi = {
       formData.append("File", body.file);
     }
 
+    if (body.mobileFile instanceof File) {
+      formData.append("MobileFile", body.mobileFile);
+    }
+
     (body.productIds || []).forEach((id) => {
       if (id) formData.append("ProductIds", id);
     });
@@ -429,6 +433,10 @@ export const adminPromoPagesApi = {
 
     if (body.file instanceof File) {
       formData.append("File", body.file);
+    }
+
+    if (body.mobileFile instanceof File) {
+      formData.append("MobileFile", body.mobileFile);
     }
 
     (body.productIds || []).forEach((productId) => {

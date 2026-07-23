@@ -193,18 +193,44 @@ export default function AdminCampaigns() {
               key={promo.id}
               className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)]"
             >
-              <div className="relative aspect-[5/2] bg-zinc-100">
-                {promo.imageUrl ? (
-                  <img
-                    src={promo.imageUrl}
-                    alt="Promo şəkli"
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <div className="grid h-full w-full place-items-center text-zinc-300">
-                    <FiImage className="text-[36px]" />
+              <div className="relative bg-zinc-100 p-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_72px] items-start gap-2 sm:grid-cols-[minmax(0,1fr)_84px]">
+                  <div className="relative aspect-[5/2] overflow-hidden rounded-[18px] bg-white">
+                    {promo.imageUrl ? (
+                      <img
+                        src={promo.imageUrl}
+                        alt="Kompüter promo şəkli"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-zinc-300">
+                        <FiImage className="text-[30px]" />
+                      </div>
+                    )}
+
+                    <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-white">
+                      2000 × 800
+                    </span>
                   </div>
-                )}
+
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-[16px] bg-white">
+                    {promo.mobileImageUrl || promo.imageUrl ? (
+                      <img
+                        src={promo.mobileImageUrl || promo.imageUrl}
+                        alt="Telefon promo şəkli"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-zinc-300">
+                        <FiImage className="text-[24px]" />
+                      </div>
+                    )}
+
+                    <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/70 px-1.5 py-0.5 text-[7px] font-extrabold text-white">
+                      1080 × 1620
+                    </span>
+                  </div>
+                </div>
 
                 <span
                   className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-extrabold ${promoTypeClass(

@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { useLanguage } from "../../i18n/LanguageContext";
 
-const AUTO_PLAY_MS = 8000;
+const AUTO_PLAY_MS = 5000;
 const RESUME_AFTER_USER_MS = 5000;
 const TRANSITION_MS = 650;
 const SWIPE_LIMIT = 45;
@@ -245,7 +245,7 @@ function handlePointerUp(e) {
   const translatePercent = count > 1 ? -activeIndex * 100 : 0;
 
   return (
-    <section className="mx-auto max-w-[1180px] overflow-hidden px-5 py-5 md:px-8 md:py-8">
+    <section className="w-full overflow-hidden py-0 sm:mx-auto sm:max-w-[1180px] sm:px-5 sm:py-5 md:px-8 md:py-8">
       <div className="relative">
         {count > 1 && (
           <>
@@ -270,14 +270,14 @@ function handlePointerUp(e) {
         )}
 
         <div
-          className="touch-pan-y select-none overflow-hidden rounded-[16px] md:rounded-[24px]"
+          className="touch-pan-y select-none overflow-hidden rounded-none sm:rounded-[16px] md:rounded-[24px]"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           onWheel={pauseAndResumeLater}
         >
-          <div className="overflow-hidden rounded-[16px] md:rounded-[24px]">
+          <div className="overflow-hidden rounded-none sm:rounded-[16px] md:rounded-[24px]">
             <div
               onTransitionEnd={handleTransitionEnd}
               className={`flex ${
@@ -321,18 +321,32 @@ function handlePointerUp(e) {
 }
 
 function PromoCard({ promo, text }) {
+  const hasDedicatedMobileImage =
+    Boolean(promo.mobileImageUrl) &&
+    promo.mobileImageUrl !== promo.imageUrl;
+
   return (
     <NavLink
       to={getPromoLink(promo)}
       draggable="false"
-      className="group relative block aspect-[5/2] overflow-hidden rounded-[16px] bg-[#efe7da] shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:rounded-[24px]"
+      className="group relative block aspect-[2/3] overflow-hidden rounded-none bg-[#efe7da] sm:aspect-[5/2] sm:rounded-[16px] sm:shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:rounded-[24px]"
     >
-      <img
-        src={promo.imageUrl}
-        alt="Kampaniya şəkli"
-        draggable="false"
-        className="absolute inset-0 h-full w-full object-contain"
-      />
+      <picture className="absolute inset-0 block h-full w-full">
+        <source
+          media="(max-width: 639px)"
+          srcSet={promo.mobileImageUrl || promo.imageUrl}
+        />
+        <img
+          src={promo.imageUrl}
+          alt="Kampaniya şəkli"
+          draggable="false"
+          className={`h-full w-full ${
+            hasDedicatedMobileImage
+              ? "object-cover"
+              : "object-contain sm:object-cover"
+          }`}
+        />
+      </picture>
 
       <span className="absolute bottom-3 left-3 z-10 inline-flex h-8 items-center gap-2 rounded-full border border-white/80 bg-white/90 py-1 pl-3.5 pr-1.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-zinc-950 shadow-[0_10px_28px_rgba(0,0,0,0.16)] backdrop-blur-md transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-white md:bottom-5 md:left-5 md:h-10 md:pl-4 md:pr-2 md:text-[10px]">
         {text.discover || "Kəşf et"}
