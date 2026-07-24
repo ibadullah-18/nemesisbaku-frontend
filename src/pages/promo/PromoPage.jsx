@@ -120,7 +120,7 @@ export default function PromoPage() {
           {t.back}
         </button>
 
-        <div className="aspect-[2/3] overflow-hidden rounded-[20px] bg-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.12)] sm:aspect-[5/2] md:rounded-[32px]">
+        <div className="aspect-[2/3] overflow-hidden rounded-[20px] bg-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.12)] sm:aspect-[2/1] md:rounded-[32px]">
           {promo.imageUrl ? (
             <picture className="block h-full w-full">
               <source

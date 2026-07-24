@@ -15,6 +15,68 @@ function redirectToPanelLogin(panel) {
   }
 }
 
+function collectValidationErrors(errors) {
+  if (!errors) return "";
+
+  if (Array.isArray(errors)) {
+    return errors
+      .map((value) =>
+        typeof value === "string"
+          ? value
+          : value?.message || value?.Message || JSON.stringify(value),
+      )
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  if (typeof errors !== "object") return String(errors);
+
+  return Object.entries(errors)
+    .flatMap(([key, value]) => {
+      const messages = Array.isArray(value) ? value : [value];
+
+      return messages
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : item?.message || item?.Message || String(item || ""),
+        )
+        .filter(Boolean)
+        .map((message) => `${key}: ${message}`);
+    })
+    .join(" | ");
+}
+
+function getAdminErrorMessage(result, status) {
+  if (status === 413) {
+    return "Yüklənən faylların ümumi həcmi 200 MB limitini keçir.";
+  }
+
+  if (typeof result === "string") {
+    const plainText = result.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (plainText && plainText.length <= 500) return plainText;
+  }
+
+  const validationErrors = collectValidationErrors(
+    result?.errors || result?.Errors,
+  );
+
+  return (
+    validationErrors ||
+    result?.message ||
+    result?.Message ||
+    result?.title ||
+    result?.Title ||
+    result?.error ||
+    result?.Error ||
+    result?.data?.message ||
+    result?.data?.Message ||
+    result?.Data?.message ||
+    result?.Data?.Message ||
+    ""
+  );
+}
+
 export async function adminFetch(endpoint, options = {}, retry = true) {
   const { panel: requestedPanel, ...fetchOptions } = options;
   const panel = requestedPanel || getPanelFromPath();
@@ -73,32 +135,24 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
 
   if (res.status === 403) {
     throw new Error(
-      result?.message || "Bu əməliyyat üçün səlahiyyətiniz yoxdur.",
+      getAdminErrorMessage(result, res.status) ||
+        "Bu əməliyyat üçün səlahiyyətiniz yoxdur.",
     );
   }
 
-  if (!res.ok || result?.success === false) {
+  if (
+    !res.ok ||
+    result?.success === false ||
+    result?.Success === false
+  ) {
     console.error("ADMIN API ERROR:", {
       endpoint,
       status: res.status,
       response: result,
     });
 
-    const validationErrors =
-      result?.errors && typeof result.errors === "object"
-        ? Object.entries(result.errors)
-            .map(
-              ([key, value]) =>
-                `${key}: ${Array.isArray(value) ? value.join(", ") : value}`,
-            )
-            .join(" | ")
-        : "";
-
     throw new Error(
-      validationErrors ||
-        result?.message ||
-        result?.title ||
-        result?.error ||
+      getAdminErrorMessage(result, res.status) ||
         "Admin əməliyyatı uğursuz oldu",
     );
   }

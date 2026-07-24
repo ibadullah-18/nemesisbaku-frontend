@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheck,
-  FiCheckCircle,
   FiImage,
   FiRefreshCw,
   FiSave,
@@ -19,9 +18,11 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import AdminActionToast from "../../components/admin/AdminActionToast";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import {
   IMAGE_ACCEPT,
+  MAX_PROMO_UPLOAD_BYTES,
   prepareImageFile,
   revokeImagePreview,
 } from "../../utils/imageFile";
@@ -178,7 +179,10 @@ export default function AdminPromoForm({ mode }) {
 
     try {
       setError("");
-      const file = await prepareImageFile(selectedFile);
+      const file = await prepareImageFile(selectedFile, {
+        maxOutputBytes: MAX_PROMO_UPLOAD_BYTES,
+        maxHeicInputBytes: MAX_PROMO_UPLOAD_BYTES,
+      });
       const variant = PROMO_IMAGE_VARIANTS[variantName];
 
       setForm((prev) => {
@@ -234,6 +238,15 @@ export default function AdminPromoForm({ mode }) {
       return setError("Ən azı 1 məhsul seçilməlidir.");
     }
 
+    const selectedFilesTotal =
+      Number(form.file?.size || 0) + Number(form.mobileFile?.size || 0);
+
+    if (selectedFilesTotal > MAX_PROMO_UPLOAD_BYTES) {
+      return setError(
+        "Seçilən kompüter və telefon şəkillərinin ümumi həcmi maksimum 200 MB ola bilər.",
+      );
+    }
+
     let startDate;
     try {
       startDate = localDateTimeToIso(form.startDate);
@@ -258,7 +271,14 @@ export default function AdminPromoForm({ mode }) {
         setSuccess("Promo səhifə yeniləndi.");
       } else {
         await adminPromoPagesApi.create(payload);
-        navigate(`${basePath}/campaigns`);
+        navigate(`${basePath}/campaigns`, {
+          state: {
+            adminNotice: {
+              type: "success",
+              message: "Promo yaradıldı.",
+            },
+          },
+        });
       }
     } catch (err) {
       setError(err.message || "Promo yadda saxlanmadı.");
@@ -303,6 +323,14 @@ export default function AdminPromoForm({ mode }) {
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Yadda saxlanılır" />}
+      <AdminActionToast
+        message={error || success}
+        type={error ? "error" : "success"}
+        onClose={() => {
+          setError("");
+          setSuccess("");
+        }}
+      />
 
       <button
         type="button"
@@ -340,19 +368,6 @@ export default function AdminPromoForm({ mode }) {
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-5 flex items-center gap-2 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-          <FiCheckCircle />
-          {success}
-        </div>
-      )}
 
       <form
         onSubmit={handleSubmit}
@@ -401,20 +416,25 @@ export default function AdminPromoForm({ mode }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <PromoImageField
                 title="Kompüter şəkli *"
-                description="Tövsiyə olunan ölçü: 2000 × 800 px (5:2). Yaxın ölçü və eyni nisbətli şəkillər də qəbul olunur."
+                description="Tövsiyə olunan ölçü: 2000 × 1000 px (2:1). Campaign kompüter və planşetdə ekranın bütün enini kənar boşluqsuz, daha yığcam hündürlükdə tutacaq. Ölçü məcburi deyil."
                 previewUrl={form.previewUrl}
-                previewClassName="aspect-[5/2]"
+                previewClassName="aspect-[2/1]"
                 onChange={(event) => handleFileChange(event, "desktop")}
               />
 
               <PromoImageField
                 title="Telefon şəkli *"
-                description="Tövsiyə olunan ölçü: 1080 × 1620 px (2:3). Yaxın ölçü və eyni nisbətli şəkillər də qəbul olunur."
+                description="Tövsiyə olunan ölçü: 1080 × 1620 px (2:3). Ölçü məcburi deyil; yaxın və fərqli ölçülü şəkillər də qəbul olunur."
                 previewUrl={form.mobilePreviewUrl}
                 previewClassName="mx-auto aspect-[2/3] max-w-[260px]"
                 onChange={(event) => handleFileChange(event, "mobile")}
               />
             </div>
+
+            <p className="mt-4 rounded-[16px] bg-zinc-50 px-4 py-3 text-xs font-bold leading-5 text-zinc-500">
+              JPG, PNG, WEBP, HEIC və HEIF qəbul olunur. Bir sorğuda seçilən
+              yeni şəkillərin ümumi həcmi maksimum 200 MB ola bilər.
+            </p>
           </section>
 
           <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">

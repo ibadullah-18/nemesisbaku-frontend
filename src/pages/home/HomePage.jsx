@@ -1057,18 +1057,12 @@ function BannerPopup({ banner, closing, onClose }) {
 
         <div className="relative grid max-h-[86dvh] min-h-[220px] place-items-center overflow-hidden bg-[#f4f1ec]">
           {banner.imageUrl ? (
-            <picture className="block w-full">
-              <source
-                media="(max-width: 639px)"
-                srcSet={banner.mobileImageUrl || banner.imageUrl}
-              />
-              <img
-                src={banner.imageUrl}
-                alt={banner.title || "nemesisbaku banner"}
-                className="block h-auto max-h-[86dvh] w-full object-contain"
-                draggable="false"
-              />
-            </picture>
+            <img
+              src={banner.imageUrl}
+              alt={banner.title || "nemesisbaku banner"}
+              className="block h-auto max-h-[86dvh] w-full object-contain"
+              draggable="false"
+            />
           ) : (
             <div className="grid h-[320px] w-full place-items-center text-zinc-400 md:h-[460px]">
               <FiImage className="text-[54px]" />

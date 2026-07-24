@@ -245,14 +245,45 @@ function handlePointerUp(e) {
   const translatePercent = count > 1 ? -activeIndex * 100 : 0;
 
   return (
-    <section className="w-full overflow-hidden py-0 sm:mx-auto sm:max-w-[1180px] sm:px-5 sm:py-5 md:px-8 md:py-8">
+    <section className="nemesis-promo-fullbleed relative overflow-hidden py-0">
+      <style>{`
+        .nemesis-promo-fullbleed {
+          width: 100vw !important;
+          max-width: none !important;
+          margin-left: calc(50% - 50vw) !important;
+          margin-right: calc(50% - 50vw) !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+
+        @supports (width: 100dvw) {
+          .nemesis-promo-fullbleed {
+            width: 100dvw !important;
+            margin-left: calc(50% - 50dvw) !important;
+            margin-right: calc(50% - 50dvw) !important;
+          }
+        }
+
+        .nemesis-promo-card {
+          width: 100% !important;
+          aspect-ratio: 2 / 3 !important;
+          border-radius: 0 !important;
+        }
+
+        @media (min-width: 768px) {
+          .nemesis-promo-card {
+            aspect-ratio: 2 / 1 !important;
+          }
+        }
+      `}</style>
+
       <div className="relative">
         {count > 1 && (
           <>
             <button
               type="button"
               onClick={() => goPrev(true)}
-              className="absolute -left-10 top-1/2 z-40 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-zinc-900 transition hover:-translate-x-1 lg:grid"
+              className="absolute left-4 top-1/2 z-40 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] transition hover:-translate-x-1 lg:grid"
               aria-label="Əvvəlki kampaniya"
             >
               <FiChevronLeft />
@@ -261,7 +292,7 @@ function handlePointerUp(e) {
             <button
               type="button"
               onClick={() => goNext(true)}
-              className="absolute -right-10 top-1/2 z-40 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-zinc-900 transition hover:translate-x-1 lg:grid"
+              className="absolute right-4 top-1/2 z-40 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] transition hover:translate-x-1 lg:grid"
               aria-label="Növbəti kampaniya"
             >
               <FiChevronRight />
@@ -270,14 +301,14 @@ function handlePointerUp(e) {
         )}
 
         <div
-          className="touch-pan-y select-none overflow-hidden rounded-none sm:rounded-[16px] md:rounded-[24px]"
+          className="touch-pan-y select-none overflow-hidden"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           onWheel={pauseAndResumeLater}
         >
-          <div className="overflow-hidden rounded-none sm:rounded-[16px] md:rounded-[24px]">
+          <div className="overflow-hidden">
             <div
               onTransitionEnd={handleTransitionEnd}
               className={`flex ${
@@ -321,37 +352,29 @@ function handlePointerUp(e) {
 }
 
 function PromoCard({ promo, text }) {
-  const hasDedicatedMobileImage =
-    Boolean(promo.mobileImageUrl) &&
-    promo.mobileImageUrl !== promo.imageUrl;
-
   return (
     <NavLink
       to={getPromoLink(promo)}
       draggable="false"
-      className="group relative block aspect-[2/3] overflow-hidden rounded-none bg-[#efe7da] sm:aspect-[5/2] sm:rounded-[16px] sm:shadow-[0_24px_70px_rgba(0,0,0,0.14)] md:rounded-[24px]"
+      className="nemesis-promo-card group relative block w-full overflow-hidden bg-[#efe7da]"
     >
       <picture className="absolute inset-0 block h-full w-full">
         <source
-          media="(max-width: 639px)"
+          media="(max-width: 767px)"
           srcSet={promo.mobileImageUrl || promo.imageUrl}
         />
         <img
           src={promo.imageUrl}
           alt="Kampaniya şəkli"
           draggable="false"
-          className={`h-full w-full ${
-            hasDedicatedMobileImage
-              ? "object-cover"
-              : "object-contain sm:object-cover"
-          }`}
+          className="h-full w-full object-cover"
         />
       </picture>
 
-      <span className="absolute bottom-3 left-3 z-10 inline-flex h-8 items-center gap-2 rounded-full border border-white/80 bg-white/90 py-1 pl-3.5 pr-1.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-zinc-950 shadow-[0_10px_28px_rgba(0,0,0,0.16)] backdrop-blur-md transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-white md:bottom-5 md:left-5 md:h-10 md:pl-4 md:pr-2 md:text-[10px]">
+      <span className="absolute bottom-3 left-3 z-10 inline-flex h-8 items-center gap-2 rounded-full border border-white/60 bg-black/20 py-1 pl-3.5 pr-1.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-black/30 md:bottom-5 md:left-5 md:h-10 md:pl-4 md:pr-2 md:text-[10px]">
         {text.discover || "Kəşf et"}
 
-        <span className="grid h-5 w-5 place-items-center rounded-full bg-zinc-950 text-[12px] text-white md:h-7 md:w-7 md:text-sm">
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[12px] text-zinc-950 md:h-7 md:w-7 md:text-sm">
           <FiChevronRight />
         </span>
       </span>

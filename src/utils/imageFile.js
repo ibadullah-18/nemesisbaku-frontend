@@ -3,8 +3,9 @@ import heic2any from "heic2any";
 export const IMAGE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 
-const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
-const MAX_HEIC_INPUT_BYTES = 25 * 1024 * 1024;
+const DEFAULT_MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
+const DEFAULT_MAX_HEIC_INPUT_BYTES = 25 * 1024 * 1024;
+export const MAX_PROMO_UPLOAD_BYTES = 200 * 1024 * 1024;
 const STANDARD_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const HEIC_EXTENSIONS = new Set(["heic", "heif"]);
 const STANDARD_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -19,7 +20,11 @@ function isHeic(file) {
   return HEIC_EXTENSIONS.has(extension) || /image\/hei[cf]/.test(type);
 }
 
-function assertStandardImage(file) {
+function bytesToMegabytes(bytes) {
+  return Math.floor(Number(bytes || 0) / 1024 / 1024);
+}
+
+function assertStandardImage(file, maxBytes = DEFAULT_MAX_OUTPUT_BYTES) {
   const extension = extensionOf(file?.name);
   const mimeType = String(file?.type || "").toLowerCase();
 
@@ -32,23 +37,32 @@ function assertStandardImage(file) {
     );
   }
 
-  if (file.size > MAX_OUTPUT_BYTES) {
-    throw new Error("Şəkil maksimum 10 MB ola bilər.");
+  if (file.size > maxBytes) {
+    throw new Error(
+      `Şəkil maksimum ${bytesToMegabytes(maxBytes)} MB ola bilər.`,
+    );
   }
 }
 
-export async function prepareImageFile(file) {
+export async function prepareImageFile(file, options = {}) {
+  const maxOutputBytes =
+    options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+  const maxHeicInputBytes =
+    options.maxHeicInputBytes ?? DEFAULT_MAX_HEIC_INPUT_BYTES;
+
   if (!(file instanceof File) || file.size === 0) {
     throw new Error("Seçilmiş şəkil boşdur və ya oxuna bilmir.");
   }
 
   if (!isHeic(file)) {
-    assertStandardImage(file);
+    assertStandardImage(file, maxOutputBytes);
     return file;
   }
 
-  if (file.size > MAX_HEIC_INPUT_BYTES) {
-    throw new Error("HEIC/HEIF şəkli maksimum 25 MB ola bilər.");
+  if (file.size > maxHeicInputBytes) {
+    throw new Error(
+      `HEIC/HEIF şəkli maksimum ${bytesToMegabytes(maxHeicInputBytes)} MB ola bilər.`,
+    );
   }
 
   let converted;
@@ -72,7 +86,7 @@ export async function prepareImageFile(file) {
     lastModified: file.lastModified || Date.now(),
   });
 
-  assertStandardImage(jpegFile);
+  assertStandardImage(jpegFile, maxOutputBytes);
   return jpegFile;
 }
 

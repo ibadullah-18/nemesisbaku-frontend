@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   FiCalendar,
   FiEdit3,
@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import { adminPromoPagesApi } from "../../api/admin/adminApi";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import AdminActionToast from "../../components/admin/AdminActionToast";
 import AppLoader from "../../components/common/AppLoader";
 
 function unwrapData(res) {
@@ -57,8 +58,29 @@ export default function AdminCampaigns() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const basePath = getPanelBasePath();
+
+  useEffect(() => {
+    const notice = location.state?.adminNotice;
+    if (!notice?.message) return;
+
+    if (notice.type === "error") {
+      setError(notice.message);
+      setSuccess("");
+    } else {
+      setSuccess(notice.message);
+      setError("");
+    }
+
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    });
+  }, [location.pathname, location.search, location.state, navigate]);
 
   useEffect(() => {
     loadPromos();
@@ -85,8 +107,10 @@ export default function AdminCampaigns() {
     try {
       setSaving(true);
       setError("");
+      setSuccess("");
       await adminPromoPagesApi.delete(promo.id);
       await loadPromos();
+      setSuccess("Promo silindi.");
     } catch (err) {
       setError(err.message || "Promo silinmədi.");
     } finally {
@@ -109,6 +133,14 @@ export default function AdminCampaigns() {
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Əməliyyat icra olunur" />}
+      <AdminActionToast
+        message={error || success}
+        type={error ? "error" : "success"}
+        onClose={() => {
+          setError("");
+          setSuccess("");
+        }}
+      />
 
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
@@ -144,12 +176,6 @@ export default function AdminCampaigns() {
           </button>
         </div>
       </div>
-
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
-        </div>
-      )}
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <CounterCard label="Hamısı" value={counters.total} />
@@ -195,7 +221,7 @@ export default function AdminCampaigns() {
             >
               <div className="relative bg-zinc-100 p-2">
                 <div className="grid grid-cols-[minmax(0,1fr)_72px] items-start gap-2 sm:grid-cols-[minmax(0,1fr)_84px]">
-                  <div className="relative aspect-[5/2] overflow-hidden rounded-[18px] bg-white">
+                  <div className="relative aspect-[2/1] overflow-hidden rounded-[18px] bg-white">
                     {promo.imageUrl ? (
                       <img
                         src={promo.imageUrl}
@@ -209,7 +235,7 @@ export default function AdminCampaigns() {
                     )}
 
                     <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-white">
-                      2000 × 800
+                      2000 × 1000
                     </span>
                   </div>
 
