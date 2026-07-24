@@ -28,6 +28,67 @@ const FILTER_POSITION_KEY = "nemesis_filter_button_position";
 
 let filterOptionsMemoryCache = null;
 let filterOptionsCachedAt = 0;
+let filterOptionsRequest = null;
+const preloadedBrandImages = new Set();
+
+function getBrandImageUrl(brand) {
+  return (
+    brand?.logoUrl ||
+    brand?.imageUrl ||
+    brand?.iconUrl ||
+    brand?.photoUrl ||
+    ""
+  );
+}
+
+function preloadBrandImages(brands) {
+  if (typeof window === "undefined" || typeof Image === "undefined") {
+    return () => {};
+  }
+
+  const urls = (brands || [])
+    .map(getBrandImageUrl)
+    .filter((url) => url && !preloadedBrandImages.has(url));
+
+  if (urls.length === 0) return () => {};
+
+  let cancelled = false;
+  let idleId = null;
+  let timerId = null;
+
+  const load = () => {
+    if (cancelled) return;
+
+    urls.forEach((url) => {
+      if (preloadedBrandImages.has(url)) return;
+
+      preloadedBrandImages.add(url);
+      const image = new Image();
+      image.decoding = "async";
+      image.fetchPriority = "low";
+      image.src = url;
+      image.decode?.().catch(() => {});
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    idleId = window.requestIdleCallback(load, { timeout: 500 });
+  } else {
+    timerId = window.setTimeout(load, 0);
+  }
+
+  return () => {
+    cancelled = true;
+
+    if (idleId !== null) {
+      window.cancelIdleCallback?.(idleId);
+    }
+
+    if (timerId !== null) {
+      window.clearTimeout(timerId);
+    }
+  };
+}
 
 function releaseStaleFilterPageLock() {
   const body = document.body;
@@ -289,6 +350,34 @@ function normalizeFilterOptions(res) {
   };
 }
 
+export async function preloadProductDiscoveryData(force = false) {
+  const cacheIsFresh =
+    filterOptionsMemoryCache &&
+    Date.now() - filterOptionsCachedAt < 2 * 60 * 1000;
+
+  if (!force && cacheIsFresh) {
+    return filterOptionsMemoryCache;
+  }
+
+  if (filterOptionsRequest) {
+    return filterOptionsRequest;
+  }
+
+  filterOptionsRequest = getFilterOptions()
+    .then((res) => {
+      const options = normalizeFilterOptions(res);
+      filterOptionsMemoryCache = options;
+      filterOptionsCachedAt = Date.now();
+      preloadBrandImages(options.brands);
+      return options;
+    })
+    .finally(() => {
+      filterOptionsRequest = null;
+    });
+
+  return filterOptionsRequest;
+}
+
 export default function ProductDiscoveryBar({
   onProductsChange,
   onLoadingChange,
@@ -300,7 +389,6 @@ export default function ProductDiscoveryBar({
   const brandRowRef = useRef(null);
   const openedAtRef = useRef(0);
   const productsRequestIdRef = useRef(0);
-  const brandCloseTimerRef = useRef(null);
   const filterCloseTimerRef = useRef(null);
 
   const dragData = useRef({
@@ -314,8 +402,7 @@ export default function ProductDiscoveryBar({
 
   const [navVisible, setNavVisible] = useState(true);
 
-  const [brandMounted, setBrandMounted] = useState(false);
-  const [brandClosing, setBrandClosing] = useState(false);
+  const [brandsOpen, setBrandsOpen] = useState(false);
   const [brandOverflow, setBrandOverflow] = useState(false);
   const [canScrollBrandLeft, setCanScrollBrandLeft] = useState(false);
   const [canScrollBrandRight, setCanScrollBrandRight] = useState(false);
@@ -365,13 +452,11 @@ export default function ProductDiscoveryBar({
 
   useEffect(() => {
     function resetDiscoveryFromLogo() {
-      window.clearTimeout(brandCloseTimerRef.current);
       window.clearTimeout(filterCloseTimerRef.current);
       productsRequestIdRef.current += 1;
       setFilters({ ...emptyFilters });
       setDraftFilters({ ...emptyFilters });
-      setBrandMounted(false);
-      setBrandClosing(false);
+      setBrandsOpen(false);
       setFilterOpen(false);
       setFilterClosing(false);
       setIsDragging(false);
@@ -388,10 +473,11 @@ export default function ProductDiscoveryBar({
 
   useEffect(() => {
     return () => {
-      window.clearTimeout(brandCloseTimerRef.current);
       window.clearTimeout(filterCloseTimerRef.current);
     };
   }, []);
+
+  useEffect(() => preloadBrandImages(brands), [brands]);
 
   useEffect(() => {
     function handleNavVisibility(e) {
@@ -406,7 +492,7 @@ export default function ProductDiscoveryBar({
   }, []);
 
   useEffect(() => {
-    if (!brandMounted) {
+    if (!brandsOpen) {
       setBrandOverflow(false);
       setCanScrollBrandLeft(false);
       setCanScrollBrandRight(false);
@@ -431,7 +517,7 @@ export default function ProductDiscoveryBar({
       row.removeEventListener("scroll", updateBrandScrollState);
       resizeObserver?.disconnect();
     };
-  }, [brandMounted, brands.length]);
+  }, [brandsOpen, brands.length]);
 
   useEffect(() => {
     function refreshWhenPageBecomesActive() {
@@ -553,17 +639,7 @@ export default function ProductDiscoveryBar({
   }
 
   async function refreshFilterOptions(force = false) {
-    const cacheIsFresh =
-      filterOptionsMemoryCache &&
-      Date.now() - filterOptionsCachedAt < 2 * 60 * 1000;
-
-    if (!force && cacheIsFresh) {
-      applyFilterOptions(filterOptionsMemoryCache);
-      return filterOptionsMemoryCache;
-    }
-
-    const optionsRes = await getFilterOptions();
-    const options = normalizeFilterOptions(optionsRes);
+    const options = await preloadProductDiscoveryData(force);
 
     applyFilterOptions(options);
     return options;
@@ -610,29 +686,19 @@ export default function ProductDiscoveryBar({
   }
 
   function openBrands() {
-    window.clearTimeout(brandCloseTimerRef.current);
-
     if (brands.length === 0) {
       refreshFilterOptions(true).catch(() => {});
     }
 
-    setBrandClosing(false);
-    setBrandMounted(true);
+    setBrandsOpen(true);
   }
 
   function closeBrands() {
-    window.clearTimeout(brandCloseTimerRef.current);
-    setBrandClosing(true);
-
-    brandCloseTimerRef.current = window.setTimeout(() => {
-      setBrandMounted(false);
-      setBrandClosing(false);
-    }, 170);
+    setBrandsOpen(false);
   }
 
   function toggleBrands() {
-    if (brandClosing) openBrands();
-    else if (brandMounted) closeBrands();
+    if (brandsOpen) closeBrands();
     else openBrands();
   }
 
@@ -1067,27 +1133,52 @@ export default function ProductDiscoveryBar({
     <>
       <style>
         {`
-          @keyframes brandShelfOpen {
-            from {
-              grid-template-rows: 0fr;
-              opacity: 0;
-            }
-
-            to {
-              grid-template-rows: 1fr;
-              opacity: 1;
-            }
+          .nemesis-brand-shelf {
+            --brand-shelf-height: 79px;
+            height: 0;
+            margin-top: 0;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+            border-top: 1px solid transparent;
+            contain: paint;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            will-change: height, opacity, margin-top;
+            transition:
+              height 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 170ms ease-out,
+              margin-top 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 170ms ease-out;
           }
 
-          @keyframes brandShelfClose {
-            from {
-              grid-template-rows: 1fr;
-              opacity: 1;
-            }
+          .nemesis-brand-shelf[data-open="true"] {
+            height: var(--brand-shelf-height);
+            margin-top: 12px;
+            opacity: 1;
+            pointer-events: auto;
+            border-color: rgb(244 244 245);
+          }
 
-            to {
-              grid-template-rows: 0fr;
-              opacity: 0;
+          .nemesis-brand-shelf-content {
+            backface-visibility: hidden;
+            transform: translate3d(0, -10px, 0) scale(0.985);
+            opacity: 0;
+            will-change: transform, opacity;
+            transition:
+              transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 170ms ease-out;
+          }
+
+          .nemesis-brand-shelf[data-open="true"]
+            .nemesis-brand-shelf-content {
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 1;
+          }
+
+          @media (min-width: 768px) {
+            .nemesis-brand-shelf {
+              --brand-shelf-height: 89px;
             }
           }
 
@@ -1173,6 +1264,7 @@ export default function ProductDiscoveryBar({
           <button
             type="button"
             onClick={toggleBrands}
+            aria-expanded={brandsOpen}
             className="group mx-auto flex items-center gap-2 px-2 py-1.5 text-zinc-950 transition duration-200 active:scale-[0.97]"
           >
             <span className="relative text-[14px] font-semibold tracking-[0.16em]">
@@ -1180,30 +1272,26 @@ export default function ProductDiscoveryBar({
 
               <span
                 className={`absolute -bottom-1 left-1/2 h-px -translate-x-1/2 bg-zinc-950 transition-all duration-200 ${
-                  brandMounted ? "w-full" : "w-0 group-hover:w-1/2"
+                  brandsOpen ? "w-full" : "w-0 group-hover:w-1/2"
                 }`}
               />
             </span>
 
             <span
               className={`text-[18px] transition-transform duration-200 ${
-                brandMounted ? "rotate-180" : "rotate-0"
+                brandsOpen ? "rotate-180" : "rotate-0"
               }`}
             >
-              {brandMounted ? <FiChevronUp /> : <FiChevronDown />}
+              {brandsOpen ? <FiChevronUp /> : <FiChevronDown />}
             </span>
           </button>
 
-          {brandMounted && (
-            <div
-              className={`mt-3 grid border-t border-zinc-100 ${
-                brandClosing
-                  ? "animate-[brandShelfClose_0.17s_ease-in_both]"
-                  : "animate-[brandShelfOpen_0.20s_cubic-bezier(0.22,1,0.36,1)_both]"
-              }`}
-            >
-              <div className="min-h-0 overflow-hidden">
-                <div className="relative py-3">
+          <div
+            data-open={brandsOpen}
+            aria-hidden={!brandsOpen}
+            className="nemesis-brand-shelf"
+          >
+            <div className="nemesis-brand-shelf-content relative py-3">
                   <div
                     ref={brandRowRef}
                     className="flex touch-pan-x gap-3 overflow-x-auto overscroll-x-contain px-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 md:px-8 [&::-webkit-scrollbar]:hidden"
@@ -1214,10 +1302,7 @@ export default function ProductDiscoveryBar({
                         active={String(filters.brandId) === String(brand.id)}
                         name={brand.name}
                         image={
-                          brand.logoUrl ||
-                          brand.imageUrl ||
-                          brand.iconUrl ||
-                          brand.photoUrl
+                          getBrandImageUrl(brand)
                         }
                         onClick={() => selectBrand(brand.id)}
                       />
@@ -1267,10 +1352,8 @@ export default function ProductDiscoveryBar({
                       </button>
                     </>
                   )}
-                </div>
-              </div>
             </div>
-          )}
+          </div>
         </div>
       </section>
 
@@ -1287,10 +1370,10 @@ function BrandButton({ active, name, image, onClick }) {
       data-brand-item
       aria-label={name}
       title={name}
-      className="group grid h-[54px] w-[54px] shrink-0 place-items-center transition duration-500 hover:-translate-y-1 active:scale-[0.95] md:h-[64px] md:w-[64px]"
+      className="group grid h-[54px] w-[54px] shrink-0 place-items-center transition-transform duration-200 hover:-translate-y-1 active:scale-[0.95] md:h-[64px] md:w-[64px]"
     >
       <span
-        className={`grid h-[46px] w-[46px] place-items-center overflow-hidden rounded-full border bg-white p-[8px] transition-all duration-500 md:h-[54px] md:w-[54px] md:p-[9px] ${
+        className={`grid h-[46px] w-[46px] place-items-center overflow-hidden rounded-full border bg-white p-[8px] transition-[border-color,transform] duration-200 md:h-[54px] md:w-[54px] md:p-[9px] ${
           active
             ? "border-zinc-700 animate-[brandSelectedPop_0.48s_cubic-bezier(0.22,1,0.36,1)_both]"
             : "border-zinc-100 group-hover:border-zinc-300"
@@ -1300,9 +1383,11 @@ function BrandButton({ active, name, image, onClick }) {
           <img
             src={image}
             alt={name}
-            loading="lazy"
+            loading="eager"
+            decoding="async"
+            fetchPriority="low"
             draggable="false"
-            className="block h-full w-full select-none object-contain object-center transition-transform duration-500 group-hover:scale-[1.06]"
+            className="block h-full w-full select-none object-contain object-center transition-transform duration-200 group-hover:scale-[1.06]"
           />
         ) : (
           <span className="h-2 w-2 rounded-full bg-zinc-300" />

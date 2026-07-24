@@ -8,11 +8,13 @@ import {
   FiPackage,
   FiX,
 } from "react-icons/fi";
-import ProductDiscoveryBar from "../../components/product/ProductDiscoveryBar";
+import ProductDiscoveryBar, {
+  preloadProductDiscoveryData,
+} from "../../components/product/ProductDiscoveryBar";
 import ProductCard from "../../components/product/ProductCard";
 import ProductSection from "../../components/home/ProductSection";
 import HomePromoSlider from "../../components/home/HomePromoSlider";
-import AppLoader from "../../components/common/AppLoader";
+import HomePageLoader from "../../components/common/HomePageLoader";
 import {
   getActiveBanners,
   getActiveCampaigns,
@@ -45,6 +47,114 @@ const noProductsFallback = {
 };
 
 let homeViewMemoryCache = null;
+const homeImagePreloadQueue = [];
+const queuedHomeImageUrls = new Set();
+const preloadedHomeImageUrls = new Set();
+let homeImagePreloadHandle = null;
+
+function collectHomeImageUrls(value, urls = [], seen = new WeakSet()) {
+  if (!value) return urls;
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectHomeImageUrls(item, urls, seen));
+    return urls;
+  }
+
+  if (typeof value !== "object" || seen.has(value)) return urls;
+  seen.add(value);
+
+  Object.entries(value).forEach(([key, child]) => {
+    if (
+      typeof child === "string" &&
+      /^https?:\/\//i.test(child) &&
+      /(image|logo|photo|thumbnail|picture|banner)/i.test(key)
+    ) {
+      urls.push(child);
+      return;
+    }
+
+    if (child && typeof child === "object") {
+      collectHomeImageUrls(child, urls, seen);
+    }
+  });
+
+  return urls;
+}
+
+function scheduleNextHomeImageBatch() {
+  if (
+    homeImagePreloadHandle !== null ||
+    homeImagePreloadQueue.length === 0 ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
+
+  const runBatch = (deadline) => {
+    homeImagePreloadHandle = null;
+    let loadedInBatch = 0;
+
+    while (
+      homeImagePreloadQueue.length > 0 &&
+      loadedInBatch < 4 &&
+      (deadline?.didTimeout || deadline?.timeRemaining?.() > 2 || !deadline)
+    ) {
+      const url = homeImagePreloadQueue.shift();
+      queuedHomeImageUrls.delete(url);
+
+      if (!url || preloadedHomeImageUrls.has(url)) continue;
+
+      preloadedHomeImageUrls.add(url);
+      const image = new Image();
+      image.decoding = "async";
+      image.fetchPriority = "low";
+      image.src = url;
+      image.decode?.().catch(() => {});
+      loadedInBatch += 1;
+    }
+
+    scheduleNextHomeImageBatch();
+  };
+
+  if ("requestIdleCallback" in window) {
+    homeImagePreloadHandle = window.requestIdleCallback(runBatch, {
+      timeout: 650,
+    });
+  } else {
+    homeImagePreloadHandle = window.setTimeout(() => runBatch(null), 16);
+  }
+}
+
+function preloadHomeAssets(...groups) {
+  if (typeof window === "undefined" || typeof Image === "undefined") return;
+
+  const urls = collectHomeImageUrls(groups);
+  const prefersMobile = window.matchMedia?.("(max-width: 639px)")?.matches;
+
+  const orderedUrls = [...new Set(urls)].sort((left, right) => {
+    const leftMobile = /mobile/i.test(left);
+    const rightMobile = /mobile/i.test(right);
+
+    if (leftMobile === rightMobile) return 0;
+    return prefersMobile
+      ? Number(rightMobile) - Number(leftMobile)
+      : Number(leftMobile) - Number(rightMobile);
+  });
+
+  orderedUrls.forEach((url) => {
+    if (
+      preloadedHomeImageUrls.has(url) ||
+      queuedHomeImageUrls.has(url)
+    ) {
+      return;
+    }
+
+    queuedHomeImageUrls.add(url);
+    homeImagePreloadQueue.push(url);
+  });
+
+  scheduleNextHomeImageBatch();
+}
 
 function normalizeDiscoveryFilters(filters) {
   return {
@@ -210,10 +320,7 @@ export default function HomePage() {
   const [hasMore, setHasMore] = useState(
     () => restoredHomeState?.hasMore ?? true,
   );
-  const [loading, setLoading] = useState(
-    !restoredFromDetails &&
-      !sessionStorage.getItem("nemesis_home_loaded_once"),
-  );
+  const [loading, setLoading] = useState(!restoredFromDetails);
   const [filterLoading, setFilterLoading] = useState(false);
   const [moreLoading, setMoreLoading] = useState(false);
 
@@ -230,7 +337,6 @@ export default function HomePage() {
   const descHasText = Boolean(text.allProductsDesc);
   const noProductsText =
     text.noProducts || noProductsFallback[lang] || noProductsFallback.az;
-  const HOME_LOADED_KEY = "nemesis_home_loaded_once";
   const MIN_LOADER_TIME = 750;
 
   latestHomeStateRef.current = {
@@ -250,8 +356,14 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    // Loader görünərkən brand/category məlumatlarını da paralel hazırla.
+    // ProductDiscoveryBar açıldıqda eyni request təkrarlanmır, module cache işləyir.
+    preloadProductDiscoveryData().catch(() => {});
+
     if (!restoredFromDetails) {
       loadHome();
+    } else {
+      preloadHomeAssets(campaigns, banners, homeSections, products);
     }
 
     trackVisit("/").catch(() => {});
@@ -327,7 +439,7 @@ export default function HomePage() {
       setFilterActive(false);
       setDiscoveryFilters({ ...defaultDiscoveryFilters });
       setResultAnimationsEnabled(true);
-      loadHome();
+      loadHome({ showInitialLoader: false });
 
       window.scrollTo({
         top: 0,
@@ -437,10 +549,9 @@ export default function HomePage() {
     }, 4200);
   }
 
-  async function loadHome() {
+  async function loadHome({ showInitialLoader = true } = {}) {
     const requestId = ++homeRequestIdRef.current;
-    const shouldShowLoader =
-      products.length === 0 && !sessionStorage.getItem(HOME_LOADED_KEY);
+    const shouldShowLoader = showInitialLoader && products.length === 0;
     const startedAt = Date.now();
     const standardPageSize = getProductPageSize();
     const restoringProduct = Boolean(
@@ -494,8 +605,24 @@ export default function HomePage() {
             : 1,
         );
         setHasMore(initialProducts.length >= initialPageSize);
-        sessionStorage.setItem(HOME_LOADED_KEY, "true");
       }
+
+      // API cavablarında gələn bütün görünən şəkillər əsas renderi saxlamadan,
+      // brauzer boş qalan kimi kiçik qruplarla cache/decode edilir.
+      preloadHomeAssets(
+        campaignResult.status === "fulfilled"
+          ? normalizeList(campaignResult.value)
+          : [],
+        bannerResult.status === "fulfilled"
+          ? normalizeList(bannerResult.value)
+          : [],
+        homeSectionsResult.status === "fulfilled"
+          ? normalizeList(homeSectionsResult.value)
+          : [],
+        productsResult.status === "fulfilled"
+          ? normalizeList(productsResult.value)
+          : [],
+      );
 
       const failedResult = [
         campaignResult,
@@ -564,7 +691,7 @@ export default function HomePage() {
       setFilterActive(false);
       setDiscoveryFilters({ ...defaultDiscoveryFilters });
       setResultAnimationsEnabled(true);
-      loadHome();
+      loadHome({ showInitialLoader: false });
       return;
     }
 
@@ -673,7 +800,7 @@ export default function HomePage() {
     }, 320);
   }
 
-  if (loading) return <AppLoader text={text.loading} />;
+  if (loading) return <HomePageLoader />;
 
   return (
     <main
@@ -1057,12 +1184,18 @@ function BannerPopup({ banner, closing, onClose }) {
 
         <div className="relative grid max-h-[86dvh] min-h-[220px] place-items-center overflow-hidden bg-[#f4f1ec]">
           {banner.imageUrl ? (
-            <img
-              src={banner.imageUrl}
-              alt={banner.title || "nemesisbaku banner"}
-              className="block h-auto max-h-[86dvh] w-full object-contain"
-              draggable="false"
-            />
+            <picture className="block w-full">
+              <source
+                media="(max-width: 639px)"
+                srcSet={banner.mobileImageUrl || banner.imageUrl}
+              />
+              <img
+                src={banner.imageUrl}
+                alt={banner.title || "nemesisbaku banner"}
+                className="block h-auto max-h-[86dvh] w-full object-contain"
+                draggable="false"
+              />
+            </picture>
           ) : (
             <div className="grid h-[320px] w-full place-items-center text-zinc-400 md:h-[460px]">
               <FiImage className="text-[54px]" />

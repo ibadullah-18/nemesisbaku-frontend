@@ -21,6 +21,7 @@ import AppLoader from "../../components/common/AppLoader";
 import AdminActionToast from "../../components/admin/AdminActionToast";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import {
+  CLOUDINARY_SAFE_IMAGE_BYTES,
   IMAGE_ACCEPT,
   MAX_PROMO_UPLOAD_BYTES,
   prepareImageFile,
@@ -180,7 +181,8 @@ export default function AdminPromoForm({ mode }) {
     try {
       setError("");
       const file = await prepareImageFile(selectedFile, {
-        maxOutputBytes: MAX_PROMO_UPLOAD_BYTES,
+        maxInputBytes: MAX_PROMO_UPLOAD_BYTES,
+        maxOutputBytes: CLOUDINARY_SAFE_IMAGE_BYTES,
         maxHeicInputBytes: MAX_PROMO_UPLOAD_BYTES,
       });
       const variant = PROMO_IMAGE_VARIANTS[variantName];

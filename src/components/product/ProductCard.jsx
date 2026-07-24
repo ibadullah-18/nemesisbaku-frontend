@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { FiHeart } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiHeart } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { favoritesApi } from "../../api/favoritesApi";
@@ -71,6 +77,7 @@ function sortSizesAscending(values) {
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
 
+  const cardRef = useRef(null);
   const resetTimerRef = useRef(null);
   const hideSizesTimerRef = useRef(null);
   const pointerStartXRef = useRef(null);
@@ -78,7 +85,6 @@ export default function ProductCard({ product }) {
   const detailLoadedRef = useRef(false);
 
   const [detailProduct, setDetailProduct] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const [activeImage, setActiveImage] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -109,6 +115,24 @@ export default function ProductCard({ product }) {
 
     return [...new Set(list)];
   }, [mergedProduct]);
+
+  const visibleDotIndexes = useMemo(() => {
+    const maximumDots = 6;
+
+    if (images.length <= maximumDots) {
+      return images.map((_, index) => index);
+    }
+
+    const start = Math.min(
+      Math.max(activeImage - 2, 0),
+      images.length - maximumDots,
+    );
+
+    return Array.from(
+      { length: maximumDots },
+      (_, index) => start + index,
+    );
+  }, [activeImage, images]);
 
   const sizes = useMemo(() => {
     const variants = mergedProduct?.variants || [];
@@ -168,21 +192,53 @@ export default function ProductCard({ product }) {
     };
   }, [productId, product?.isFavorite]);
 
-  async function loadDetailOnce() {
-    if (detailLoadedRef.current || detailLoading || !productId) return;
+  const loadDetailOnce = useCallback(async () => {
+    if (detailLoadedRef.current || !productId) return;
 
     try {
       detailLoadedRef.current = true;
-      setDetailLoading(true);
 
       const res = await apiFetch(`/api/Products/${productId}`);
       setDetailProduct(unwrapData(res));
     } catch {
       detailLoadedRef.current = false;
-    } finally {
-      setDetailLoading(false);
     }
-  }
+  }, [productId]);
+
+  useEffect(() => {
+    const card = cardRef.current;
+
+    if (!card || !productId) return undefined;
+
+    if (!("IntersectionObserver" in window)) {
+      loadDetailOnce();
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+
+        loadDetailOnce();
+        observer.disconnect();
+      },
+      {
+        rootMargin: "240px 0px",
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(card);
+
+    return () => observer.disconnect();
+  }, [loadDetailOnce, productId]);
+
+  useEffect(() => {
+    if (activeImage < images.length) return;
+
+    setActiveImage(0);
+    setDragX(0);
+  }, [activeImage, images.length]);
 
   function startResetTimer(nextIndex) {
     window.clearTimeout(resetTimerRef.current);
@@ -223,14 +279,39 @@ export default function ProductCard({ product }) {
       let next = prev;
 
       if (direction === "next") {
-        next = prev >= images.length - 1 ? prev : prev + 1;
+        next = (prev + 1) % images.length;
       } else {
-        next = prev <= 0 ? prev : prev - 1;
+        next = (prev - 1 + images.length) % images.length;
       }
 
       startResetTimer(next);
       return next;
     });
+  }
+
+  function goToImage(index) {
+    if (index < 0 || index >= images.length || index === activeImage) return;
+
+    setShowSizes(false);
+    setActiveImage(index);
+    setDragX(0);
+    startResetTimer(index);
+  }
+
+  function stopImageControlEvent(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleImageControlClick(e, action) {
+    stopImageControlEvent(e);
+
+    if (typeof action === "number") {
+      goToImage(action);
+      return;
+    }
+
+    changeImage(action);
   }
 
   function handleMouseEnter() {
@@ -285,6 +366,8 @@ export default function ProductCard({ product }) {
     if (!isDragging) return;
 
     const startX = pointerStartXRef.current;
+    if (startX === null) return;
+
     const endX = e.clientX;
     const diffX = endX - startX;
 
@@ -359,18 +442,21 @@ export default function ProductCard({ product }) {
 
   return (
     <NavLink
+      ref={cardRef}
       to={productId ? `/products/${productId}` : "#"}
       onClick={handleCardClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group block overflow-hidden rounded-[18px] border border-zinc-100 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.04)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_55px_rgba(0,0,0,0.08)]"
+      className="group block overflow-hidden rounded-[16px] border border-zinc-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.035)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-200 hover:shadow-[0_16px_42px_rgba(0,0,0,0.07)]"
     >
       <div
-        className="relative aspect-[3/4] touch-pan-y overflow-hidden bg-[#f7f7f7]"
+        className="relative aspect-[5/6] touch-pan-y overflow-hidden bg-[#f5f5f5]"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={() => {
+          pointerStartXRef.current = null;
+          pointerStartYRef.current = null;
           setIsDragging(false);
           setDragX(0);
           hideSizesLater();
@@ -389,6 +475,9 @@ export default function ProductCard({ product }) {
           }}
           disabled={actionLoading}
           className="absolute right-3 top-3 z-30 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-[18px] text-zinc-950 shadow-sm backdrop-blur transition active:scale-90"
+          aria-label={
+            favorite ? "Favoritlərdən çıxar" : "Favoritlərə əlavə et"
+          }
         >
           {favorite ? <FaHeart className="text-red-500" /> : <FiHeart />}
         </button>
@@ -411,7 +500,8 @@ export default function ProductCard({ product }) {
                     src={img}
                     alt={mergedProduct?.name || mergedProduct?.productName}
                     draggable="false"
-                    className="h-full w-full select-none object-cover transition duration-700 group-hover:scale-[1.04]"
+                    onDragStart={(e) => e.preventDefault()}
+                    className="h-full w-full select-none object-cover transition duration-500 group-hover:scale-[1.025]"
                   />
                 </div>
               ))}
@@ -423,9 +513,34 @@ export default function ProductCard({ product }) {
           )}
         </div>
 
+        {images.length > 1 && (
+          <>
+            <button
+              type="button"
+              onPointerDown={stopImageControlEvent}
+              onClick={(e) => handleImageControlClick(e, "prev")}
+              className="absolute left-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
+              aria-label="Əvvəlki şəkil"
+            >
+              <FiChevronLeft />
+            </button>
+
+            <button
+              type="button"
+              onPointerDown={stopImageControlEvent}
+              onClick={(e) => handleImageControlClick(e, "next")}
+              className="absolute right-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
+              aria-label="Növbəti şəkil"
+            >
+              <FiChevronRight />
+            </button>
+
+          </>
+        )}
+
         {sizes.length > 0 && (
           <div
-            className={`absolute bottom-3 left-1/2 z-20 max-w-[88%] -translate-x-1/2 transition-all duration-300 ease-out ${
+            className={`absolute bottom-10 left-1/2 z-20 max-w-[88%] -translate-x-1/2 transition-all duration-200 ease-out ${
               showSizes
                 ? "translate-y-0 opacity-100"
                 : "translate-y-5 opacity-0 pointer-events-none"
@@ -447,27 +562,37 @@ export default function ProductCard({ product }) {
         )}
 
         {images.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5 rounded-full bg-white/80 px-2 py-1 backdrop-blur">
-            {images.slice(0, 5).map((_, index) => (
-              <span
-                key={index}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  activeImage === index
-                    ? "w-4 bg-zinc-950"
-                    : "w-1.5 bg-zinc-300"
-                }`}
-              />
+          <div
+            className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5"
+            onPointerDown={stopImageControlEvent}
+          >
+            {visibleDotIndexes.map((imageIndex) => (
+              <button
+                type="button"
+                aria-label={`${imageIndex + 1}-ci şəkli göstər`}
+                onClick={(e) => handleImageControlClick(e, imageIndex)}
+                key={imageIndex}
+                className="relative grid h-3 w-3 place-items-center"
+              >
+                <span
+                  className={`h-1 rounded-full bg-zinc-950 transition-all duration-300 ${
+                    activeImage === imageIndex
+                      ? "w-2.5 opacity-100"
+                      : "w-1 opacity-55"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         )}
       </div>
 
-      <div className="p-3 pt-2">
+      <div className="p-3 pt-2.5">
         <h3 className="line-clamp-2 min-h-[38px] text-[15px] font-normal leading-5 tracking-[-0.01em] text-black">
           {mergedProduct?.name || mergedProduct?.productName}
         </h3>
 
-        <div className="mt-3 flex items-center gap-2 text-[16px] leading-none tracking-[-0.01em]">
+        <div className="mt-2.5 flex items-center gap-2 text-[16px] leading-none tracking-[-0.01em]">
           <span className="font-normal text-black">
             {hasDiscount ? discountPrice : price}₼
           </span>
