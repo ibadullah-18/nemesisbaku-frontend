@@ -204,6 +204,35 @@ function buildQuery(params = {}) {
   return text ? `?${text}` : "";
 }
 
+const GUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function normalizeAdminGuidList(value) {
+  const items = Array.isArray(value) ? value : [];
+  const ids = items
+    .map((item) => {
+      if (typeof item === "string") return item;
+
+      return (
+        item?.productId ||
+        item?.id ||
+        item?.ProductId ||
+        item?.Id ||
+        item?.product?.id ||
+        item?.product?.productId ||
+        ""
+      );
+    })
+    .map((id) => String(id || "").trim().toLowerCase())
+    .filter(
+      (id) =>
+        GUID_PATTERN.test(id) &&
+        id !== "00000000-0000-0000-0000-000000000000",
+    );
+
+  return [...new Set(ids)];
+}
+
 export function getCreatedEntityId(res) {
   const data = unwrapAdmin(res);
 
@@ -510,6 +539,32 @@ export const adminPromoPagesApi = {
 };
 
 export const adminHomeSectionsApi = {
+  availableProducts: async () => {
+    const pageSize = 100;
+    const firstResponse = await adminFetch(
+      `/api/Products${buildQuery({ page: 1, pageSize })}`,
+    );
+    const products = [...listAdmin(firstResponse)];
+    const firstMeta = metaAdmin(firstResponse);
+
+    for (let page = 2; page <= firstMeta.totalPages; page += 1) {
+      const response = await adminFetch(
+        `/api/Products${buildQuery({ page, pageSize })}`,
+      );
+
+      products.push(...listAdmin(response));
+    }
+
+    const productMap = new Map();
+
+    products.forEach((product) => {
+      const productId = normalizeAdminGuidList([product])[0];
+      if (productId) productMap.set(productId, product);
+    });
+
+    return [...productMap.values()];
+  },
+
   list: () => {
     return adminFetch("/api/AdminHomeSections");
   },
@@ -528,7 +583,7 @@ export const adminHomeSectionsApi = {
         startDate: body.startDate || null,
         endDate: body.endDate || null,
         isActive: Boolean(body.isActive),
-        productIds: body.productIds || [],
+        productIds: normalizeAdminGuidList(body.productIds),
       }),
     });
   },
@@ -543,7 +598,7 @@ export const adminHomeSectionsApi = {
         startDate: body.startDate || null,
         endDate: body.endDate || null,
         isActive: Boolean(body.isActive),
-        productIds: body.productIds || [],
+        productIds: normalizeAdminGuidList(body.productIds),
       }),
     });
   },

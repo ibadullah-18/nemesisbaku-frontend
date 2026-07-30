@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheck,
-  FiCheckCircle,
   FiImage,
   FiRefreshCw,
   FiSave,
@@ -12,17 +11,17 @@ import {
 } from "react-icons/fi";
 import {
   adminHomeSectionsApi,
-  adminProductsApi,
-  listAdmin,
+  normalizeAdminGuidList,
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import AdminActionToast from "../../components/admin/AdminActionToast";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import {
   isEndAfterStart,
   localDateTimeToIso,
   toLocalDateTimeInput,
-} from "../../utils/dataTime";
+} from "../../utils/dateTime";
 
 const emptyForm = {
   title: "",
@@ -35,7 +34,7 @@ const emptyForm = {
 };
 
 function getProductId(product) {
-  return product?.id || product?.productId || "";
+  return normalizeAdminGuidList([product])[0] || "";
 }
 
 function getProductImage(product) {
@@ -83,9 +82,27 @@ export default function AdminHomeSectionForm({ mode }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [toast, setToast] = useState({
+    message: "",
+    type: "error",
+    id: 0,
+  });
   const basePath = getPanelBasePath();
+
+  const showToast = useCallback((message, type = "error") => {
+    const cleanMessage = String(message || "").trim();
+    if (!cleanMessage) return;
+
+    setToast((prev) => ({
+      message: cleanMessage,
+      type,
+      id: prev.id + 1,
+    }));
+  }, []);
+
+  const closeToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, message: "" }));
+  }, []);
 
   useEffect(() => {
     loadAll();
@@ -95,20 +112,26 @@ export default function AdminHomeSectionForm({ mode }) {
   async function loadAll() {
     try {
       setLoading(true);
-      setError("");
-      setSuccess("");
+      const availableProducts =
+        await adminHomeSectionsApi.availableProducts();
+      const activeProducts = Array.isArray(availableProducts)
+        ? availableProducts
+        : [];
+      const activeProductIds = new Set(
+        activeProducts.map(getProductId).filter(Boolean),
+      );
 
-      const productRes = await adminProductsApi.list({
-        page: 1,
-        pageSize: 500,
-        search: "",
-      });
-
-      setProducts(listAdmin(productRes));
+      setProducts(activeProducts);
 
       if (isEdit) {
         const sectionRes = await adminHomeSectionsApi.detail(id);
         const section = unwrapAdmin(sectionRes);
+        const savedProductIds = normalizeAdminGuidList(
+          section?.productIds || section?.products,
+        );
+        const availableProductIds = savedProductIds.filter((productId) =>
+          activeProductIds.has(productId),
+        );
 
         setForm({
           title: section?.title || "",
@@ -117,13 +140,19 @@ export default function AdminHomeSectionForm({ mode }) {
           startDate: toLocalDateTimeInput(section?.startDate),
           endDate: toLocalDateTimeInput(section?.endDate),
           isActive: section?.isActive ?? true,
-          productIds: section?.productIds || [],
+          productIds: availableProductIds,
         });
+
+        if (savedProductIds.length !== availableProductIds.length) {
+          showToast(
+            "Artıq aktiv olmayan məhsul seçimdən avtomatik çıxarıldı.",
+          );
+        }
       } else {
         setForm(emptyForm);
       }
     } catch (err) {
-      setError(err.message || "Section məlumatları yüklənmədi.");
+      showToast(err.message || "Section məlumatları yüklənmədi.");
     } finally {
       setLoading(false);
     }
@@ -134,43 +163,64 @@ export default function AdminHomeSectionForm({ mode }) {
   }
 
   function toggleProduct(productId) {
-    if (!productId) return;
+    const normalizedProductId = normalizeAdminGuidList([productId])[0];
+    if (!normalizedProductId) return;
 
     setForm((prev) => {
-      const exists = prev.productIds.includes(productId);
+      const currentIds = normalizeAdminGuidList(prev.productIds);
+      const exists = currentIds.includes(normalizedProductId);
 
       return {
         ...prev,
         productIds: exists
-          ? prev.productIds.filter((id) => id !== productId)
-          : [...prev.productIds, productId],
+          ? currentIds.filter((id) => id !== normalizedProductId)
+          : [...currentIds, normalizedProductId],
       };
     });
   }
 
   function removeSelectedProduct(productId) {
+    const normalizedProductId = normalizeAdminGuidList([productId])[0];
+
     setForm((prev) => ({
       ...prev,
-      productIds: prev.productIds.filter((id) => id !== productId),
+      productIds: normalizeAdminGuidList(prev.productIds).filter(
+        (id) => id !== normalizedProductId,
+      ),
     }));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
 
-    setError("");
-    setSuccess("");
-
-    if (!form.title.trim()) return setError("Section başlığı yazılmalıdır.");
-    if (!form.displayOrder || Number(form.displayOrder) <= 0) {
-      return setError("Sıra nömrəsi 0-dan böyük olmalıdır.");
+    if (!form.title.trim()) {
+      return showToast("Section başlığı yazılmalıdır.");
     }
 
-    if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
-    if (!form.endDate) return setError("Bitmə tarixi seçilməlidir.");
+    if (!form.displayOrder || Number(form.displayOrder) <= 0) {
+      return showToast("Sıra nömrəsi 0-dan böyük olmalıdır.");
+    }
 
-    if (form.productIds.length === 0) {
-      return setError("Ən azı 1 məhsul seçilməlidir.");
+    if (!form.startDate) return showToast("Başlama tarixi seçilməlidir.");
+    if (!form.endDate) return showToast("Bitmə tarixi seçilməlidir.");
+
+    const selectedProductIds = normalizeAdminGuidList(form.productIds);
+    const activeProductIdSet = new Set(
+      products.map(getProductId).filter(Boolean),
+    );
+    const availableProductIds = selectedProductIds.filter((productId) =>
+      activeProductIdSet.has(productId),
+    );
+
+    if (availableProductIds.length === 0) {
+      return showToast("Ən azı 1 aktiv məhsul seçilməlidir.");
+    }
+
+    if (selectedProductIds.length !== availableProductIds.length) {
+      setForm((prev) => ({ ...prev, productIds: availableProductIds }));
+      return showToast(
+        "Seçilmiş məhsullardan biri artıq aktiv deyil. Siyahı yeniləndi, yenidən yoxlayın.",
+      );
     }
 
     let startDate;
@@ -180,11 +230,11 @@ export default function AdminHomeSectionForm({ mode }) {
       startDate = localDateTimeToIso(form.startDate);
       endDate = localDateTimeToIso(form.endDate);
     } catch (err) {
-      return setError(err.message);
+      return showToast(err.message);
     }
 
     if (!isEndAfterStart(startDate, endDate)) {
-      return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
+      return showToast("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
     }
 
     const payload = {
@@ -194,7 +244,7 @@ export default function AdminHomeSectionForm({ mode }) {
       startDate,
       endDate,
       isActive: Boolean(form.isActive),
-      productIds: form.productIds,
+      productIds: availableProductIds,
     };
 
     try {
@@ -202,13 +252,13 @@ export default function AdminHomeSectionForm({ mode }) {
 
       if (isEdit) {
         await adminHomeSectionsApi.update(id, payload);
-        setSuccess("Home section yeniləndi.");
+        showToast("Home section yeniləndi.", "success");
       } else {
         await adminHomeSectionsApi.create(payload);
         navigate(`${basePath}/home-sections`);
       }
     } catch (err) {
-      setError(err.message || "Section yadda saxlanmadı.");
+      showToast(err.message || "Section yadda saxlanmadı.");
     } finally {
       setSaving(false);
     }
@@ -236,20 +286,30 @@ export default function AdminHomeSectionForm({ mode }) {
   }, [products, search]);
 
   const selectedProducts = useMemo(() => {
-    return form.productIds
+    return normalizeAdminGuidList(form.productIds)
       .map((productId) =>
-        products.find(
-          (product) => String(getProductId(product)) === String(productId),
-        ),
+        products.find((product) => getProductId(product) === productId),
       )
       .filter(Boolean);
   }, [form.productIds, products]);
+
+  const selectedProductIdSet = useMemo(
+    () => new Set(normalizeAdminGuidList(form.productIds)),
+    [form.productIds],
+  );
 
   if (loading) return <AppLoader text="Section form hazırlanır" />;
 
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Yadda saxlanılır" />}
+
+      <AdminActionToast
+        key={`${toast.type}-${toast.id}`}
+        message={toast.message}
+        type={toast.type}
+        onClose={closeToast}
+      />
 
       <button
         type="button"
@@ -286,19 +346,6 @@ export default function AdminHomeSectionForm({ mode }) {
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-5 flex items-center gap-2 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-          <FiCheckCircle />
-          {success}
-        </div>
-      )}
 
       <form
         onSubmit={handleSubmit}
@@ -392,7 +439,7 @@ export default function AdminHomeSectionForm({ mode }) {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {filteredProducts.map((product) => {
                 const productId = getProductId(product);
-                const selected = form.productIds.includes(productId);
+                const selected = selectedProductIdSet.has(productId);
 
                 return (
                   <ProductCard
