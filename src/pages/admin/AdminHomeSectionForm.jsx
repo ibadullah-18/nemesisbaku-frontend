@@ -21,7 +21,7 @@ import {
   isEndAfterStart,
   localDateTimeToIso,
   toLocalDateTimeInput,
-} from "../../utils/dateTime";
+} from "../../utils/dataTime";
 
 const emptyForm = {
   title: "",
