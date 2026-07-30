@@ -15,8 +15,8 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import AdminActionToast from "../../components/admin/AdminActionToast";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import { showAdminToast } from "../../utils/adminToast";
 import {
   isEndAfterStart,
   localDateTimeToIso,
@@ -82,26 +82,10 @@ export default function AdminHomeSectionForm({ mode }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [toast, setToast] = useState({
-    message: "",
-    type: "error",
-    id: 0,
-  });
   const basePath = getPanelBasePath();
 
   const showToast = useCallback((message, type = "error") => {
-    const cleanMessage = String(message || "").trim();
-    if (!cleanMessage) return;
-
-    setToast((prev) => ({
-      message: cleanMessage,
-      type,
-      id: prev.id + 1,
-    }));
-  }, []);
-
-  const closeToast = useCallback(() => {
-    setToast((prev) => ({ ...prev, message: "" }));
+    showAdminToast(message, type);
   }, []);
 
   useEffect(() => {
@@ -303,13 +287,6 @@ export default function AdminHomeSectionForm({ mode }) {
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Yadda saxlanılır" />}
-
-      <AdminActionToast
-        key={`${toast.type}-${toast.id}`}
-        message={toast.message}
-        type={toast.type}
-        onClose={closeToast}
-      />
 
       <button
         type="button"

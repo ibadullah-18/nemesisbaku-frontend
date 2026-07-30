@@ -15,6 +15,7 @@ import {
   localDateTimeToIso,
   toLocalDateTimeInput,
 } from "../../utils/dataTime";
+import { useAdminToastState } from "../../utils/adminToast";
 
 const emptyForm = {
   code: "",
@@ -44,8 +45,8 @@ export default function AdminPromoCodes() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useAdminToastState("error");
+  const [success, setSuccess] = useAdminToastState("success");
 
   useEffect(() => {
     loadPromoCodes();

@@ -15,6 +15,7 @@ import {
 import { adminOrdersApi, listAdmin, metaAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import { useAdminToastState } from "../../utils/adminToast";
 
 const statusFilters = [
   { value: "", label: "Hamısı" },
@@ -125,7 +126,7 @@ export default function AdminOrders() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useAdminToastState("error");
   const basePath = getPanelBasePath();
 
   useEffect(() => {

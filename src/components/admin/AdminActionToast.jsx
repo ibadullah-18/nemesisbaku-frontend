@@ -37,7 +37,7 @@ export default function AdminActionToast({
 
   return createPortal(
     <div
-      className="fixed bottom-5 left-1/2 z-[999999] w-[calc(100vw-32px)] max-w-[440px] -translate-x-1/2 md:bottom-6 md:left-6 md:w-auto md:min-w-[340px] md:translate-x-0"
+      className="pointer-events-none fixed bottom-5 left-1/2 z-[999999] w-[calc(100vw-32px)] max-w-[440px] -translate-x-1/2 md:bottom-6 md:left-6 md:w-auto md:min-w-[340px] md:translate-x-0"
     >
       <div
         className={`flex w-full items-start gap-3 rounded-[16px] px-4 py-3.5 text-sm font-bold text-white shadow-[0_20px_60px_rgba(0,0,0,0.22)] ${

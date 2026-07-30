@@ -6,6 +6,15 @@ import {
   getPanelLoginPath,
   refreshPanelAccessToken,
 } from "./adminAuth";
+import { showAdminToast } from "../../utils/adminToast";
+
+function throwAdminError(message) {
+  const normalizedMessage =
+    String(message || "").trim() || "Admin əməliyyatı uğursuz oldu";
+
+  showAdminToast(normalizedMessage, "error");
+  throw new Error(normalizedMessage);
+}
 
 function redirectToPanelLogin(panel) {
   const loginPath = getPanelLoginPath(panel);
@@ -82,7 +91,7 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
   const panel = requestedPanel || getPanelFromPath();
 
   if (!panel) {
-    throw new Error(
+    throwAdminError(
       "Admin sorğusunun hansı panelə aid olduğu müəyyən edilmədi.",
     );
   }
@@ -103,7 +112,7 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
       },
     });
   } catch {
-    throw new Error("Serverlə əlaqə qurulmadı.");
+    throwAdminError("Serverlə əlaqə qurulmadı.");
   }
 
   if (res.status === 401 && retry) {
@@ -112,7 +121,7 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
     if (!newToken) {
       clearPanelAuth(panel);
       redirectToPanelLogin(panel);
-      throw new Error("Sessiyanın vaxtı bitib. Yenidən daxil olun.");
+      throwAdminError("Sessiyanın vaxtı bitib. Yenidən daxil olun.");
     }
 
     return adminFetch(endpoint, { ...fetchOptions, panel }, false);
@@ -130,11 +139,11 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
   if (res.status === 401) {
     clearPanelAuth(panel);
     redirectToPanelLogin(panel);
-    throw new Error("Sessiyanın vaxtı bitib. Yenidən daxil olun.");
+    throwAdminError("Sessiyanın vaxtı bitib. Yenidən daxil olun.");
   }
 
   if (res.status === 403) {
-    throw new Error(
+    throwAdminError(
       getAdminErrorMessage(result, res.status) ||
         "Bu əməliyyat üçün səlahiyyətiniz yoxdur.",
     );
@@ -151,7 +160,7 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
       response: result,
     });
 
-    throw new Error(
+    throwAdminError(
       getAdminErrorMessage(result, res.status) ||
         "Admin əməliyyatı uğursuz oldu",
     );

@@ -18,7 +18,6 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
-import AdminActionToast from "../../components/admin/AdminActionToast";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import {
   CLOUDINARY_SAFE_IMAGE_BYTES,
@@ -28,6 +27,7 @@ import {
   revokeImagePreview,
 } from "../../utils/imageFile";
 import { localDateTimeToIso, toLocalDateTimeInput } from "../../utils/dataTime";
+import { useAdminToastState } from "../../utils/adminToast";
 
 const emptyForm = {
   type: 1,
@@ -102,8 +102,8 @@ export default function AdminPromoForm({ mode }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [, setError] = useAdminToastState("error");
+  const [, setSuccess] = useAdminToastState("success");
 
   const basePath = getPanelBasePath();
 
@@ -325,14 +325,6 @@ export default function AdminPromoForm({ mode }) {
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Yadda saxlanılır" />}
-      <AdminActionToast
-        message={error || success}
-        type={error ? "error" : "success"}
-        onClose={() => {
-          setError("");
-          setSuccess("");
-        }}
-      />
 
       <button
         type="button"

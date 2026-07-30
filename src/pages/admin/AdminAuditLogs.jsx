@@ -22,6 +22,7 @@ import {
   adminProductsApi,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import { useAdminToastState } from "../../utils/adminToast";
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
@@ -173,7 +174,7 @@ export default function AdminAuditLogs() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useAdminToastState("error");
 
   useEffect(() => {
     loadLogs(1);

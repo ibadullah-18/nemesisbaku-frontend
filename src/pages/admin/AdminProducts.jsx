@@ -21,6 +21,7 @@ import {
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import { useAdminToastState } from "../../utils/adminToast";
 
 function getProductId(product) {
   return product?.id || product?.productId;
@@ -156,7 +157,7 @@ export default function AdminProducts() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useAdminToastState("error");
   const basePath = getPanelBasePath();
 
   useEffect(() => {

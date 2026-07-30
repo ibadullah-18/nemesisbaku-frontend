@@ -10,8 +10,8 @@ import {
 } from "react-icons/fi";
 import { adminPromoPagesApi } from "../../api/admin/adminApi";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
-import AdminActionToast from "../../components/admin/AdminActionToast";
 import AppLoader from "../../components/common/AppLoader";
+import { useAdminToastState } from "../../utils/adminToast";
 
 function unwrapData(res) {
   return res?.data?.data ?? res?.data ?? res;
@@ -57,8 +57,8 @@ export default function AdminCampaigns() {
   const [filterType, setFilterType] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [, setError] = useAdminToastState("error");
+  const [, setSuccess] = useAdminToastState("success");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -133,14 +133,6 @@ export default function AdminCampaigns() {
   return (
     <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Əməliyyat icra olunur" />}
-      <AdminActionToast
-        message={error || success}
-        type={error ? "error" : "success"}
-        onClose={() => {
-          setError("");
-          setSuccess("");
-        }}
-      />
 
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>

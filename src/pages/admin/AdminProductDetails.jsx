@@ -18,6 +18,7 @@ import {
 import { adminProductsApi, unwrapAdmin } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import { useAdminToastState } from "../../utils/adminToast";
 
 function money(value) {
   return `${Number(value || 0).toFixed(2)} ₼`;
@@ -167,7 +168,7 @@ export default function AdminProductDetails() {
   const [selectedImage, setSelectedImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useAdminToastState("error");
 
   const basePath = getPanelBasePath();
   useEffect(() => {

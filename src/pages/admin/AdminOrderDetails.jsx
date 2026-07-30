@@ -23,6 +23,7 @@ import {
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import { useAdminToastState } from "../../utils/adminToast";
 
 const ORDER_STATUSES = [
   { value: 1, label: "Gözləyir" },
@@ -111,8 +112,8 @@ export default function AdminOrderDetails() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useAdminToastState("error");
+  const [success, setSuccess] = useAdminToastState("success");
   const basePath = getPanelBasePath();
 
   useEffect(() => {

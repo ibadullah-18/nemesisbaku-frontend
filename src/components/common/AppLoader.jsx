@@ -1,31 +1,123 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
+const GLOBAL_LOCK_KEY = "__nemesisAppLoaderScrollLock";
+
+function createOwnerId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `loader-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getScrollLockState() {
+  if (typeof window === "undefined") return null;
+
+  if (!window[GLOBAL_LOCK_KEY]) {
+    window[GLOBAL_LOCK_KEY] = {
+      owners: new Set(),
+      previousStyles: null,
+    };
+  }
+
+  return window[GLOBAL_LOCK_KEY];
+}
+
+function lockPageScroll(ownerId) {
+  const state = getScrollLockState();
+  if (!state || typeof document === "undefined") return;
+
+  const html = document.documentElement;
+  const body = document.body;
+
+  if (
+    state.owners.size > 0 &&
+    body.dataset.nemesisAppLoading !== "true"
+  ) {
+    state.owners.clear();
+    state.previousStyles = null;
+  }
+
+  if (state.owners.size === 0) {
+    const staleAdminLock =
+      body.dataset.nemesisAdminToastHost === "true" &&
+      body.dataset.nemesisAppLoading !== "true";
+
+    state.previousStyles = {
+      htmlOverflow:
+        staleAdminLock && html.style.overflow === "hidden"
+          ? ""
+          : html.style.overflow,
+      htmlOverscrollBehavior: staleAdminLock
+        ? ""
+        : html.style.overscrollBehavior,
+      htmlTouchAction: staleAdminLock ? "" : html.style.touchAction,
+      bodyOverflow:
+        staleAdminLock && body.style.overflow === "hidden"
+          ? ""
+          : body.style.overflow,
+      bodyOverscrollBehavior: staleAdminLock
+        ? ""
+        : body.style.overscrollBehavior,
+      bodyTouchAction: staleAdminLock ? "" : body.style.touchAction,
+    };
+  }
+
+  state.owners.add(ownerId);
+  body.dataset.nemesisAppLoading = "true";
+  body.dataset.nemesisAppLoaderCount = String(state.owners.size);
+
+  html.style.overflow = "hidden";
+  html.style.overscrollBehavior = "none";
+  html.style.touchAction = "none";
+  body.style.overflow = "hidden";
+  body.style.overscrollBehavior = "none";
+  body.style.touchAction = "none";
+}
+
+function unlockPageScroll(ownerId) {
+  const state = getScrollLockState();
+  if (!state || typeof document === "undefined") return;
+
+  state.owners.delete(ownerId);
+
+  if (state.owners.size > 0) {
+    document.body.dataset.nemesisAppLoaderCount = String(state.owners.size);
+    return;
+  }
+
+  const html = document.documentElement;
+  const body = document.body;
+  const previous = state.previousStyles || {};
+
+  html.style.overflow = previous.htmlOverflow || "";
+  html.style.overscrollBehavior = previous.htmlOverscrollBehavior || "";
+  html.style.touchAction = previous.htmlTouchAction || "";
+  body.style.overflow = previous.bodyOverflow || "";
+  body.style.overscrollBehavior = previous.bodyOverscrollBehavior || "";
+  body.style.touchAction = previous.bodyTouchAction || "";
+
+  delete body.dataset.nemesisAppLoading;
+  delete body.dataset.nemesisAppLoaderCount;
+  state.previousStyles = null;
+}
+
 export default function AppLoader({ text = "nemesisbaku", visible = true }) {
+  const ownerIdRef = useRef(null);
+
+  if (!ownerIdRef.current) {
+    ownerIdRef.current = createOwnerId();
+  }
+
   useEffect(() => {
     if (!visible || typeof document === "undefined") return undefined;
 
-    const html = document.documentElement;
-    const body = document.body;
-    const previousStyles = {
-      htmlOverflow: html.style.overflow,
-      htmlOverscrollBehavior: html.style.overscrollBehavior,
-      bodyOverflow: body.style.overflow,
-      bodyOverscrollBehavior: body.style.overscrollBehavior,
-    };
-
-    body.dataset.nemesisAppLoading = "true";
-    html.style.overflow = "hidden";
-    html.style.overscrollBehavior = "none";
-    body.style.overflow = "hidden";
-    body.style.overscrollBehavior = "none";
+    const ownerId = ownerIdRef.current;
+    lockPageScroll(ownerId);
 
     return () => {
-      delete body.dataset.nemesisAppLoading;
-      html.style.overflow = previousStyles.htmlOverflow;
-      html.style.overscrollBehavior = previousStyles.htmlOverscrollBehavior;
-      body.style.overflow = previousStyles.bodyOverflow;
-      body.style.overscrollBehavior = previousStyles.bodyOverscrollBehavior;
+      unlockPageScroll(ownerId);
     };
   }, [visible]);
 
@@ -61,28 +153,26 @@ export default function AppLoader({ text = "nemesisbaku", visible = true }) {
         </p>
       </div>
 
-      <style>
-        {`
-          @keyframes loaderContentIn {
-            from {
-              opacity: 0;
-              transform: translateY(18px) scale(0.96);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
+      <style>{`
+        @keyframes loaderContentIn {
+          from {
+            opacity: 0;
+            transform: translateY(18px) scale(0.96);
           }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
 
-          @keyframes loaderSpin {
-            to { transform: rotate(360deg); }
-          }
+        @keyframes loaderSpin {
+          to { transform: rotate(360deg); }
+        }
 
-          @keyframes loaderSpinReverse {
-            to { transform: rotate(-360deg); }
-          }
-        `}
-      </style>
+        @keyframes loaderSpinReverse {
+          to { transform: rotate(-360deg); }
+        }
+      `}</style>
     </div>,
     document.body,
   );
