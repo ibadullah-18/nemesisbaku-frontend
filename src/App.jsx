@@ -1,14 +1,12 @@
 import { LanguageProvider } from "./i18n/LanguageContext";
 import AppRoutes from "./routes/AppRoutes";
-import "leaflet/dist/leaflet.css";
+import UserToastHost from "./components/common/UserToastHost";
 
 export default function App() {
   return (
     <LanguageProvider>
       <style>
         {`
-          @import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300..900&display=swap");
-
           * {
             box-sizing: border-box;
           }
@@ -32,20 +30,10 @@ export default function App() {
             pointer-events: none;
           }
 
-          @keyframes pageSlideIn {
-            from {
-              opacity: 0;
-              transform: translateY(14px);
-            }
-
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
         `}
       </style>
 
+      <UserToastHost />
       <AppRoutes />
     </LanguageProvider>
   );

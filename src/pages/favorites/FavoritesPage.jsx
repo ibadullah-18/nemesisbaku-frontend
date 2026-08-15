@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiHeart } from "react-icons/fi";
 import ProductCard from "../../components/product/ProductCard";
-import AppLoader from "../../components/common/AppLoader";
+import FavoritesPageSkeleton from "../../components/favorites/FavoritesPageSkeleton";
 import { favoritesApi } from "../../api/favoritesApi";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { showUserToast } from "../../utils/userToast";
 
 function unwrap(res) {
   return res?.data?.data ?? res?.data ?? res;
@@ -46,7 +47,6 @@ export default function FavoritesPage() {
   const { text } = useLanguage();
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const products = useMemo(
     () =>
@@ -62,13 +62,17 @@ export default function FavoritesPage() {
     async function load(showLoader = false) {
       try {
         if (showLoader) setLoading(true);
-        setError("");
 
         const res = await favoritesApi.list();
         if (alive) setFavorites(res);
       } catch (err) {
-        if (alive) setError(err.message || text.favoritesLoadError);
-      } finally {
+  if (alive) {
+    showUserToast(
+      err.message || text.favoritesLoadError,
+      "error",
+    );
+  }
+} finally {
         if (alive) setLoading(false);
       }
     }
@@ -86,7 +90,7 @@ export default function FavoritesPage() {
     };
   }, [text.favoritesLoadError]);
 
-  if (loading) return <AppLoader text={text.loading} />;
+ if (loading) return <FavoritesPageSkeleton />;
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
@@ -99,12 +103,6 @@ export default function FavoritesPage() {
             {text.favorites}
           </h1>
         </div>
-
-        {error && (
-          <div className="mb-5 animate-[favoritesUp_.3s_ease_both] rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
-          </div>
-        )}
 
         {products.length === 0 ? (
           <div className="grid min-h-[360px] animate-[favoritesUp_.5s_cubic-bezier(.22,1,.36,1)_both] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">

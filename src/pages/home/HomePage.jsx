@@ -12,9 +12,10 @@ import ProductDiscoveryBar, {
   preloadProductDiscoveryData,
 } from "../../components/product/ProductDiscoveryBar";
 import ProductCard from "../../components/product/ProductCard";
+import ProductCardSkeleton from "../../components/product/ProductCardSkeleton";
 import ProductSection from "../../components/home/ProductSection";
 import HomePromoSlider from "../../components/home/HomePromoSlider";
-import HomePageLoader from "../../components/common/HomePageLoader";
+import HomePageSkeleton from "../../components/home/HomePageSkeleton";
 import {
   getActiveBanners,
   getActiveCampaigns,
@@ -24,6 +25,7 @@ import {
   trackVisit,
 } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { showUserToast } from "../../utils/userToast";
 
 const HOME_VIEW_STATE_KEY = "nemesis_home_view_state_v2";
 const HOME_RETURN_PRODUCT_KEY = "nemesis_return_product_id";
@@ -280,7 +282,6 @@ export default function HomePage() {
   const restoredFromDetails = Boolean(restoredHomeState);
 
   const allProductsRef = useRef(null);
-  const errorTimerRef = useRef(null);
   const homeRequestIdRef = useRef(0);
   const latestHomeStateRef = useRef(null);
   const productNavigationSavedRef = useRef(false);
@@ -326,8 +327,6 @@ export default function HomePage() {
 
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  const [toast, setToast] = useState("");
-  const [toastClosing, setToastClosing] = useState(false);
   const activeBanner = useMemo(() => {
     return banners.find((banner) => banner?.imageUrl) || null;
   }, [banners]);
@@ -337,8 +336,6 @@ export default function HomePage() {
   const descHasText = Boolean(text.allProductsDesc);
   const noProductsText =
     text.noProducts || noProductsFallback[lang] || noProductsFallback.az;
-  const MIN_LOADER_TIME = 750;
-
   latestHomeStateRef.current = {
     campaigns,
     banners,
@@ -463,25 +460,40 @@ export default function HomePage() {
         sessionStorage.getItem(HOME_RETURN_SCROLL_KEY) ??
         0,
     );
-    const safeScrollY = Number.isFinite(storedScrollY) ? storedScrollY : 0;
+    const safeScrollY = Number.isFinite(storedScrollY)
+      ? Math.max(0, storedScrollY)
+      : 0;
+
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
 
     const restoreScroll = () => {
       window.scrollTo({ top: safeScrollY, left: 0, behavior: "auto" });
     };
 
-    const frame = window.requestAnimationFrame(restoreScroll);
-    const settleTimer = window.setTimeout(restoreScroll, 120);
-    const imageSettleTimer = window.setTimeout(restoreScroll, 360);
-    const cleanupTimer = window.setTimeout(() => {
-      sessionStorage.removeItem(HOME_RETURN_PRODUCT_KEY);
-      sessionStorage.removeItem(HOME_RETURN_SCROLL_KEY);
-    }, 650);
+    restoreScroll();
+
+    let secondFrame;
+    const firstFrame = window.requestAnimationFrame(() => {
+      restoreScroll();
+
+      secondFrame = window.requestAnimationFrame(() => {
+        restoreScroll();
+        root.style.scrollBehavior = previousScrollBehavior;
+        sessionStorage.removeItem(HOME_RETURN_PRODUCT_KEY);
+        sessionStorage.removeItem(HOME_RETURN_SCROLL_KEY);
+      });
+    });
 
     return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(settleTimer);
-      window.clearTimeout(imageSettleTimer);
-      window.clearTimeout(cleanupTimer);
+      window.cancelAnimationFrame(firstFrame);
+
+      if (secondFrame) {
+        window.cancelAnimationFrame(secondFrame);
+      }
+
+      root.style.scrollBehavior = previousScrollBehavior;
     };
   }, [restoredFromDetails, restoredHomeState]);
 
@@ -534,25 +546,12 @@ export default function HomePage() {
   }
 
   function showError(message) {
-    clearTimeout(errorTimerRef.current);
-
-    setToast(message);
-    setToastClosing(false);
-
-    errorTimerRef.current = setTimeout(() => {
-      setToastClosing(true);
-
-      setTimeout(() => {
-        setToast("");
-        setToastClosing(false);
-      }, 320);
-    }, 4200);
+    showUserToast(message, "error");
   }
 
   async function loadHome({ showInitialLoader = true } = {}) {
     const requestId = ++homeRequestIdRef.current;
     const shouldShowLoader = showInitialLoader && products.length === 0;
-    const startedAt = Date.now();
     const standardPageSize = getProductPageSize();
     const restoringProduct = Boolean(
       sessionStorage.getItem("nemesis_return_product_id"),
@@ -640,14 +639,6 @@ export default function HomePage() {
         );
       }
 
-      if (shouldShowLoader) {
-        const elapsed = Date.now() - startedAt;
-        const wait = Math.max(0, MIN_LOADER_TIME - elapsed);
-
-        if (wait > 0) {
-          await new Promise((resolve) => setTimeout(resolve, wait));
-        }
-      }
     } catch (err) {
       showError(getErrorMessage(err, "Ana səhifə yüklənmədi."));
     } finally {
@@ -800,7 +791,7 @@ export default function HomePage() {
     }, 320);
   }
 
-  if (loading) return <HomePageLoader />;
+  if (loading) return <HomePageSkeleton />;
 
   return (
     <main
@@ -810,23 +801,23 @@ export default function HomePage() {
       <style>
         {`
           @keyframes bannerBackdropIn {
-            from { opacity: 0; backdrop-filter: blur(0px); }
-            to { opacity: 1; backdrop-filter: blur(7px); }
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
 
           @keyframes bannerBackdropOut {
-            from { opacity: 1; backdrop-filter: blur(7px); }
-            to { opacity: 0; backdrop-filter: blur(0px); }
+            from { opacity: 1; }
+            to { opacity: 0; }
           }
 
           @keyframes bannerPopupIn {
-            0% { opacity: 0; transform: translateY(22px) scale(0.96); }
+            0% { opacity: 0; transform: translateY(10px) scale(0.985); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
           }
 
           @keyframes bannerPopupOut {
             from { opacity: 1; transform: translateY(0) scale(1); }
-            to { opacity: 0; transform: translateY(18px) scale(0.97); }
+            to { opacity: 0; transform: translateY(8px) scale(0.99); }
           }
 
           @keyframes softHomeIn {
@@ -841,58 +832,24 @@ export default function HomePage() {
           }
 
           @keyframes homeProductReveal {
-            0% {
-              transform: translateY(28px) scale(0.955);
-            }
-            68% {
-              transform: translateY(-3px) scale(1.008);
-            }
-            100% {
-              transform: translateY(0) scale(1);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
           }
 
           @keyframes filteredProductsIn {
             from {
-              transform: translateY(14px) scale(0.992);
+              opacity: 0;
+              transform: translateY(8px);
             }
             to {
-              transform: translateY(0) scale(1);
+              opacity: 1;
+              transform: translateY(0);
             }
           }
 
           @keyframes emptyProductsIn {
-            0% {
-              transform: translateY(24px) scale(0.94);
-            }
-            65% {
-              transform: translateY(-3px) scale(1.015);
-            }
-            100% {
-              transform: translateY(0) scale(1);
-            }
-          }
-
-          @keyframes toastIn {
-            from {
-              opacity: 0;
-              transform: translateY(22px) scale(0.96);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
-          }
-
-          @keyframes toastOut {
-            from {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-            }
-            to {
-              opacity: 0;
-              transform: translateY(18px) scale(0.97);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
           }
 
           @keyframes scrollTopIn {
@@ -918,7 +875,7 @@ export default function HomePage() {
           className={
             restoredFromDetails
               ? "relative z-30"
-              : "relative z-30 animate-[softHomeIn_0.45s_ease_both]"
+              : "relative z-30 animate-[softHomeIn_0.22s_ease-out_both]"
           }
         >
           <ProductDiscoveryBar
@@ -934,7 +891,7 @@ export default function HomePage() {
               className={
                 restoredFromDetails
                   ? "relative z-10"
-                  : "relative z-10 animate-[softHomeIn_0.55s_ease_both]"
+                  : "relative z-10 animate-[softHomeIn_0.22s_ease-out_both]"
               }
             >
               <HomePromoSlider promos={sliderCampaigns} />
@@ -954,7 +911,7 @@ export default function HomePage() {
                       restoredFromDetails
                         ? undefined
                         : {
-                            animation: `softHomeIn 0.55s ease ${index * 0.06}s both`,
+                            animation: "softHomeIn 0.22s ease-out both",
                           }
                     }
                   >
@@ -969,14 +926,10 @@ export default function HomePage() {
           </>
         )}
 
-        {products.length > 0 && (
+        {(products.length > 0 || filterLoading) && (
           <section
             ref={allProductsRef}
-            className={`mx-auto max-w-[1180px] px-5 py-8 transition-all duration-300 md:px-8 md:py-11 ${
-              filterLoading
-                ? "opacity-60"
-                : "translate-y-0 opacity-100"
-            }`}
+            className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11"
           >
             <div
               className="mb-5 flex items-end justify-between gap-4"
@@ -985,7 +938,7 @@ export default function HomePage() {
                 visibility: "visible",
                 animation: !resultAnimationsEnabled
                   ? "none"
-                  : "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) both",
+                  : "homeProductReveal 0.22s ease-out both",
               }}
             >
               <div className="w-full">
@@ -1015,12 +968,14 @@ export default function HomePage() {
               style={{
                 animation: !resultAnimationsEnabled
                   ? "none"
-                  : "filteredProductsIn 0.5s cubic-bezier(0.22,1,0.36,1) both",
+                  : "filteredProductsIn 0.22s ease-out both",
               }}
             >
-              {products.map((product, index) => {
-                const delay = Math.min(index, 15) * 0.035;
-
+              {filterLoading
+                ? Array.from({ length: getProductPageSize() }).map((_, index) => (
+                    <ProductCardSkeleton key={`filter-skeleton-${index}`} />
+                  ))
+                : products.map((product, index) => {
                 return (
                   <div
                     key={product.id || `product-wrap-${index}`}
@@ -1033,13 +988,18 @@ export default function HomePage() {
                       willChange: "transform",
                       animation: !resultAnimationsEnabled
                         ? "none"
-                        : `homeProductReveal 0.62s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
+                        : "homeProductReveal 0.22s ease-out both",
                     }}
                   >
                     <ProductCard product={product} />
                   </div>
                 );
               })}
+
+              {moreLoading &&
+                Array.from({ length: getProductPageSize() }).map((_, index) => (
+                  <ProductCardSkeleton key={`more-skeleton-${index}`} />
+                ))}
             </div>
 
             {!filterActive && hasMore && (
@@ -1049,7 +1009,7 @@ export default function HomePage() {
                   opacity: 1,
                   visibility: "visible",
                   animation:
-                    "homeProductReveal 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both",
+                    "homeProductReveal 0.22s ease-out both",
                 }}
               >
                 <button
@@ -1058,7 +1018,7 @@ export default function HomePage() {
                   disabled={moreLoading}
                   className="rounded-full bg-[#120d09] px-8 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(15,15,15,0.16)] transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
                 >
-                  {moreLoading ? text.loading : text.loadMore}
+                  {text.loadMore}
                 </button>
               </div>
             )}
@@ -1105,7 +1065,7 @@ export default function HomePage() {
               style={{
                 transformOrigin: "center",
                 animation: resultAnimationsEnabled
-                  ? "emptyProductsIn 0.58s cubic-bezier(0.22,1,0.36,1) both"
+                  ? "emptyProductsIn 0.22s ease-out both"
                   : "none",
               }}
             >
@@ -1120,18 +1080,6 @@ export default function HomePage() {
           </section>
         )}
       </div>
-
-      {toast && (
-        <div
-          className={`fixed bottom-5 left-1/2 z-[999999] w-[calc(100%-32px)] max-w-[420px] -translate-x-1/2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white shadow-[0_24px_70px_rgba(0,0,0,0.28)] md:left-6 md:-translate-x-0 ${
-            toastClosing
-              ? "animate-[toastOut_0.32s_ease_both]"
-              : "animate-[toastIn_0.38s_cubic-bezier(0.22,1,0.36,1)_both]"
-          }`}
-        >
-          {toast}
-        </div>
-      )}
 
       {showBannerPopup && bannerDetail && (
         <BannerPopup

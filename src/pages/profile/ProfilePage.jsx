@@ -13,9 +13,10 @@ import {
   FiSettings,
   FiUser,
 } from "react-icons/fi";
-import AppLoader from "../../components/common/AppLoader";
+import ProfilePageSkeleton from "../../components/profile/ProfilePageSkeleton";
 import { profileApi } from "../../api/profileApi";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { showUserToast } from "../../utils/userToast";
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
@@ -103,10 +104,24 @@ export default function ProfilePage() {
         setAddresses(Array.isArray(addressData) ? addressData : []);
       } catch {
         setAddressError(true);
+
+        showUserToast(
+          text.addressesUnavailable || "Ünvan məlumatları yüklənmədi.",
+          "error",
+        );
       }
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) {
+  setProfile(null);
+
+  showUserToast(
+    err.message ||
+      text.profileLoadError ||
+      "Profil məlumatları yüklənmədi.",
+    "error",
+  );
+} finally {
+  setLoading(false);
+}
   }
 
   function logout() {
@@ -120,13 +135,9 @@ export default function ProfilePage() {
     navigate("/login");
   }
 
-  if (loading) {
-    return (
-      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-        <AppLoader text={text.loading} />
-      </main>
-    );
-  }
+if (loading) {
+  return <ProfilePageSkeleton />;
+}
 
   const defaultAddress =
     addresses.find((x) => x.isDefault) || addresses[0] || null;

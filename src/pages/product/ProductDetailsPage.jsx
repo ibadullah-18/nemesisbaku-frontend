@@ -10,13 +10,14 @@ import {
   FiZap,
 } from "react-icons/fi";
 import { FaHeart, FaWhatsapp } from "react-icons/fa";
-import AppLoader from "../../components/common/AppLoader";
+import ProductDetailsSkeleton from "../../components/product/ProductDetailsSkeleton";
 import ProductCard from "../../components/product/ProductCard";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { getProducts } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { createPortal } from "react-dom";
 import { favoritesApi } from "../../api/favoritesApi";
+import { showUserToast } from "../../utils/userToast";
 
 const LOW_STOCK_LIMIT = 3;
 const RELATED_DESKTOP_BATCH = 12;
@@ -86,8 +87,6 @@ export default function ProductDetailsPage() {
   const { text } = useLanguage();
 
   const relatedRef = useRef(null);
-  const toastTimerRef = useRef(null);
-  const toastCloseTimerRef = useRef(null);
   const basketSuccessTimerRef = useRef(null);
 
   const [product, setProduct] = useState(null);
@@ -112,8 +111,6 @@ export default function ProductDetailsPage() {
   const [relatedHasMore, setRelatedHasMore] = useState(true);
 
   const [error, setError] = useState("");
-  const [toastError, setToastError] = useState("");
-  const [toastClosing, setToastClosing] = useState(false);
 
   const modalStartXRef = useRef(null);
   const modalStartYRef = useRef(null);
@@ -127,8 +124,6 @@ export default function ProductDetailsPage() {
 
   useEffect(() => {
     return () => {
-      window.clearTimeout(toastTimerRef.current);
-      window.clearTimeout(toastCloseTimerRef.current);
       window.clearTimeout(basketSuccessTimerRef.current);
     };
   }, []);
@@ -148,34 +143,14 @@ export default function ProductDetailsPage() {
     };
   }, [modalOpen]);
 
-  function hideToastAnimated() {
-    setToastClosing(true);
-
-    window.clearTimeout(toastCloseTimerRef.current);
-    toastCloseTimerRef.current = window.setTimeout(() => {
-      setToastError("");
-      setToastClosing(false);
-    }, 280);
-  }
-
   function showToast(message) {
-    window.clearTimeout(toastTimerRef.current);
-    window.clearTimeout(toastCloseTimerRef.current);
-
-    setToastClosing(false);
-    setToastError(message);
-
-    toastTimerRef.current = window.setTimeout(() => {
-      hideToastAnimated();
-    }, 5000);
+    showUserToast(message, "error");
   }
 
   async function loadPage() {
     try {
       setLoading(true);
       setError("");
-      setToastError("");
-      setToastClosing(false);
       setBasketSuccess(false);
       setModalOpen(false);
       setActiveImage(0);
@@ -188,13 +163,13 @@ export default function ProductDetailsPage() {
       const data = unwrap(res);
 
       setProduct(data);
-      await loadFavoriteStatus();
+      void loadFavoriteStatus();
 
       setSelectedVariantId("");
       setSelectedColor("");
       setQuantity(1);
 
-      await loadRelated(data, 1);
+      void loadRelated(data, 1);
     } catch (err) {
       setError(err.message || text.productLoadError);
     } finally {
@@ -340,8 +315,6 @@ export default function ProductDetailsPage() {
     setSelectedColor(colorName);
     setSelectedVariantId("");
     setQuantity(1);
-    setToastError("");
-    setToastClosing(false);
   }
 
   function chooseSize(item) {
@@ -351,8 +324,6 @@ export default function ProductDetailsPage() {
 
     setSelectedVariantId(item.variantId);
     setQuantity(1);
-    setToastError("");
-    setToastClosing(false);
   }
 
   function handleZoomMove(e) {
@@ -366,12 +337,18 @@ export default function ProductDetailsPage() {
   }
 
   function handleBack() {
-    if (location.state?.fromSearch) {
+    const returnTo = location.state?.returnTo;
+    const cameFromWebsite =
+      location.state?.fromProductList ||
+      location.state?.fromHome ||
+      location.state?.fromSearch;
+
+    if (cameFromWebsite) {
       navigate(-1);
       return;
     }
 
-    navigate("/");
+    navigate(returnTo || "/", { replace: true });
   }
 
   function modalPrev() {
@@ -433,8 +410,6 @@ export default function ProductDetailsPage() {
     try {
       setActionLoading(true);
       setError("");
-      setToastError("");
-      setToastClosing(false);
 
       const freshProduct = await loadFreshProduct();
 
@@ -548,11 +523,7 @@ export default function ProductDetailsPage() {
   }
 
   if (loading) {
-    return (
-      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
-        <AppLoader text={text.loading} />
-      </main>
-    );
+    return <ProductDetailsSkeleton onBack={handleBack} />;
   }
 
   if (!product) {
@@ -891,20 +862,6 @@ export default function ProductDetailsPage() {
         </div>
       </main>
 
-      {toastError &&
-        createPortal(
-          <div
-            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
-              toastClosing
-                ? "animate-[toastOut_.28s_cubic-bezier(.22,1,.36,1)_both]"
-                : "animate-[toastIn_.32s_cubic-bezier(.22,1,.36,1)_both]"
-            }`}
-          >
-            {toastError}
-          </div>,
-          document.body,
-        )}
-
       {modalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[99999] flex h-dvh w-screen touch-none items-center justify-center overflow-hidden bg-black/95 p-2 md:p-8">
@@ -948,16 +905,6 @@ export default function ProductDetailsPage() {
         @keyframes modalImage {
           from { opacity: 0; transform: scale(.94); }
           to { opacity: 1; transform: scale(1); }
-        }
-
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateX(-18px) translateY(18px) scale(.96); }
-          to { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
-        }
-
-        @keyframes toastOut {
-          from { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
-          to { opacity: 0; transform: translateX(-18px) translateY(18px) scale(.96); }
         }
 
         @keyframes stockPulse {

@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { FiChevronLeft, FiChevronRight, FiHeart } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
@@ -76,6 +76,7 @@ function sortSizesAscending(values) {
 
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const cardRef = useRef(null);
   const resetTimerRef = useRef(null);
@@ -385,16 +386,31 @@ export default function ProductCard({ product }) {
     setDragX(0);
   }
 
-  function handleCardClick(e) {
+  function handleCardClick(event) {
     if (!productId || didSwipe) {
-      e.preventDefault();
-      e.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
       window.setTimeout(() => setDidSwipe(false), 80);
       return;
     }
 
-    sessionStorage.setItem("nemesis_return_product_id", String(productId));
-    sessionStorage.setItem("nemesis_return_scroll_y", String(window.scrollY));
+    if (location.pathname === "/") {
+      sessionStorage.setItem(
+        "nemesis_return_product_id",
+        String(productId),
+      );
+      sessionStorage.setItem(
+        "nemesis_return_scroll_y",
+        String(window.scrollY),
+      );
+    }
+
+    if (location.pathname === "/search") {
+      sessionStorage.setItem(
+        "nemesis_search_scroll_y",
+        String(window.scrollY),
+      );
+    }
 
     window.setTimeout(() => setDidSwipe(false), 80);
   }
@@ -444,6 +460,12 @@ export default function ProductCard({ product }) {
     <NavLink
       ref={cardRef}
       to={productId ? `/products/${productId}` : "#"}
+      state={{
+        fromProductList: true,
+        fromHome: location.pathname === "/",
+        fromSearch: location.pathname === "/search",
+        returnTo: `${location.pathname}${location.search}`,
+      }}
       onClick={handleCardClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

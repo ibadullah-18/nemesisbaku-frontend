@@ -11,13 +11,14 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import { FaHeart, FaWhatsapp } from "react-icons/fa";
-import AppLoader from "../../components/common/AppLoader";
+import BasketPageSkeleton from "../../components/basket/BasketPageSkeleton";
 import { basketApi } from "../../api/basketApi";
 import { promoApi } from "../../api/promoApi";
 import { favoritesApi } from "../../api/favoritesApi";
 import { getProducts } from "../../api/homeApi";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { showUserToast } from "../../utils/userToast";
 
 const STORE_WHATSAPP_NUMBER = "994514349829";
 const SWIPE_LIMIT = 45;
@@ -84,8 +85,6 @@ export default function BasketPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
 
-  const toastTimerRef = useRef(null);
-  const toastCloseTimerRef = useRef(null);
 
   const [basket, setBasket] = useState({
     items: [],
@@ -109,8 +108,6 @@ export default function BasketPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [toastClosing, setToastClosing] = useState(false);
 
   const items = useMemo(() => basket.items || [], [basket.items]);
 
@@ -146,38 +143,18 @@ export default function BasketPage() {
   const payableTotal = Math.max(0, selectedFinalTotal - promoDiscount);
   const hasAnyDiscount = selectedDiscountTotal > 0 || promoDiscount > 0;
 
-  useEffect(() => {
-    loadBasket();
-    loadRelatedProducts(1, true);
+useEffect(() => {
+  loadBasket();
+  loadRelatedProducts(1, true);
+}, []);
 
-    return () => {
-      window.clearTimeout(toastTimerRef.current);
-      window.clearTimeout(toastCloseTimerRef.current);
-    };
-  }, []);
-
-  function showError(message) {
-    window.clearTimeout(toastTimerRef.current);
-    window.clearTimeout(toastCloseTimerRef.current);
-
-    setToastClosing(false);
-    setError(message);
-
-    toastTimerRef.current = window.setTimeout(() => {
-      setToastClosing(true);
-
-      toastCloseTimerRef.current = window.setTimeout(() => {
-        setError("");
-        setToastClosing(false);
-      }, 280);
-    }, 4200);
-  }
+function showError(message) {
+  showUserToast(message, "error");
+}
 
   async function loadBasket() {
     try {
       setLoading(true);
-      setError("");
-
       const res = await basketApi.get();
       const data = unwrap(res);
       const nextItems = data?.items || [];
@@ -336,7 +313,6 @@ export default function BasketPage() {
 
     try {
       setPromoLoading(true);
-      setError("");
       setPromoMessage("");
 
       const res = await promoApi.check({
@@ -416,14 +392,9 @@ export default function BasketPage() {
     );
   }
 
-  if (loading) {
-    return createPortal(
-      <div className="fixed inset-0 z-[9999999999] grid min-h-screen w-screen place-items-center bg-[#fafafa]">
-        <AppLoader text={text.loading} />
-      </div>,
-      document.body,
-    );
-  }
+if (loading) {
+  return <BasketPageSkeleton />;
+}
 
   return (
     <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
@@ -759,24 +730,6 @@ export default function BasketPage() {
           </div>
         )}
       </div>
-
-      {error &&
-        createPortal(
-          <div
-            className={`fixed z-[999999999] rounded-2xl bg-red-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_24px_70px_rgba(220,38,38,0.28)]
-        bottom-[calc(env(safe-area-inset-bottom)+20px)]
-        left-1/2 w-[calc(100vw-32px)] max-w-[420px]
-        md:left-6 md:w-auto md:min-w-[320px] md:max-w-[420px]
-        ${
-          toastClosing
-            ? "animate-[toastOut_0.28s_cubic-bezier(0.22,1,0.36,1)_both]"
-            : "animate-[toastIn_0.32s_cubic-bezier(0.22,1,0.36,1)_both]"
-        }`}
-          >
-            {error}
-          </div>,
-          document.body,
-        )}
 
       <style>{`
          @keyframes toastIn {

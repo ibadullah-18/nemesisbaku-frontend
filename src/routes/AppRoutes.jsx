@@ -1,85 +1,93 @@
-import { useEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { lazy, Suspense, useLayoutEffect } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigationType,
+} from "react-router-dom";
 
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
-import LoginPage from "../pages/auth/LoginPage";
-import SearchPage from "../components/common/SearchOverlay";
-import HomePage from "../pages/home/HomePage";
+const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
+const SearchPage = lazy(() => import("../components/common/SearchOverlay"));
+const HomePage = lazy(() => import("../pages/home/HomePage"));
 
-import SuperAdminLogin from "../pages/admin/SuperAdminLogin";
+const SuperAdminLogin = lazy(() => import("../pages/admin/SuperAdminLogin"));
 import AdminLayout from "../components/admin/AdminLayout";
 import AdminProtectedRoute from "../components/admin/AdminProtectedRoute";
-import AdminDashboard from "../pages/admin/AdminDashboard";
-import AdminProducts from "../pages/admin/AdminProducts";
-import AdminProductDetails from "../pages/admin/AdminProductDetails";
-import AdminAddProduct from "../pages/admin/AdminAddProduct";
-import AdminEditProduct from "../pages/admin/AdminEditProduct";
-import AdminCampaigns from "../pages/admin/AdminCampaigns";
-import AdminPromoForm from "../pages/admin/AdminPromoForm";
-import AdminOrders from "../pages/admin/AdminOrders";
-import AdminOrderDetails from "../pages/admin/AdminOrderDetails";
-import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
-import AdminCategories from "../pages/admin/AdminCategories";
-import AdminBrands from "../pages/admin/AdminBrands";
-import AdminUsers from "../pages/admin/AdminUsers";
-import AdminSizes from "../pages/admin/AdminSizes";
-import AdminColors from "../pages/admin/AdminColors";
-import AdminHomeSections from "../pages/admin/AdminHomeSections";
-import AdminHomeSectionForm from "../pages/admin/AdminHomeSectionForm";
-import AdminPromoCodes from "../pages/admin/AdminPromoCodes";
-import AdminEmailAnnouncements from "../pages/admin/AdminEmailAnnouncements";
-import AdminCouriers from "../pages/admin/AdminCouriers";
-import AdminLogin from "../pages/admin/AdminLogin";
+const AdminDashboard = lazy(() => import("../pages/admin/AdminDashboard"));
+const AdminProducts = lazy(() => import("../pages/admin/AdminProducts"));
+const AdminProductDetails = lazy(() => import("../pages/admin/AdminProductDetails"));
+const AdminAddProduct = lazy(() => import("../pages/admin/AdminAddProduct"));
+const AdminEditProduct = lazy(() => import("../pages/admin/AdminEditProduct"));
+const AdminCampaigns = lazy(() => import("../pages/admin/AdminCampaigns"));
+const AdminPromoForm = lazy(() => import("../pages/admin/AdminPromoForm"));
+const AdminOrders = lazy(() => import("../pages/admin/AdminOrders"));
+const AdminOrderDetails = lazy(() => import("../pages/admin/AdminOrderDetails"));
+const AdminAuditLogs = lazy(() => import("../pages/admin/AdminAuditLogs"));
+const AdminCategories = lazy(() => import("../pages/admin/AdminCategories"));
+const AdminBrands = lazy(() => import("../pages/admin/AdminBrands"));
+const AdminUsers = lazy(() => import("../pages/admin/AdminUsers"));
+const AdminSizes = lazy(() => import("../pages/admin/AdminSizes"));
+const AdminColors = lazy(() => import("../pages/admin/AdminColors"));
+const AdminHomeSections = lazy(() => import("../pages/admin/AdminHomeSections"));
+const AdminHomeSectionForm = lazy(() => import("../pages/admin/AdminHomeSectionForm"));
+const AdminPromoCodes = lazy(() => import("../pages/admin/AdminPromoCodes"));
+const AdminEmailAnnouncements = lazy(() => import("../pages/admin/AdminEmailAnnouncements"));
+const AdminCouriers = lazy(() => import("../pages/admin/AdminCouriers"));
+const AdminLogin = lazy(() => import("../pages/admin/AdminLogin"));
 
-import ProfilePage from "../pages/profile/ProfilePage";
-import ProductDetailsPage from "../pages/product/ProductDetailsPage";
-import FavoritesPage from "../pages/favorites/FavoritesPage";
-import BasketPage from "../pages/basket/BasketPage";
-import MyOrdersPage from "../pages/orders/MyOrdersPage";
-import OrderDetailsPage from "../pages/orders/OrderDetailsPage";
-import AddressesPage from "../pages/profile/AddressesPage";
-import ProfileSettingsPage from "../pages/profile/ProfileSettingsPage";
-import CheckoutPage from "../pages/checkout/CheckoutPage";
-import OrderSuccessPage from "../pages/checkout/OrderSuccessPage";
-import OrderFailedPage from "../pages/checkout/OrderFailedPage";
-import AccountSettingsPage from "../pages/profile/AccountSettingsPage";
-import SecuritySettingsPage from "../pages/profile/SecuritySettingsPage";
-import LoyaltyCardInfoPage from "../pages/profile/LoyaltyCardPage";
-import PromoPage from "../pages/promo/PromoPage";
-import NotFoundPage from "../pages/error/NotFoundPage";
+const ProfilePage = lazy(() => import("../pages/profile/ProfilePage"));
+const ProductDetailsPage = lazy(() => import("../pages/product/ProductDetailsPage"));
+const FavoritesPage = lazy(() => import("../pages/favorites/FavoritesPage"));
+const BasketPage = lazy(() => import("../pages/basket/BasketPage"));
+const MyOrdersPage = lazy(() => import("../pages/orders/MyOrdersPage"));
+const OrderDetailsPage = lazy(() => import("../pages/orders/OrderDetailsPage"));
+const AddressesPage = lazy(() => import("../pages/profile/AddressesPage"));
+const ProfileSettingsPage = lazy(() => import("../pages/profile/ProfileSettingsPage"));
+const CheckoutPage = lazy(() => import("../pages/checkout/CheckoutPage"));
+const OrderSuccessPage = lazy(() => import("../pages/checkout/OrderSuccessPage"));
+const OrderFailedPage = lazy(() => import("../pages/checkout/OrderFailedPage"));
+const AccountSettingsPage = lazy(() => import("../pages/profile/AccountSettingsPage"));
+const SecuritySettingsPage = lazy(() => import("../pages/profile/SecuritySettingsPage"));
+const LoyaltyCardInfoPage = lazy(() => import("../pages/profile/LoyaltyCardPage"));
+const PromoPage = lazy(() => import("../pages/promo/PromoPage"));
+const NotFoundPage = lazy(() => import("../pages/error/NotFoundPage"));
 
-import InfoAddressPage from "../pages/info/InfoAddressPage";
-import DeliveryPage from "../pages/info/DeliveryPage";
-import ReturnPolicyPage from "../pages/info/ReturnPolicyPage";
-import AboutPage from "../pages/info/AboutPage";
-import CareerPage from "../pages/info/CareerPage";
-import StoresPage from "../pages/info/StoresPage";
-import RegisterPage from "../pages/auth/RegisterPage";
-import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
+const InfoAddressPage = lazy(() => import("../pages/info/InfoAddressPage"));
+const DeliveryPage = lazy(() => import("../pages/info/DeliveryPage"));
+const ReturnPolicyPage = lazy(() => import("../pages/info/ReturnPolicyPage"));
+const AboutPage = lazy(() => import("../pages/info/AboutPage"));
+const CareerPage = lazy(() => import("../pages/info/CareerPage"));
+const StoresPage = lazy(() => import("../pages/info/StoresPage"));
+const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
+
+function RouteFallback() {
+  return (
+    <div
+      className="min-h-[calc(100dvh-72px)] bg-[#fafafa]"
+      aria-hidden="true"
+    />
+  );
+}
 
 function PageShell({ children }) {
   const location = useLocation();
+  const navigationType = useNavigationType();
 
-  useEffect(() => {
-    const shouldRestoreProduct =
-      location.pathname === "/" &&
-      sessionStorage.getItem("nemesis_return_product_id");
-
-    if (shouldRestoreProduct) return;
+  useLayoutEffect(() => {
+    if (navigationType === "POP") return;
 
     window.scrollTo({
       top: 0,
       left: 0,
       behavior: "auto",
     });
-  }, [location.pathname]);
+  }, [location.key, navigationType]);
 
-  return (
-    <div className="animate-[pageSlideIn_0.38s_cubic-bezier(0.22,1,0.36,1)_both]">
-      {children}
-    </div>
-  );
+  return <div>{children}</div>;
 }
 
 function Layout({ children }) {
@@ -108,7 +116,8 @@ function NotFoundRedirect() {
 
 export default function AppRoutes() {
   return (
-    <Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
       <Route
         path="/"
         element={
@@ -484,6 +493,7 @@ export default function AppRoutes() {
       </Route>
 
       <Route path="*" element={<NotFoundRedirect />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }

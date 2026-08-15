@@ -5,11 +5,75 @@ html {
   text-size-adjust: 100%;
 }
 
-/* Mobil cihazlarda inputa yazarkən avtomatik zoomun qarşısını alır */
-@media (max-width: 767px) {
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select {
-    font-size: 16px !important;
+.nemesis-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--nemesis-skeleton-base, #e4e4e7);
+}
+
+.nemesis-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--nemesis-skeleton-shine, rgba(255, 255, 255, 0.75)) 50%,
+    transparent 100%
+  );
+  animation: nemesisSkeletonShimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes nemesisSkeletonShimmer {
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nemesis-skeleton::after {
+    animation: none;
+  }
+}
+
+@keyframes nemesisUserToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nemesisUserToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+}
+
+.nemesis-user-toast {
+  will-change: opacity, transform;
+  animation: nemesisUserToastIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nemesis-user-toast--closing {
+  pointer-events: none;
+  animation: nemesisUserToastOut 280ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nemesis-user-toast,
+  .nemesis-user-toast--closing {
+    animation-duration: 1ms;
   }
 }
