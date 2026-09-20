@@ -127,7 +127,7 @@ export async function adminFetch(endpoint, options = {}, retry = true) {
     return adminFetch(endpoint, { ...fetchOptions, panel }, false);
   }
 
-  let result;
+  let result = null;
   const text = await res.text();
 
   try {
@@ -264,25 +264,9 @@ export const adminDashboardApi = {
   getStats: () => adminFetch("/api/Stats/dashboard"),
 };
 
-export const adminStoreInfoApi = {
-  get: () => adminFetch("/api/StoreInfo"),
-
-  update: (fields, logoFile) => {
-    const formData = new FormData();
-    Object.entries(fields).forEach(([key, value]) => {
-      formData.append(key, value == null ? "" : String(value));
-    });
-    if (logoFile) formData.append("LogoFile", logoFile);
-
-    return adminFetch("/api/AdminStoreInfo", {
-      method: "PUT",
-      body: formData,
-    });
-  },
-};
-
 export const adminProductsApi = {
-  list: () => adminFetch("/api/AdminProducts"),
+  list: ({ page = 1, pageSize = 200, search = "" } = {}) =>
+    adminFetch(`/api/AdminProducts${buildQuery({ page, pageSize, search })}`),
 
   detail: (id) => adminFetch(`/api/AdminProducts/${id}`),
 

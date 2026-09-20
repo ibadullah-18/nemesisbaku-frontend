@@ -17,11 +17,11 @@ import {
 import {
   adminProductsApi,
   listAdmin,
+  metaAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import { useAdminToastState } from "../../utils/adminToast";
-import "./adminProducts.css";
 
 function getProductId(product) {
   return product?.id || product?.productId;
@@ -106,27 +106,25 @@ function getTotalStock(product) {
   );
 }
 
-function ProductThumbnail({ src }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-zinc-50 text-zinc-400">
-        <FiImage aria-hidden="true" />
-        <span className="text-[10px] font-semibold">
-          {src ? "Şəkil açılmır" : "Şəkil yoxdur"}
-        </span>
-      </div>
-    );
+function getProductStatus(product) {
+  if (product.isDeleted) {
+    return {
+      label: "Silinib",
+      className: "bg-red-50 text-red-600",
+    };
   }
-  return (
-    <img
-      src={src}
-      alt=""
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className="h-full w-full object-cover"
-    />
-  );
+
+  if (product.isActive === false) {
+    return {
+      label: "Deaktiv",
+      className: "bg-orange-50 text-orange-600",
+    };
+  }
+
+  return {
+    label: "Aktiv",
+    className: "bg-green-50 text-green-700",
+  };
 }
 
 function getCategoryName(product) {
@@ -147,9 +145,15 @@ export default function AdminProducts() {
 
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
+
+  const [meta, setMeta] = useState({
+    page: 1,
+    pageSize: 20,
+    totalCount: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -157,17 +161,23 @@ export default function AdminProducts() {
   const basePath = getPanelBasePath();
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadProducts() {
+  async function loadProducts(page = 1) {
     try {
       setError("");
       setLoading(true);
 
-      const res = await adminProductsApi.list();
+      const res = await adminProductsApi.list({
+        page,
+        pageSize: 20,
+        search,
+      });
+
       setProducts(listAdmin(res));
+      setMeta(metaAdmin(res));
     } catch (err) {
       setError(err.message || "Məhsullar yüklənmədi.");
     } finally {
@@ -213,45 +223,21 @@ export default function AdminProducts() {
 
   const counters = useMemo(() => {
     const total = products.length;
-    const withImage = products.filter((p) => Boolean(getProductImages(p)[0]?.src)).length;
+    const active = products.filter(
+      (p) => p.isActive !== false && !p.isDeleted,
+    ).length;
     const discounted = products.filter(
       (p) => p.isDiscounted || p.discountPrice,
     ).length;
     const lowStock = products.filter((p) => getTotalStock(p) <= 2).length;
 
-    return { total, withImage, discounted, lowStock };
+    return { total, active, discounted, lowStock };
   }, [products]);
-
-  const filteredProducts = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("az");
-    if (!normalized) return products;
-    return products.filter((product) =>
-      [
-        product.name,
-        product.productCode,
-        product.model,
-        getCategoryName(product),
-        getBrandName(product),
-      ].some((value) => String(value || "").toLocaleLowerCase("az").includes(normalized)),
-    );
-  }, [products, query]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const visibleProducts = filteredProducts.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
-
-  function applySearch() {
-    setQuery(search);
-    setPage(1);
-  }
 
   if (loading) return <AppLoader text="Məhsullar yüklənir" />;
 
   return (
-    <div className="nb-products-page px-4 py-5 md:px-8 md:py-8">
+    <div className="px-4 py-5 md:px-8 md:py-8">
       {saving && <AppLoader text="Əməliyyat icra olunur" />}
 
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -260,7 +246,7 @@ export default function AdminProducts() {
             Admin məhsullar
           </p>
 
-          <h1 className="nb-products-title mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
+          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
             Məhsullar
           </h1>
 
@@ -280,7 +266,7 @@ export default function AdminProducts() {
 
           <button
             type="button"
-            onClick={loadProducts}
+            onClick={() => loadProducts(meta.page)}
             className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
           >
             <FiRefreshCw />
@@ -303,9 +289,9 @@ export default function AdminProducts() {
         />
         <CounterCard
           icon={<FiPackage />}
-          label="Şəkil linki var"
-          value={counters.withImage}
-          blue
+          label="Aktiv"
+          value={counters.active}
+          green
         />
         <CounterCard
           icon={<FiTag />}
@@ -329,7 +315,7 @@ export default function AdminProducts() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") applySearch();
+              if (e.key === "Enter") loadProducts(1);
             }}
             placeholder="Məhsul adı, kodu və ya model ilə axtar"
             className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-zinc-400"
@@ -338,7 +324,7 @@ export default function AdminProducts() {
 
         <button
           type="button"
-          onClick={applySearch}
+          onClick={() => loadProducts(1)}
           className="flex h-13 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
         >
           <FiSearch />
@@ -346,7 +332,7 @@ export default function AdminProducts() {
         </button>
       </div>
 
-      <div className="nb-products-table overflow-hidden rounded-[28px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+      <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1050px] text-left">
             <thead>
@@ -356,15 +342,17 @@ export default function AdminProducts() {
                 <th className="px-5 py-4">Brend</th>
                 <th className="px-5 py-4">Qiymət</th>
                 <th className="px-5 py-4">Stok</th>
+                <th className="px-5 py-4">Status</th>
                 <th className="px-5 py-4 text-right">Əməliyyat</th>
               </tr>
             </thead>
 
             <tbody>
-              {visibleProducts.map((product, index) => {
+              {products.map((product, index) => {
                 const productId = getProductId(product);
                 const images = getProductImages(product);
                 const image = images[0]?.src;
+                const status = getProductStatus(product);
                 const stock = getTotalStock(product);
 
                 return (
@@ -376,7 +364,17 @@ export default function AdminProducts() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-16 w-16 overflow-hidden rounded-[20px] bg-zinc-50">
-                          <ProductThumbnail key={image || productId || index} src={image} />
+                          {image ? (
+                            <img
+                              src={image}
+                              alt={product.name || "Məhsul"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-zinc-300">
+                              <FiImage />
+                            </div>
+                          )}
                         </div>
 
                         <div>
@@ -437,6 +435,14 @@ export default function AdminProducts() {
                     </td>
 
                     <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-extrabold ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
@@ -477,10 +483,10 @@ export default function AdminProducts() {
                 );
               })}
 
-              {visibleProducts.length === 0 && (
+              {products.length === 0 && (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-5 py-12 text-center text-sm font-bold text-zinc-400"
                   >
                     Məhsul tapılmadı.
@@ -493,20 +499,15 @@ export default function AdminProducts() {
 
         <div className="flex flex-col gap-3 border-t border-zinc-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm font-bold text-zinc-500">
-            Cəmi: {filteredProducts.length} məhsul · Səhifə {currentPage} /{" "}
-            {totalPages}
-            {products.length >= 500 && (
-              <span className="ml-2 text-amber-700">
-                API ən çox 500 məhsul qaytarır.
-              </span>
-            )}
+            Cəmi: {meta.totalCount} məhsul · Səhifə {meta.page} /{" "}
+            {meta.totalPages}
           </p>
 
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={currentPage <= 1}
-              onClick={() => setPage(currentPage - 1)}
+              disabled={!meta.hasPreviousPage}
+              onClick={() => loadProducts(meta.page - 1)}
               className="flex h-10 items-center gap-2 rounded-[14px] bg-zinc-50 px-4 text-sm font-extrabold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <FiChevronLeft />
@@ -515,8 +516,8 @@ export default function AdminProducts() {
 
             <button
               type="button"
-              disabled={currentPage >= totalPages}
-              onClick={() => setPage(currentPage + 1)}
+              disabled={!meta.hasNextPage}
+              onClick={() => loadProducts(meta.page + 1)}
               className="flex h-10 items-center gap-2 rounded-[14px] bg-zinc-50 px-4 text-sm font-extrabold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Növbəti
@@ -544,7 +545,7 @@ function CounterCard({
   if (blue) tone = "bg-[#244989]/8 text-[#244989]";
 
   return (
-    <div className="nb-products-stat rounded-[24px] bg-white p-5 shadow-[0_14px_42px_rgba(0,0,0,0.035)] transition hover:-translate-y-1 active:scale-[0.98]">
+    <div className="rounded-[24px] bg-white p-5 shadow-[0_14px_42px_rgba(0,0,0,0.035)] transition hover:-translate-y-1 active:scale-[0.98]">
       <div
         className={`mb-4 grid h-11 w-11 place-items-center rounded-[16px] text-xl ${tone}`}
       >

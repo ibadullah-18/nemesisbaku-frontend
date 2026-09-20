@@ -86,7 +86,6 @@ export default function ProductCard({ product }) {
   const detailLoadedRef = useRef(false);
 
   const [detailProduct, setDetailProduct] = useState(null);
-  const [failedImages, setFailedImages] = useState([]);
 
   const [activeImage, setActiveImage] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -115,8 +114,8 @@ export default function ProductCard({ product }) {
       list.unshift(mergedProduct.imageUrl);
     }
 
-    return [...new Set(list)].filter((url) => !failedImages.includes(url));
-  }, [mergedProduct, failedImages]);
+    return [...new Set(list)];
+  }, [mergedProduct]);
 
   const visibleDotIndexes = useMemo(() => {
     const maximumDots = 6;
@@ -213,11 +212,8 @@ export default function ProductCard({ product }) {
     if (!card || !productId) return undefined;
 
     if (!("IntersectionObserver" in window)) {
-      let cancelled = false;
-      queueMicrotask(() => {
-        if (!cancelled) loadDetailOnce();
-      });
-      return () => { cancelled = true; };
+      loadDetailOnce();
+      return undefined;
     }
 
     const observer = new IntersectionObserver(
@@ -239,12 +235,10 @@ export default function ProductCard({ product }) {
   }, [loadDetailOnce, productId]);
 
   useEffect(() => {
-    if (activeImage < images.length) return undefined;
-    const timer = window.setTimeout(() => {
-      setActiveImage(0);
-      setDragX(0);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    if (activeImage < images.length) return;
+
+    setActiveImage(0);
+    setDragX(0);
   }, [activeImage, images.length]);
 
   function startResetTimer(nextIndex) {
@@ -283,9 +277,13 @@ export default function ProductCard({ product }) {
     setShowSizes(false);
 
     setActiveImage((prev) => {
-      const next = direction === "next"
-        ? (prev + 1) % images.length
-        : (prev - 1 + images.length) % images.length;
+      let next = prev;
+
+      if (direction === "next") {
+        next = (prev + 1) % images.length;
+      } else {
+        next = (prev - 1 + images.length) % images.length;
+      }
 
       startResetTimer(next);
       return next;
@@ -525,19 +523,14 @@ export default function ProductCard({ product }) {
                     alt={mergedProduct?.name || mergedProduct?.productName}
                     draggable="false"
                     onDragStart={(e) => e.preventDefault()}
-                    onError={() =>
-                      setFailedImages((current) =>
-                        current.includes(img) ? current : [...current, img],
-                      )
-                    }
                     className="h-full w-full select-none object-cover transition duration-500 group-hover:scale-[1.025]"
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid h-full min-w-full place-items-center text-sm font-bold text-zinc-400">
-              Şəkil əlçatan deyil
+            <div className="grid h-full min-w-full place-items-center text-sm font-bold text-zinc-300">
+              nemesisbaku
             </div>
           )}
         </div>

@@ -1,254 +1,134 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  FiMaximize2,
-  FiPlus,
-  FiRefreshCw,
-  FiSearch,
-  FiTrash2,
-} from "react-icons/fi";
+import { FiMaximize2, FiPlus, FiRefreshCw, FiSearch, FiTrash2 } from "react-icons/fi";
 import { adminSizesApi, listAdmin } from "../../api/admin/adminApi";
-import AppLoader from "../../components/common/AppLoader";
+import { useAdminToastState } from "../../utils/adminToast";
+import "./adminCatalog.css";
 
-function getSizeId(size) {
-  return size?.id || size?.sizeId;
-}
-
-function getSizeLabel(size) {
-  return size?.value || size?.size || size?.name || size?.sizeValue || "—";
-}
+const sizeCollator = new Intl.Collator("az-AZ", { numeric: true, sensitivity: "base" });
 
 export default function AdminSizes() {
   const [sizes, setSizes] = useState([]);
-  const [size, setSize] = useState("");
+  const [sizeValue, setSizeValue] = useState("");
   const [search, setSearch] = useState("");
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  useEffect(() => {
-    loadSizes();
-  }, []);
+  const [error, setError] = useAdminToastState("error");
+  const [success, setSuccess] = useAdminToastState("success");
 
   async function loadSizes() {
     try {
-      setError("");
       setLoading(true);
-
-      const res = await adminSizesApi.list();
-      setSizes(listAdmin(res));
+      setError("");
+      const response = await adminSizesApi.list();
+      setSizes(listAdmin(response));
     } catch (err) {
-      setError(err.message || "Ölçülər yüklənmədi.");
+      setError(err?.message || "Ölçülər yüklənmədi.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function addSize(e) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  useEffect(() => {
+    const timer = window.setTimeout(loadSizes, 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    if (!size.trim()) {
-      setError("Ölçü yazılmalıdır.");
+  async function addSize(event) {
+    event.preventDefault();
+    const value = sizeValue.trim();
+    if (!value) { setError("Ölçü dəyərini daxil edin."); return; }
+    if (sizes.some((item) => sizeCollator.compare(String(item.value || ""), value) === 0)) {
+      setError("Bu ölçü artıq siyahıdadır.");
       return;
     }
-
     try {
       setSaving(true);
-
-      await adminSizesApi.create(size.trim());
-
-      setSize("");
+      setError("");
+      setSuccess("");
+      await adminSizesApi.create(value);
+      setSizeValue("");
       setSuccess("Ölçü əlavə edildi.");
       await loadSizes();
     } catch (err) {
-      setError(err.message || "Ölçü əlavə edilmədi.");
+      setError((err?.message || "Ölçü əlavə edilmədi.").replace(/razmer/gi, "ölçü"));
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteSize(item) {
-    const sizeId = getSizeId(item);
-    const label = getSizeLabel(item);
-
-    if (!sizeId) {
-      setError("Bu ölçü üçün ID gəlmədi. Silmək mümkün deyil.");
-      return;
-    }
-
-    const ok = confirm(`${label} silinsin?`);
-    if (!ok) return;
-
+    if (!window.confirm(`“${item.value}” ölçüsü silinsin?`)) return;
     try {
       setSaving(true);
       setError("");
       setSuccess("");
-
-      await adminSizesApi.delete(sizeId);
-
-      setSizes((prev) => prev.filter((x) => getSizeId(x) !== sizeId));
+      await adminSizesApi.delete(item.id);
+      setSizes((current) => current.filter((entry) => entry.id !== item.id));
       setSuccess("Ölçü silindi.");
     } catch (err) {
-      setError(
-        err.message || "Ölçü silinmədi. Bu ölçüyə bağlı variant ola bilər."
-      );
+      setError((err?.message || "Ölçü silinmədi.").replace(/razmer/gi, "ölçü"));
     } finally {
       setSaving(false);
     }
   }
 
-  const filteredSizes = useMemo(() => {
-    const text = search.trim().toLowerCase();
-
-    if (!text) return sizes;
-
-    return sizes.filter((item) =>
-      getSizeLabel(item).toLowerCase().includes(text)
-    );
+  const visible = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("az-AZ");
+    return sizes.filter((item) => String(item.value || "")
+      .toLocaleLowerCase("az-AZ").includes(query))
+      .sort((a, b) => sizeCollator.compare(String(a.value || ""), String(b.value || "")));
   }, [sizes, search]);
 
-  if (loading) return <AppLoader text="Ölçülər yüklənir" />;
+  return <div className="nb-catalog">
+    <header className="nb-catalog__header">
+      <div><p className="nb-catalog__eyebrow">nemesisbaku / kataloq</p><h1>Ölçülər</h1>
+        <p>Məhsul variantlarında seçilən ayaqqabı ölçüləri.</p></div>
+      <button type="button" className="nb-catalog__reload" disabled={loading || saving} onClick={loadSizes}>
+        <FiRefreshCw aria-hidden="true" /> Yenilə
+      </button>
+    </header>
 
-  return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Yadda saxlanılır" />}
+    {error && <div className="nb-catalog__alert nb-catalog__alert--error" role="alert">{error}
+      <button type="button" onClick={loadSizes}>Yenidən yoxla</button></div>}
+    {success && <div className="nb-catalog__alert nb-catalog__alert--success" role="status">{success}</div>}
 
-      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Admin ölçülər
-          </p>
-
-          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
-            Ölçülər
-          </h1>
-
-          <p className="mt-1 text-sm font-medium text-zinc-500">
-            Məhsul variantlarında istifadə olunan ayaqqabı ölçüləri.
-          </p>
+    <div className="nb-catalog__layout">
+      <section className="nb-catalog__panel nb-catalog__editor" aria-labelledby="size-new-title">
+        <div className="nb-catalog__panel-head">
+          <div className="nb-catalog__panel-icon"><FiMaximize2 aria-hidden="true" /></div>
+          <h2 id="size-new-title">Yeni ölçü</h2>
+          <p>Məhsullarda seçilə bilən ölçünü əlavə edin.</p>
         </div>
+        <form className="nb-catalog__form" onSubmit={addSize}>
+          <label className="nb-catalog__field">Ölçü <span>*</span>
+            <input value={sizeValue} onChange={(e) => setSizeValue(e.target.value)}
+              placeholder="Məsələn, 42" required maxLength={25} disabled={saving} />
+          </label>
+          <button type="submit" className="nb-catalog__primary" disabled={saving}>
+            <FiPlus aria-hidden="true" /> {saving ? "Əlavə olunur..." : "Ölçü əlavə et"}
+          </button>
+        </form>
+      </section>
 
-        <button
-          type="button"
-          onClick={loadSizes}
-          className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
-        >
-          <FiRefreshCw />
-          Yenilə
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
+      <section className="nb-catalog__panel nb-catalog__results" aria-labelledby="size-list-title" aria-busy={loading}>
+        <div className="nb-catalog__results-head">
+          <div><p className="nb-catalog__section-label">ÖLÇÜLƏR</p>
+            <h2 id="size-list-title">Siyahı <span>{sizes.length}</span></h2></div>
+          <label className="nb-catalog__search"><FiSearch aria-hidden="true" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ölçü axtar" aria-label="Ölçü axtar" /></label>
         </div>
-      )}
-
-      {success && (
-        <div className="mb-5 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-          {success}
-        </div>
-      )}
-
-      <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-            Yeni ölçü
-          </h2>
-
-          <p className="mt-1 text-sm font-medium text-zinc-500">
-            Məsələn: 39, 40, 41, 42.
-          </p>
-
-          <form onSubmit={addSize} className="mt-5 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-zinc-800">
-                Ölçü
-              </span>
-
-              <div className="flex h-13 items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 transition focus-within:border-zinc-400">
-                <FiMaximize2 className="text-zinc-400" />
-
-                <input
-                  value={size}
-                  onChange={(e) => setSize(e.target.value)}
-                  placeholder="Məsələn: 42"
-                  className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-zinc-400"
-                />
-              </div>
-            </label>
-
-            <button className="flex h-13 w-full items-center justify-center gap-2 rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]">
-              <FiPlus />
-              Ölçü əlavə et
-            </button>
-          </form>
-        </section>
-
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-                Ölçü siyahısı
-              </h2>
-
-              <p className="text-sm font-medium text-zinc-500">
-                Cəmi {sizes.length} ölçü.
-              </p>
-            </div>
-
-            <div className="flex h-12 items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 md:w-[290px]">
-              <FiSearch className="text-zinc-400" />
-
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ölçü axtar"
-                className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-zinc-400"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-            {filteredSizes.map((item) => {
-              const sizeId = getSizeId(item);
-              const label = getSizeLabel(item);
-
-              return (
-                <article
-                  key={sizeId || label}
-                  className="rounded-[22px] border border-zinc-100 bg-zinc-50 p-4 text-center transition hover:-translate-y-1 hover:bg-white hover:shadow-[0_16px_42px_rgba(0,0,0,0.04)] active:scale-[0.98]"
-                >
-                  <div className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] bg-white text-[#244989]">
-                    <FiMaximize2 />
-                  </div>
-
-                  <h3 className="mt-3 text-lg font-extrabold text-zinc-950">
-                    {label}
-                  </h3>
-
-                  <button
-                    type="button"
-                    onClick={() => deleteSize(item)}
-                    className="mt-4 grid h-10 w-full place-items-center rounded-[14px] bg-red-50 text-red-600 transition hover:-translate-y-0.5 active:scale-[0.94]"
-                  >
-                    <FiTrash2 />
-                  </button>
-                </article>
-              );
-            })}
-
-            {filteredSizes.length === 0 && (
-              <div className="col-span-full rounded-[22px] bg-zinc-50 p-8 text-center text-sm font-extrabold text-zinc-400">
-                Ölçü tapılmadı.
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
+        {loading ? <div className="nb-catalog__empty" role="status">Ölçülər yüklənir...</div>
+          : visible.length ? <div className="nb-catalog__grid nb-catalog__grid--sizes">
+            {visible.map((item) => <article className="nb-catalog__tile nb-catalog__tile--size" key={item.id}>
+              <span className="nb-catalog__size-value">{item.value || "—"}</span>
+              <button type="button" className="nb-catalog__tile-action nb-catalog__tile-action--delete"
+                disabled={saving} onClick={() => deleteSize(item)}
+                aria-label={`${item.value} ölçüsünü sil`}><FiTrash2 aria-hidden="true" /> Sil</button>
+            </article>)}
+          </div> : <div className="nb-catalog__empty">Ölçü tapılmadı.</div>}
+      </section>
     </div>
-  );
+  </div>;
 }

@@ -36,7 +36,6 @@ const AdminHomeSectionForm = lazy(() => import("../pages/admin/AdminHomeSectionF
 const AdminPromoCodes = lazy(() => import("../pages/admin/AdminPromoCodes"));
 const AdminEmailAnnouncements = lazy(() => import("../pages/admin/AdminEmailAnnouncements"));
 const AdminCouriers = lazy(() => import("../pages/admin/AdminCouriers"));
-const AdminStoreInfo = lazy(() => import("../pages/admin/AdminStoreInfo"));
 const AdminLogin = lazy(() => import("../pages/admin/AdminLogin"));
 
 const ProfilePage = lazy(() => import("../pages/profile/ProfilePage"));
@@ -92,6 +91,8 @@ function PageShell({ children }) {
 }
 
 function Layout({ children }) {
+  const location = useLocation();
+
   return (
     <>
       <Navbar />
@@ -412,7 +413,6 @@ export default function AppRoutes() {
         />
 
         <Route path="couriers" element={<AdminCouriers />} />
-        <Route path="store-info" element={<AdminStoreInfo />} />
 
         <Route path="home-sections" element={<AdminHomeSections />} />
 
@@ -452,7 +452,6 @@ export default function AppRoutes() {
         <Route path="orders/:id" element={<AdminOrderDetails />} />
 
         <Route path="couriers" element={<AdminCouriers />} />
-        <Route path="store-info" element={<AdminStoreInfo />} />
 
         <Route path="products" element={<AdminProducts />} />
         <Route path="products/details/:id" element={<AdminProductDetails />} />

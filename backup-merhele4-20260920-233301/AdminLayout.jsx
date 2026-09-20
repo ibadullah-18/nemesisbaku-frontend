@@ -4,7 +4,7 @@ import {
   FiActivity, FiBox, FiChevronDown, FiChevronRight, FiGrid,
   FiHome, FiImage, FiLayers, FiLogOut, FiMail, FiMenu,
   FiPackage, FiPercent, FiPlusCircle, FiShoppingBag, FiTag,
-  FiTruck, FiUsers, FiX, FiMaximize2, FiExternalLink, FiMapPin,
+  FiTruck, FiUsers, FiX, FiMaximize2, FiExternalLink,
 } from "react-icons/fi";
 import { clearPanelAuth, getPanelFromPath, getPanelLoginPath } from "../../api/admin/adminAuth";
 import "./adminWorkspace.css";
@@ -23,7 +23,6 @@ const GROUPS = [
     { path: "colors", label: "Rənglər", icon: FiLayers },
   ] },
   { name: "Mağaza", items: [
-    { path: "store-info", label: "Mağaza məlumatları", icon: FiMapPin },
     { path: "campaigns", label: "Kampaniyalar", icon: FiImage },
     { path: "home-sections", label: "Ana səhifə bölmələri", icon: FiBox },
     { path: "promo-codes", label: "Promo kodlar", icon: FiPercent },

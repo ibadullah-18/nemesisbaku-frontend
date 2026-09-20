@@ -264,23 +264,6 @@ export const adminDashboardApi = {
   getStats: () => adminFetch("/api/Stats/dashboard"),
 };
 
-export const adminStoreInfoApi = {
-  get: () => adminFetch("/api/StoreInfo"),
-
-  update: (fields, logoFile) => {
-    const formData = new FormData();
-    Object.entries(fields).forEach(([key, value]) => {
-      formData.append(key, value == null ? "" : String(value));
-    });
-    if (logoFile) formData.append("LogoFile", logoFile);
-
-    return adminFetch("/api/AdminStoreInfo", {
-      method: "PUT",
-      body: formData,
-    });
-  },
-};
-
 export const adminProductsApi = {
   list: () => adminFetch("/api/AdminProducts"),
 

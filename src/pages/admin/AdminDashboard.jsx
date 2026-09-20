@@ -1,246 +1,168 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { NavLink } from "react-router-dom";
 import {
-  FiActivity,
-  FiAlertTriangle,
-  FiBarChart2,
-  FiCheckCircle,
-  FiClock,
-  FiEye,
-  FiPackage,
-  FiRefreshCw,
-  FiShoppingBag,
-  FiTruck,
-  FiUsers,
-  FiXCircle,
+  FiActivity, FiArrowUpRight, FiBox, FiEye, FiPackage,
+  FiRefreshCw, FiShoppingBag, FiTrendingUp, FiUsers,
 } from "react-icons/fi";
-import {
-  adminDashboardApi,
-  adminProductsApi,
-  unwrapAdmin,
-  listAdmin,
-} from "../../api/admin/adminApi";
-import AppLoader from "../../components/common/AppLoader";
+import { adminDashboardApi, adminProductsApi, unwrapAdmin, listAdmin } from "../../api/admin/adminApi";
+import { getPanelBasePath } from "../../api/admin/adminAuth";
+import "./adminDashboard.css";
 
-function money(value) {
-  return `${Number(value || 0).toFixed(2)} ₼`;
-}
+const ORDER_STATES = [
+  { label: "Yeni sifariş", key: "pendingOrders" },
+  { label: "Qəbul olundu", key: "confirmedOrders" },
+  { label: "Hazırlanır", key: "preparingOrders" },
+  { label: "Çatdırılmada", key: "onDeliveryOrders" },
+  { label: "Çatdırıldı", key: "deliveredOrders" },
+  { label: "Ləğv / rədd", key: "cancelledOrders" },
+];
+
+const number = (value) => new Intl.NumberFormat("az-AZ").format(Number(value) || 0);
+const money = (value) => new Intl.NumberFormat("az-AZ", {
+  style: "currency", currency: "AZN",
+}).format(Number(value) || 0);
 
 export default function AdminDashboard() {
+  const basePath = getPanelBasePath();
   const [stats, setStats] = useState(null);
   const [lowStock, setLowStock] = useState([]);
+  const [stockError, setStockError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const requestRunning = useRef(false);
+  const mounted = useRef(true);
 
-  useEffect(() => {
-    loadDashboard();
+  const loadDashboard = useCallback(async (initial = false) => {
+    if (requestRunning.current) return;
+    requestRunning.current = true;
+    if (!initial) setRefreshing(true);
+    setError("");
+    try {
+      const [statsResult, stockResult] = await Promise.allSettled([
+        adminDashboardApi.getStats(), adminProductsApi.lowStock(2),
+      ]);
+      if (!mounted.current) return;
+      if (statsResult.status === "rejected") throw statsResult.reason;
+      setStats(unwrapAdmin(statsResult.value));
+      setLowStock(stockResult.status === "fulfilled" ? listAdmin(stockResult.value) : []);
+      setStockError(stockResult.status === "rejected");
+    } catch (err) {
+      if (mounted.current) setError(err?.message || "Göstəricilər yüklənmədi.");
+    } finally {
+      requestRunning.current = false;
+      if (mounted.current) { setLoading(false); setRefreshing(false); }
+    }
   }, []);
 
-  async function loadDashboard() {
-    try {
-      setRefreshing(true);
+  useEffect(() => {
+    mounted.current = true;
+    const timer = window.setTimeout(() => loadDashboard(true), 0);
+    return () => { mounted.current = false; window.clearTimeout(timer); };
+  }, [loadDashboard]);
 
-      const [statsRes, lowStockRes] = await Promise.all([
-        adminDashboardApi.getStats(),
-        adminProductsApi.lowStock(2).catch(() => null),
-      ]);
-
-      setStats(unwrapAdmin(statsRes));
-      setLowStock(listAdmin(lowStockRes));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
-
-  const orderCards = useMemo(
-    () => [
-      {
-        label: "Yeni sifariş",
-        value: stats?.pendingOrders,
-        icon: <FiClock />,
-        tone: "bg-orange-50 text-orange-600",
-      },
-      {
-        label: "Qəbul olundu",
-        value: stats?.confirmedOrders,
-        icon: <FiCheckCircle />,
-        tone: "bg-blue-50 text-[#244989]",
-      },
-      {
-        label: "Hazırlanır / çatdırılır",
-        value:
-          Number(stats?.preparingOrders || 0) +
-          Number(stats?.onDeliveryOrders || 0),
-        icon: <FiTruck />,
-        tone: "bg-purple-50 text-purple-600",
-      },
-      {
-        label: "Tamamlandı",
-        value: stats?.deliveredOrders,
-        icon: <FiCheckCircle />,
-        tone: "bg-green-50 text-green-700",
-      },
-      {
-        label: "Ləğv edildi",
-        value: stats?.cancelledOrders,
-        icon: <FiXCircle />,
-        tone: "bg-red-50 text-red-600",
-      },
-    ],
-    [stats]
-  );
-
-  if (loading) return <AppLoader text="Dashboard yüklənir" />;
+  const statCards = [
+    { label: "Sifarişlər", value: stats?.totalOrders, icon: FiShoppingBag, to: "orders" },
+    { label: "Çatdırılmış satış", value: money(stats?.totalRevenue), icon: FiTrendingUp },
+    { label: "Aktiv məhsullar", value: stats?.activeProducts, icon: FiPackage, to: "products" },
+    { label: "İstifadəçilər", value: stats?.totalUsers, icon: FiUsers, to: "users" },
+  ];
+  const knownOrders = ["pendingOrders", "confirmedOrders", "onDeliveryOrders", "deliveredOrders", "cancelledOrders"]
+    .reduce((sum, key) => sum + (Number(stats?.[key]) || 0), 0);
+  const orderCounts = {
+    ...stats,
+    preparingOrders: Math.max(0, (Number(stats?.totalOrders) || 0) - knownOrders),
+  };
+  const maxState = Math.max(1, ...ORDER_STATES.map(({ key }) => Number(orderCounts[key]) || 0));
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {refreshing && <AppLoader text="Məlumat yenilənir" />}
-
-      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="nb-dashboard">
+      <div className="nb-dashboard__heading">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            NemesisBaku idarəetmə
-          </p>
-
-          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em] md:text-[46px]">
-            Dashboard
-          </h1>
-
-          <p className="mt-2 text-sm font-medium text-zinc-500">
-            Satış, sifariş, istifadəçi, stok və ziyarət göstəriciləri.
-          </p>
+          <p className="nb-dashboard__eyebrow">nemesisbaku / SuperAdmin</p>
+          <h1>İdarəetmə</h1>
+          <p className="nb-dashboard__subtitle">Mağazanın ümumi göstəriciləri</p>
         </div>
-
-        <button
-          type="button"
-          onClick={loadDashboard}
-          className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
-        >
-          <FiRefreshCw />
-          Yenilə
+        <button type="button" className="nb-dashboard__refresh"
+          disabled={loading || refreshing} onClick={() => loadDashboard()}>
+          <FiRefreshCw className={refreshing ? "is-spinning" : ""} aria-hidden="true" />
+          {refreshing ? "Yenilənir..." : "Yenilə"}
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard icon={<FiUsers />} label="Ümumi istifadəçi" value={stats?.totalUsers} />
-        <StatCard icon={<FiShoppingBag />} label="Ümumi sifariş" value={stats?.totalOrders} />
-        <StatCard icon={<FiBarChart2 />} label="Ümumi gəlir" value={money(stats?.totalRevenue)} />
-        <StatCard icon={<FiPackage />} label="Aktiv məhsul" value={stats?.activeProducts} />
-        <StatCard icon={<FiAlertTriangle />} label="Az stok" value={stats?.lowStockProducts} danger />
-      </div>
+      {error && <div className="nb-dashboard__error" role="alert">{error}{" "}
+        <button type="button" onClick={() => loadDashboard()}>Yenidən yoxla</button>
+      </div>}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <InfoCard icon={<FiEye />} title="Səhifə baxışı" value={stats?.totalPageViews} />
-        <InfoCard icon={<FiActivity />} title="Unikal ziyarətçi" value={stats?.uniqueVisitors} />
-        <InfoCard icon={<FiBarChart2 />} title="WhatsApp klikləri" value={stats?.totalWhatsAppClicks} />
-      </div>
-
-      <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_420px]">
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-            Sifariş statusları
-          </h2>
-
-          <p className="mt-1 text-sm font-medium text-zinc-500">
-            Admin sifarişləri bu statuslara görə idarə edəcək.
-          </p>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {orderCards.map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[24px] border border-zinc-100 bg-zinc-50 p-4 transition hover:-translate-y-1 hover:bg-white hover:shadow-[0_16px_40px_rgba(0,0,0,0.05)] active:scale-[0.98]"
-              >
-                <div className={`mb-4 grid h-11 w-11 place-items-center rounded-[16px] text-xl ${item.tone}`}>
-                  {item.icon}
-                </div>
-
-                <p className="text-sm font-bold text-zinc-500">{item.label}</p>
-                <h3 className="mt-1 text-[30px] font-extrabold tracking-[-0.04em]">
-                  {item.value ?? 0}
-                </h3>
-              </div>
-            ))}
+      {loading && !stats ? (
+        <div className="nb-dashboard__loading" role="status">Göstəricilər yüklənir...</div>
+      ) : stats ? (
+        <>
+          <div className="nb-dashboard__stats">
+            {statCards.map(({ label, value, icon: Icon, to }, index) => {
+              const content = (
+                <>
+                  <div className="nb-dashboard__stat-head"><Icon aria-hidden="true" />
+                    {to && <FiArrowUpRight aria-hidden="true" />}</div>
+                  <div><p>{label}</p><strong>{typeof value === "number" ? number(value) : value}</strong></div>
+                  <small>{index === 1 ? "Yalnız çatdırılmış sifarişlər" : "Ümumi göstərici"}</small>
+                </>
+              );
+              return to ? <NavLink key={label} className="nb-dashboard__stat" to={basePath + "/" + to}>{content}</NavLink>
+                : <div key={label} className="nb-dashboard__stat">{content}</div>;
+            })}
           </div>
-        </section>
 
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-            Stoku azalan məhsullar
-          </h2>
-
-          <p className="mt-1 text-sm font-medium text-zinc-500">
-            2 və daha az stok qalan variantlar.
-          </p>
-
-          <div className="mt-5 space-y-3">
-            {lowStock.length === 0 ? (
-              <div className="rounded-[20px] bg-green-50 p-5 text-sm font-extrabold text-green-700">
-                Hazırda kritik stok yoxdur.
+          <div className="nb-dashboard__columns">
+            <section className="nb-dashboard__panel" aria-labelledby="order-states-title">
+              <div className="nb-dashboard__panel-head">
+                <div><p className="nb-dashboard__panel-kicker">SİFARİŞLƏR</p>
+                  <h2 id="order-states-title">Statuslara baxış</h2></div>
+                <NavLink to={basePath + "/orders"}>Hamısına bax <FiArrowUpRight aria-hidden="true" /></NavLink>
               </div>
-            ) : (
-              lowStock.slice(0, 8).map((item, index) => (
-                <div
-                  key={item.id || index}
-                  className="rounded-[20px] border border-zinc-100 bg-zinc-50 p-4"
-                >
-                  <p className="font-extrabold text-zinc-950">
-                    {item.productName || item.name || "Məhsul adı gəlmədi"}
-                  </p>
+              <div className="nb-dashboard__bars">
+                {ORDER_STATES.map(({ key, label }) => {
+                  const count = Number(orderCounts[key]) || 0;
+                  return <div className="nb-dashboard__bar-row" key={key}>
+                    <div><span>{label}</span><strong>{number(count)}</strong></div>
+                    <div className="nb-dashboard__track" aria-label={label + ": " + count}>
+                      <span style={{ width: (count / maxState * 100) + "%" }} />
+                    </div>
+                  </div>;
+                })}
+              </div>
+            </section>
 
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-extrabold">
-                    <span className="rounded-full bg-white px-3 py-1 text-zinc-600">
-                      Ölçü: {item.sizeValue || item.size || "—"}
-                    </span>
-                    <span className="rounded-full bg-white px-3 py-1 text-zinc-600">
-                      Rəng: {item.colorName || item.color || "—"}
-                    </span>
-                    <span className="rounded-full bg-red-50 px-3 py-1 text-red-600">
-                      Stok: {item.stockCount ?? item.stock ?? 0}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+            <section className="nb-dashboard__panel" aria-labelledby="stock-title">
+              <div className="nb-dashboard__panel-head">
+                <div><p className="nb-dashboard__panel-kicker">MƏHSULLAR</p>
+                  <h2 id="stock-title">Stok nəzarəti</h2></div>
+                <FiBox aria-hidden="true" />
+              </div>
+              <div className="nb-dashboard__stock-total">
+                <strong>{number(stats.lowStockProducts)}</strong>
+                <span>az stoklu məhsul</span>
+              </div>
+              {stockError ? <p className="nb-dashboard__stock-note">Stok siyahısı yüklənmədi. Yeniləyib təkrar yoxla.</p>
+                : lowStock.length ? <div className="nb-dashboard__stock-list">
+                  {lowStock.slice(0, 5).map((item, index) => (
+                    <div key={item.variantId || index}>
+                      <span>{item.productName || item.name || "Məhsul"}</span>
+                      <strong>{number(item.stockCount ?? item.stock)} ədəd</strong>
+                    </div>
+                  ))}
+                </div> : <p className="nb-dashboard__stock-note">2 və daha az stok qalan aktiv variant yoxdur.</p>}
+              <NavLink className="nb-dashboard__stock-link" to={basePath + "/products"}>Məhsullara keç <FiArrowUpRight aria-hidden="true" /></NavLink>
+            </section>
           </div>
-        </section>
-      </div>
-    </div>
-  );
-}
 
-function StatCard({ icon, label, value, danger = false }) {
-  return (
-    <div className="rounded-[26px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] transition hover:-translate-y-1 active:scale-[0.98]">
-      <div
-        className={`mb-5 grid h-12 w-12 place-items-center rounded-[18px] text-[22px] ${
-          danger ? "bg-red-50 text-red-600" : "bg-[#244989]/8 text-[#244989]"
-        }`}
-      >
-        {icon}
-      </div>
-
-      <p className="text-sm font-bold text-zinc-400">{label}</p>
-      <h3 className="mt-1 text-[28px] font-extrabold tracking-[-0.04em]">
-        {value ?? 0}
-      </h3>
-    </div>
-  );
-}
-
-function InfoCard({ icon, title, value }) {
-  return (
-    <div className="flex items-center gap-4 rounded-[24px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] transition hover:-translate-y-1 active:scale-[0.98]">
-      <div className="grid h-12 w-12 place-items-center rounded-[18px] bg-zinc-50 text-xl text-zinc-700">
-        {icon}
-      </div>
-
-      <div>
-        <p className="text-sm font-bold text-zinc-400">{title}</p>
-        <h3 className="text-[26px] font-extrabold tracking-[-0.04em]">
-          {value ?? 0}
-        </h3>
-      </div>
+          <section className="nb-dashboard__traffic" aria-label="Mağaza fəaliyyəti">
+            <div><FiEye aria-hidden="true" /><span>Səhifə baxışı</span><strong>{number(stats.totalPageViews)}</strong></div>
+            <div><FiUsers aria-hidden="true" /><span>Unikal ziyarətçi</span><strong>{number(stats.uniqueVisitors)}</strong></div>
+            <div><FiActivity aria-hidden="true" /><span>WhatsApp klikləri</span><strong>{number(stats.totalWhatsAppClicks)}</strong></div>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }
