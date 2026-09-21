@@ -463,6 +463,8 @@ export default function ProductCard({ product }) {
                 >
                   <img
                     src={img}
+  loading="lazy"
+  decoding="async"
                     alt={mergedProduct?.name || mergedProduct?.productName}
                     draggable="false"
                     onDragStart={(e) => e.preventDefault()}
