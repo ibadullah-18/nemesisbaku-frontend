@@ -22,6 +22,8 @@ const emptyFilters = {
   // null = endirim statusuna görə filter yoxdur; true = yalnız endirimli.
   // `false` backend-ə göndərilsə bütün endirimli məhsullar səhvən gizlənirdi.
   isDiscounted: null,
+  sortOrder: "",
+  stockOnly: false,
 };
 
 const FILTER_POSITION_KEY = "nemesis_filter_button_position";
@@ -128,6 +130,10 @@ function normalizeSavedFilters(filters) {
     ...emptyFilters,
     ...(filters || {}),
     isDiscounted: filters?.isDiscounted === true ? true : null,
+    sortOrder: ["price-asc", "price-desc"].includes(filters?.sortOrder)
+      ? filters.sortOrder
+      : "",
+    stockOnly: filters?.stockOnly === true,
   };
 }
 
@@ -189,7 +195,9 @@ function hasActiveFilters(filters) {
       filters?.colorId ||
       String(filters?.minPrice || "").trim() ||
       String(filters?.maxPrice || "").trim() ||
-      filters?.isDiscounted === true,
+      filters?.isDiscounted === true ||
+      Boolean(filters?.sortOrder) ||
+      filters?.stockOnly === true,
   );
 }
 
@@ -249,6 +257,57 @@ function filterByCurrentSalePrice(products, filters) {
     if (maxPrice !== null && currentPrice > maxPrice) return false;
     return true;
   });
+}
+
+function getProductStock(product) {
+  const directStock = [
+    product?.totalStock,
+    product?.stockCount,
+    product?.stock,
+    product?.availableStock,
+  ].find((value) => value !== null && value !== undefined && value !== "");
+
+  if (directStock !== undefined) {
+    const number = Number(directStock);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  if (product?.isInStock === true || product?.inStock === true) return 1;
+  if (product?.isInStock === false || product?.inStock === false) return 0;
+
+  if (Array.isArray(product?.variants) && product.variants.length > 0) {
+    return product.variants.reduce(
+      (total, variant) =>
+        total + Number(variant?.stockCount ?? variant?.stock ?? 0),
+      0,
+    );
+  }
+
+  return null;
+}
+
+function applyQuickProductRules(products, filters) {
+  let result = filterByCurrentSalePrice(products, filters);
+
+  if (filters?.stockOnly === true) {
+    result = result.filter((product) => getProductStock(product) !== 0);
+  }
+
+  if (filters?.sortOrder === "price-asc") {
+    return [...result].sort(
+      (first, second) =>
+        getCurrentSalePrice(first) - getCurrentSalePrice(second),
+    );
+  }
+
+  if (filters?.sortOrder === "price-desc") {
+    return [...result].sort(
+      (first, second) =>
+        getCurrentSalePrice(second) - getCurrentSalePrice(first),
+    );
+  }
+
+  return result;
 }
 
 function normalizePriceInput(value) {
@@ -440,6 +499,30 @@ export default function ProductDiscoveryBar({
     releaseStaleFilterPageLock();
     setPortalReady(true);
     loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    function applyQuickDiscovery(event) {
+      const preset = event.detail || {};
+      const nextFilters = normalizeSavedFilters({
+        ...emptyFilters,
+        categoryId: preset.categoryId || "",
+        sortOrder: preset.sortOrder || "",
+        stockOnly: preset.stockOnly === true,
+      });
+
+      setFilters(nextFilters);
+      setDraftFilters(nextFilters);
+      setBrandsOpen(false);
+      loadProducts(nextFilters, { source: "quick-discovery" });
+    }
+
+    window.addEventListener("nemesis_quick_discovery", applyQuickDiscovery);
+    return () =>
+      window.removeEventListener(
+        "nemesis_quick_discovery",
+        applyQuickDiscovery,
+      );
   }, []);
 
   useEffect(() => {
@@ -653,7 +736,7 @@ export default function ProductDiscoveryBar({
     }
   }
 
-  async function loadProducts(nextFilters) {
+  async function loadProducts(nextFilters, requestMeta = {}) {
     const requestId = ++productsRequestIdRef.current;
 
     try {
@@ -663,7 +746,7 @@ export default function ProductDiscoveryBar({
 
       if (requestId !== productsRequestIdRef.current) return;
 
-      const products = filterByCurrentSalePrice(
+      const products = applyQuickProductRules(
         normalizeProducts(res),
         nextFilters,
       );
@@ -672,6 +755,7 @@ export default function ProductDiscoveryBar({
       onProductsChange?.(products, {
         active,
         filters: nextFilters,
+        ...requestMeta,
       });
     } catch (err) {
       if (requestId === productsRequestIdRef.current) {
@@ -1260,7 +1344,7 @@ export default function ProductDiscoveryBar({
         }}
         className="sticky z-30 border-b border-zinc-100 bg-white transition-all duration-500"
       >
-        <div className="relative mx-auto max-w-[1180px] px-4 py-3 md:px-6">
+        <div className="relative mx-auto max-w-[1180px] px-4 py-1.5 md:px-6 md:py-2">
           <button
             type="button"
             onClick={toggleBrands}

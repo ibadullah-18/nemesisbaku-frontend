@@ -2,24 +2,11 @@
   position: relative;
   isolation: isolate;
   overflow: clip;
-  background:
-    radial-gradient(circle at 7% 8%, rgba(151, 68, 76, 0.06), transparent 24%),
-    radial-gradient(circle at 92% 34%, rgba(38, 35, 33, 0.045), transparent 22%),
-    #f7f5f2;
+  background: #fafafa;
 }
 
 .nemesis-home-page::before {
-  position: absolute;
-  z-index: -1;
-  top: 110px;
-  left: 50%;
-  width: min(1500px, 96vw);
-  height: 720px;
-  border: 1px solid rgba(23, 19, 19, 0.035);
-  border-radius: 50%;
-  content: "";
-  pointer-events: none;
-  transform: translateX(-50%) rotate(-7deg);
+  display: none;
 }
 
 .nemesis-home-canvas {
@@ -27,7 +14,161 @@
 }
 
 .nemesis-home-discovery {
-  padding-top: 3px;
+  padding-top: 0;
+}
+
+.nemesis-home-quick {
+  width: min(100% - 24px, 1240px);
+  margin: 10px auto 22px;
+  padding: 25px;
+  border: 1px solid rgba(31, 25, 24, 0.07);
+  border-radius: 27px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 24px 65px rgba(35, 27, 25, 0.045);
+  perspective: 1100px;
+  backdrop-filter: blur(10px);
+}
+
+.nemesis-home-quick__heading p {
+  margin: 0 0 7px;
+  color: #8f4d54;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.nemesis-home-quick__heading h2 {
+  margin: 0;
+  color: #151213;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(25px, 3vw, 37px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.nemesis-home-quick__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 21px;
+}
+
+.nemesis-home-quick__action {
+  display: grid;
+  grid-template-columns: 43px minmax(0, 1fr) auto;
+  min-height: 82px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid rgba(31, 25, 24, 0.07);
+  border-radius: 18px;
+  color: #171313;
+  background: #fff;
+  text-align: left;
+  box-shadow: 0 10px 28px rgba(28, 20, 19, 0.04);
+  transform: perspective(700px) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms ease, border-color 280ms ease;
+}
+
+.nemesis-home-quick__action > i {
+  display: grid;
+  width: 43px;
+  height: 43px;
+  border-radius: 14px;
+  place-items: center;
+  color: #873f48;
+  background: #f7f1f1;
+  font-size: 19px;
+  font-style: normal;
+  transform: translateZ(13px);
+}
+
+.nemesis-home-quick__action span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nemesis-home-quick__action strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nemesis-home-quick__action small {
+  overflow: hidden;
+  color: #777071;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nemesis-home-quick__action > svg {
+  color: #7b7475;
+  transition: transform 240ms ease;
+}
+
+.nemesis-home-quick__action:hover {
+  border-color: rgba(135, 63, 72, 0.16);
+  box-shadow: 0 19px 38px rgba(31, 23, 22, 0.09);
+  transform: perspective(700px) translateY(-4px) translateZ(8px)
+    rotateX(2deg);
+}
+
+.nemesis-home-quick__action:hover > svg {
+  transform: translateX(3px);
+}
+
+.nemesis-home-quick__types {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(31, 25, 24, 0.065);
+}
+
+.nemesis-home-quick__types > span {
+  flex: 0 0 auto;
+  color: #655f60;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nemesis-home-quick__types > div {
+  display: flex;
+  min-width: 0;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nemesis-home-quick__types > div::-webkit-scrollbar {
+  display: none;
+}
+
+.nemesis-home-quick__types button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 1px solid rgba(31, 25, 24, 0.08);
+  border-radius: 999px;
+  color: #302b2c;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  transition: border-color 220ms ease, color 220ms ease, transform 220ms ease;
+}
+
+.nemesis-home-quick__types button:hover {
+  border-color: rgba(135, 63, 72, 0.32);
+  color: #873f48;
+  transform: translateY(-2px);
 }
 
 .nemesis-home-feature {
@@ -158,7 +299,12 @@
   left: -35%;
   width: 30%;
   height: 400%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   content: "";
   transform: rotate(24deg);
   transition: left 600ms ease;
@@ -179,8 +325,11 @@
   overflow: hidden;
   border: 1px solid rgba(31, 25, 24, 0.06);
   border-radius: 28px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(250, 247, 243, 0.68));
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.86),
+    rgba(250, 247, 243, 0.68)
+  );
   box-shadow:
     0 26px 70px rgba(41, 31, 28, 0.045),
     inset 0 1px rgba(255, 255, 255, 0.82);
@@ -246,6 +395,51 @@
   .nemesis-home-product-section__surface {
     border-radius: 22px;
   }
+
+  .nemesis-home-quick {
+    width: calc(100% - 20px);
+    margin-block: 6px 18px;
+    padding: 20px 15px 16px;
+    border-radius: 22px;
+  }
+
+  .nemesis-home-quick__heading h2 {
+    font-size: 27px;
+  }
+
+  .nemesis-home-quick__actions {
+    display: flex;
+    gap: 9px;
+    margin-right: -15px;
+    padding-right: 15px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .nemesis-home-quick__actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nemesis-home-quick__action {
+    flex: 0 0 min(84vw, 300px);
+    min-height: 76px;
+    scroll-snap-align: start;
+  }
+
+  .nemesis-home-quick__types {
+    display: block;
+  }
+
+  .nemesis-home-quick__types > span {
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .nemesis-home-quick__types > div {
+    margin-right: -15px;
+    padding-right: 15px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -258,5 +452,11 @@
   .nemesis-home-product-grid > div > a:hover,
   .nemesis-home-product-section__card > a:hover {
     transform: none;
+  }
+
+  .nemesis-home-quick__action,
+  .nemesis-home-quick__action:hover {
+    transform: none;
+    transition-duration: 1ms;
   }
 }

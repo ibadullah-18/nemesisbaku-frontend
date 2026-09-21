@@ -1,25 +1,8 @@
-import {
-  Suspense,
-  lazy,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  FiArrowUpRight,
-  FiChevronLeft,
-  FiChevronRight,
-} from "react-icons/fi";
+import { FiArrowUpRight, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import "./homePromoSlider.css";
-
-const ThreeUiDotMatrix = lazy(() =>
-  import("@designcodeio/threeui/components/DotMatrixBackground").then(
-    (module) => ({ default: module.DotMatrixBackground }),
-  ),
-);
 
 const AUTO_PLAY_MS = 5000;
 const RESUME_AFTER_USER_MS = 5000;
@@ -38,7 +21,6 @@ function mod(index, length) {
 
 export default function HomePromoSlider({ promos = [] }) {
   const { text } = useLanguage();
-
   const autoplayRef = useRef(null);
   const resumeRef = useRef(null);
   const resetRef = useRef(null);
@@ -55,14 +37,6 @@ export default function HomePromoSlider({ promos = [] }) {
   const [pausedByUser, setPausedByUser] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [enableWebGl] = useState(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return false;
-
-    return window.matchMedia(
-      "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
-    ).matches;
-  });
-
   const validPromos = useMemo(
     () => promos.filter((promo) => promo?.imageUrl),
     [promos],
@@ -296,36 +270,6 @@ export default function HomePromoSlider({ promos = [] }) {
 
   return (
     <section className="nemesis-home-hero" aria-label="Kampaniyalar">
-      <div className="nemesis-home-hero__ambient" aria-hidden="true">
-        {enableWebGl && (
-          <Suspense fallback={null}>
-            <ThreeUiDotMatrix
-              className="nemesis-threeui-field"
-              speed={0.34}
-              gridScale={76}
-              mouseAmount={0.028}
-              pulseSpeed={0.22}
-              radius={0.12}
-              opacity={0.22}
-              hue={338}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      <div className="nemesis-home-hero__topline">
-        <div>
-          <span className="nemesis-home-hero__eyebrow">nemesisbaku</span>
-          <p>{text.premiumDesc || "Seçilmiş sneaker kolleksiyaları"}</p>
-        </div>
-
-        <span className="nemesis-home-hero__counter">
-          {String(realIndex + 1).padStart(2, "0")}
-          <i />
-          {String(count).padStart(2, "0")}
-        </span>
-      </div>
-
       <div
         ref={stageRef}
         className="nemesis-home-hero__stage"
@@ -373,7 +317,7 @@ export default function HomePromoSlider({ promos = [] }) {
               <PromoCard
                 key={`${promo.id}-${index}`}
                 promo={promo}
-                text={text}
+                discoverText={text.discover || "Kəşf et"}
               />
             ))}
           </div>
@@ -398,14 +342,7 @@ export default function HomePromoSlider({ promos = [] }) {
   );
 }
 
-function PromoCard({ promo, text }) {
-  const title = promo?.title || text.premiumTitle || "Addımlarınızda premium stil";
-  const description =
-    promo?.description ||
-    promo?.subtitle ||
-    text.premiumDesc ||
-    "Seçilmiş sneaker kolleksiyalarını kəşf edin.";
-
+function PromoCard({ promo, discoverText }) {
   return (
     <NavLink
       to={getPromoLink(promo)}
@@ -424,20 +361,11 @@ function PromoCard({ promo, text }) {
         />
       </picture>
 
-      <span className="nemesis-home-hero__shade" aria-hidden="true" />
-
-      <span className="nemesis-home-hero__copy">
-        <span className="nemesis-home-hero__collection">
-          {text.newCollection || "Yeni kolleksiya"}
-        </span>
-        <strong>{title}</strong>
-        <small>{description}</small>
-        <span className="nemesis-home-hero__cta">
-          {text.discover || "Kəşf et"}
-          <i>
-            <FiArrowUpRight />
-          </i>
-        </span>
+      <span className="nemesis-home-hero__cta">
+        {discoverText}
+        <i aria-hidden="true">
+          <FiArrowUpRight />
+        </i>
       </span>
     </NavLink>
   );

@@ -7,6 +7,8 @@ export function getFilterOptions() {
 export function getProducts(filters = {}) {
   const params = new URLSearchParams();
 
+  if (filters.page) params.append("page", filters.page);
+  if (filters.pageSize) params.append("pageSize", filters.pageSize);
   if (filters.search) params.append("search", filters.search);
   if (filters.categoryId) params.append("categoryId", filters.categoryId);
   if (filters.brandId) params.append("brandId", filters.brandId);

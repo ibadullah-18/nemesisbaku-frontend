@@ -15,6 +15,7 @@ import ProductCard from "../../components/product/ProductCard";
 import ProductCardSkeleton from "../../components/product/ProductCardSkeleton";
 import ProductSection from "../../components/home/ProductSection";
 import HomePromoSlider from "../../components/home/HomePromoSlider";
+import HomeQuickDiscovery from "../../components/home/HomeQuickDiscovery";
 import HomePageSkeleton from "../../components/home/HomePageSkeleton";
 import {
   getActiveBanners,
@@ -41,6 +42,8 @@ const defaultDiscoveryFilters = {
   minPrice: "",
   maxPrice: "",
   isDiscounted: null,
+  sortOrder: "",
+  stockOnly: false,
 };
 
 const noProductsFallback = {
@@ -145,10 +148,7 @@ function preloadHomeAssets(...groups) {
   });
 
   orderedUrls.forEach((url) => {
-    if (
-      preloadedHomeImageUrls.has(url) ||
-      queuedHomeImageUrls.has(url)
-    ) {
+    if (preloadedHomeImageUrls.has(url) || queuedHomeImageUrls.has(url)) {
       return;
     }
 
@@ -170,16 +170,20 @@ function normalizeDiscoveryFilters(filters) {
 function readRestorableHomeState() {
   const hasReturnMarker = Boolean(
     sessionStorage.getItem(HOME_RETURN_PRODUCT_KEY) ||
-      sessionStorage.getItem(HOME_RETURN_SCROLL_KEY),
+    sessionStorage.getItem(HOME_RETURN_SCROLL_KEY),
   );
 
   if (!hasReturnMarker) return null;
 
   try {
-    const stored = homeViewMemoryCache ||
+    const stored =
+      homeViewMemoryCache ||
       JSON.parse(sessionStorage.getItem(HOME_VIEW_STATE_KEY) || "null");
 
-    if (!stored || Date.now() - Number(stored.savedAt || 0) > HOME_VIEW_MAX_AGE) {
+    if (
+      !stored ||
+      Date.now() - Number(stored.savedAt || 0) > HOME_VIEW_MAX_AGE
+    ) {
       clearHomeViewState();
       return null;
     }
@@ -301,9 +305,8 @@ export default function HomePage() {
     () => restoredHomeState?.products || [],
   );
   const [productsAnimationVersion, setProductsAnimationVersion] = useState(0);
-  const [resultAnimationsEnabled, setResultAnimationsEnabled] = useState(
-    !restoredFromDetails,
-  );
+  const [resultAnimationsEnabled, setResultAnimationsEnabled] =
+    useState(!restoredFromDetails);
   const [filterActive, setFilterActive] = useState(
     () => restoredHomeState?.filterActive === true,
   );
@@ -311,9 +314,8 @@ export default function HomePage() {
     normalizeDiscoveryFilters(restoredHomeState?.discoveryFilters),
   );
 
-  const [allProductsVisible, setAllProductsVisible] = useState(
-    restoredFromDetails,
-  );
+  const [allProductsVisible, setAllProductsVisible] =
+    useState(restoredFromDetails);
 
   const [showBannerPopup, setShowBannerPopup] = useState(false);
   const [closingBannerPopup, setClosingBannerPopup] = useState(false);
@@ -639,7 +641,6 @@ export default function HomePage() {
           ),
         );
       }
-
     } catch (err) {
       showError(getErrorMessage(err, "Ana səhifə yüklənmədi."));
     } finally {
@@ -703,6 +704,13 @@ export default function HomePage() {
 
     setTimeout(() => {
       setAllProductsVisible(true);
+
+      if (meta.source === "quick-discovery") {
+        allProductsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
     }, 80);
   }
   function scrollToTop() {
@@ -797,7 +805,7 @@ export default function HomePage() {
   return (
     <main
       onClickCapture={rememberHomeBeforeProductOpen}
-      className="nemesis-home-page min-h-screen bg-[#f7f5f2] text-zinc-950"
+      className="nemesis-home-page min-h-screen bg-[#fafafa] text-zinc-950"
     >
       <style>
         {`
@@ -924,6 +932,8 @@ export default function HomePage() {
                   </div>
                 ))}
             </div>
+
+            <HomeQuickDiscovery lang={lang} />
           </>
         )}
 
@@ -973,29 +983,31 @@ export default function HomePage() {
               }}
             >
               {filterLoading
-                ? Array.from({ length: getProductPageSize() }).map((_, index) => (
-                    <ProductCardSkeleton key={`filter-skeleton-${index}`} />
-                  ))
+                ? Array.from({ length: getProductPageSize() }).map(
+                    (_, index) => (
+                      <ProductCardSkeleton key={`filter-skeleton-${index}`} />
+                    ),
+                  )
                 : products.map((product, index) => {
-                return (
-                  <div
-                    key={product.id || `product-wrap-${index}`}
-                    data-home-product-id={product.id}
-                    style={{
-                      opacity: 1,
-                      visibility: "visible",
-                      backfaceVisibility: "hidden",
-                      transformOrigin: "center bottom",
-                      willChange: "transform",
-                      animation: !resultAnimationsEnabled
-                        ? "none"
-                        : "homeProductReveal 0.22s ease-out both",
-                    }}
-                  >
-                    <ProductCard product={product} />
-                  </div>
-                );
-              })}
+                    return (
+                      <div
+                        key={product.id || `product-wrap-${index}`}
+                        data-home-product-id={product.id}
+                        style={{
+                          opacity: 1,
+                          visibility: "visible",
+                          backfaceVisibility: "hidden",
+                          transformOrigin: "center bottom",
+                          willChange: "transform",
+                          animation: !resultAnimationsEnabled
+                            ? "none"
+                            : "homeProductReveal 0.22s ease-out both",
+                        }}
+                      >
+                        <ProductCard product={product} />
+                      </div>
+                    );
+                  })}
 
               {moreLoading &&
                 Array.from({ length: getProductPageSize() }).map((_, index) => (
@@ -1009,8 +1021,7 @@ export default function HomePage() {
                 style={{
                   opacity: 1,
                   visibility: "visible",
-                  animation:
-                    "homeProductReveal 0.22s ease-out both",
+                  animation: "homeProductReveal 0.22s ease-out both",
                 }}
               >
                 <button

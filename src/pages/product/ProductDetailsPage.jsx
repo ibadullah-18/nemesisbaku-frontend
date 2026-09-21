@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  FiAward,
+  FiArrowUpRight,
   FiChevronLeft,
+  FiChevronRight,
   FiHeart,
+  FiMaximize2,
   FiMinus,
   FiPlus,
+  FiRefreshCcw,
   FiShoppingBag,
+  FiTruck,
   FiX,
   FiZap,
 } from "react-icons/fi";
@@ -13,16 +19,55 @@ import { FaHeart, FaWhatsapp } from "react-icons/fa";
 import ProductDetailsSkeleton from "../../components/product/ProductDetailsSkeleton";
 import ProductCard from "../../components/product/ProductCard";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
-import { getProducts } from "../../api/homeApi";
+import { getProducts, getStoreInfo } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { createPortal } from "react-dom";
 import { favoritesApi } from "../../api/favoritesApi";
 import { showUserToast } from "../../utils/userToast";
+import "./productDetails.css";
 
 const LOW_STOCK_LIMIT = 3;
 const RELATED_DESKTOP_BATCH = 12;
 const RELATED_PHONE_BATCH = 6;
 const STORE_WHATSAPP_NUMBER = "994514349829";
+
+const PRODUCT_SERVICE_TEXT = {
+  az: {
+    qualityTitle: "Məhsul keyfiyyəti",
+    qualityBody:
+      "Məhsul keyfiyyəti və nemesisbaku yanaşması haqqında ətraflı məlumat.",
+    deliveryTitle: "Çatdırılma şərtləri",
+    deliveryBaku: "Bakı daxilində 24 saat",
+    deliveryNearby: "Abşeron və Sumqayıta 48–72 saat",
+    deliveryRegions: "Bölgələrə 3–5 iş günü",
+    returnTitle: "Geri qaytarma qaydaları",
+    returnBody:
+      "İstifadə olunmamış, təmiz və qutusu zədələnməmiş məhsulu 14 təqvim günü ərzində qaytara və ya dəyişə bilərsiniz.",
+  },
+  en: {
+    qualityTitle: "Product quality",
+    qualityBody:
+      "Learn more about product quality and the nemesisbaku approach.",
+    deliveryTitle: "Delivery terms",
+    deliveryBaku: "Delivery within Baku in 24 hours",
+    deliveryNearby: "Absheron and Sumgait in 48–72 hours",
+    deliveryRegions: "Regions in 3–5 business days",
+    returnTitle: "Return policy",
+    returnBody:
+      "Unused and clean products with an undamaged original box can be returned or exchanged within 14 calendar days.",
+  },
+  ru: {
+    qualityTitle: "Качество товара",
+    qualityBody: "Подробнее о качестве товаров и подходе nemesisbaku.",
+    deliveryTitle: "Условия доставки",
+    deliveryBaku: "Доставка по Баку в течение 24 часов",
+    deliveryNearby: "Абшерон и Сумгаит — 48–72 часа",
+    deliveryRegions: "Регионы — 3–5 рабочих дней",
+    returnTitle: "Правила возврата",
+    returnBody:
+      "Неиспользованный чистый товар в неповреждённой оригинальной коробке можно вернуть или обменять в течение 14 календарных дней.",
+  },
+};
 
 function getRelatedBatchSize() {
   return window.innerWidth < 768 ? RELATED_PHONE_BATCH : RELATED_DESKTOP_BATCH;
@@ -84,12 +129,15 @@ export default function ProductDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { text } = useLanguage();
+  const { text, lang } = useLanguage();
 
   const relatedRef = useRef(null);
+  const galleryStageRef = useRef(null);
   const basketSuccessTimerRef = useRef(null);
+  const galleryFrameRef = useRef(null);
 
   const [product, setProduct] = useState(null);
+  const [storeInfo, setStoreInfo] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
 
   const [activeImage, setActiveImage] = useState(0);
@@ -120,11 +168,12 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     loadPage();
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => {
       window.clearTimeout(basketSuccessTimerRef.current);
+      window.cancelAnimationFrame(galleryFrameRef.current);
     };
   }, []);
 
@@ -164,6 +213,7 @@ export default function ProductDetailsPage() {
 
       setProduct(data);
       void loadFavoriteStatus();
+      void loadStoreDetails();
 
       setSelectedVariantId("");
       setSelectedColor("");
@@ -174,6 +224,15 @@ export default function ProductDetailsPage() {
       setError(err.message || text.productLoadError);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStoreDetails() {
+    try {
+      const res = await getStoreInfo();
+      setStoreInfo(unwrap(res));
+    } catch {
+      setStoreInfo(null);
     }
   }
 
@@ -306,10 +365,27 @@ export default function ProductDetailsPage() {
   const price = Number(product?.price || 0);
   const discountPrice = Number(product?.discountPrice || 0);
   const hasDiscount = discountPrice > 0 && discountPrice < price;
-  const description = String(product?.description || "").replace(/\r\n?/g, "\n");
+  const discountPercent = hasDiscount
+    ? Math.round(((price - discountPrice) / price) * 100)
+    : 0;
+  const description = String(product?.description || "").replace(
+    /\r\n?/g,
+    "\n",
+  );
   const descriptionLineCount = description.split("\n").length;
   const shouldClampDescription =
     description.length > 155 || descriptionLineCount > 3;
+  const serviceText = PRODUCT_SERVICE_TEXT[lang] || PRODUCT_SERVICE_TEXT.az;
+  const deliverySummary = [
+    storeInfo?.deliveryBakuText || serviceText.deliveryBaku,
+    storeInfo?.deliveryAbsheronSumgaitText || serviceText.deliveryNearby,
+    storeInfo?.deliveryRegionsText || serviceText.deliveryRegions,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const returnSummary =
+    storeInfo?.returnPolicyContent || serviceText.returnBody;
+  const qualitySummary = storeInfo?.aboutContent || serviceText.qualityBody;
 
   function chooseColor(colorName) {
     setSelectedColor(colorName);
@@ -328,12 +404,33 @@ export default function ProductDetailsPage() {
 
   function handleZoomMove(e) {
     const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    setZoom({
-      active: true,
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
+    window.cancelAnimationFrame(galleryFrameRef.current);
+    galleryFrameRef.current = window.requestAnimationFrame(() => {
+      setZoom({ active: true, x, y });
+
+      const stage = galleryStageRef.current;
+      if (!stage) return;
+
+      stage.style.setProperty("--gallery-rx", `${(50 - y) * 0.055}deg`);
+      stage.style.setProperty("--gallery-ry", `${(x - 50) * 0.065}deg`);
+      stage.style.setProperty("--gallery-light-x", `${x}%`);
+      stage.style.setProperty("--gallery-light-y", `${y}%`);
     });
+  }
+
+  function resetGalleryMotion() {
+    setZoom((current) => ({ ...current, active: false }));
+
+    const stage = galleryStageRef.current;
+    if (!stage) return;
+
+    stage.style.setProperty("--gallery-rx", "0deg");
+    stage.style.setProperty("--gallery-ry", "0deg");
+    stage.style.setProperty("--gallery-light-x", "50%");
+    stage.style.setProperty("--gallery-light-y", "42%");
   }
 
   function handleBack() {
@@ -380,6 +477,11 @@ export default function ProductDetailsPage() {
         setFavoriteCache(id, true);
       }
 
+      window.dispatchEvent(
+        new CustomEvent("favorite_changed", {
+          detail: { productId: id, isFavorite: !favorite },
+        }),
+      );
       window.dispatchEvent(new Event("nemesis_auth_changed"));
     } finally {
       setActionLoading(false);
@@ -528,7 +630,7 @@ export default function ProductDetailsPage() {
 
   if (!product) {
     return (
-      <main className="min-h-screen bg-[#fafafa] px-5 py-10 text-center">
+      <main className="nb-product-detail-page grid min-h-[60vh] place-items-center px-5 py-10 text-center">
         <p className="font-medium text-zinc-500">
           {error || text.productNotFound}
         </p>
@@ -538,148 +640,176 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-        <div className="mx-auto max-w-[1180px]">
-          <button
-            type="button"
-            onClick={handleBack}
-            aria-label="Back"
-            className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-black active:scale-95"
-          >
-            <FiChevronLeft className="text-[24px]" />
-          </button>
-          <section className="grid gap-7 lg:grid-cols-[minmax(0,650px)_1fr]">
-            <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both]">
-              <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)]">
-                <div className="order-2 flex gap-2 overflow-x-auto md:order-1 md:flex-col md:overflow-visible">
-                  {images.map((img, index) => (
-                    <button
-                      key={img}
-                      type="button"
-                      onClick={() => setActiveImage(index)}
-                      className={`h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] border bg-white transition duration-300 ${
-                        activeImage === index
-                          ? "border-zinc-950 opacity-100"
-                          : "border-zinc-100 opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      <img
-                        src={img}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
+      <main className="nb-product-detail-page min-h-screen px-4 py-5 sm:px-6 md:px-8 md:py-8">
+        <div className="nb-product-detail mx-auto max-w-[1320px]">
+          <header className="nb-product-detail__nav">
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label="Geri"
+              className="nb-product-detail__back"
+            >
+              <FiChevronLeft />
+            </button>
+
+            <div className="nb-product-detail__crumbs" aria-label="Məhsul yolu">
+              <span>nemesisbaku</span>
+              <i />
+              <strong>
+                {product.categoryName || product.brandName || product.name}
+              </strong>
+            </div>
+          </header>
+
+          <section className="nb-product-detail__layout">
+            <div className="nb-product-gallery">
+              <div ref={galleryStageRef} className="nb-product-gallery__stage">
+                <span className="nb-product-gallery__orb nb-product-gallery__orb--one" />
+                <span className="nb-product-gallery__orb nb-product-gallery__orb--two" />
+                <span className="nb-product-gallery__word" aria-hidden="true">
+                  nemesisbaku
+                </span>
+
+                {hasDiscount && (
+                  <span className="nb-product-gallery__sale">
+                    −{discountPercent}%
+                  </span>
+                )}
 
                 <button
                   type="button"
-                  onClick={() => setModalOpen(true)}
+                  onClick={() => images.length && setModalOpen(true)}
                   onMouseMove={handleZoomMove}
-                  onMouseEnter={() => setZoom((p) => ({ ...p, active: true }))}
-                  onMouseLeave={() => setZoom((p) => ({ ...p, active: false }))}
-                  className="relative order-1 aspect-[4/4.75] max-h-[620px] w-full overflow-hidden rounded-[18px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.045)] md:order-2"
+                  onMouseEnter={() =>
+                    setZoom((current) => ({ ...current, active: true }))
+                  }
+                  onMouseLeave={resetGalleryMotion}
+                  className="nb-product-gallery__image-button"
+                  aria-label="Şəkli böyüt"
                 >
                   {images[activeImage] ? (
                     <img
+                      key={images[activeImage]}
                       src={images[activeImage]}
                       alt={product.name}
-                      className="h-full w-full object-cover transition-transform duration-300"
+                      className="nb-product-gallery__image"
                       style={{
-                        transform: zoom.active ? "scale(1.55)" : "scale(1)",
+                        transform: zoom.active ? "scale(1.34)" : "scale(1)",
                         transformOrigin: `${zoom.x}% ${zoom.y}%`,
                       }}
                     />
                   ) : (
-                    <div className="grid h-full place-items-center text-zinc-300">
+                    <span className="nb-product-gallery__empty">
                       nemesisbaku
-                    </div>
+                    </span>
                   )}
                 </button>
+
+                <div className="nb-product-gallery__foot">
+                  <span>
+                    {String(activeImage + 1).padStart(2, "0")} /{" "}
+                    {String(Math.max(images.length, 1)).padStart(2, "0")}
+                  </span>
+                  {images.length > 0 && (
+                    <button type="button" onClick={() => setModalOpen(true)}>
+                      <FiMaximize2 />
+                      <span>Yaxından bax</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {images.length > 1 && (
+                <div
+                  className="nb-product-gallery__thumbs"
+                  aria-label="Məhsul şəkilləri"
+                >
+                  {images.map((img, index) => (
+                    <button
+                      key={img}
+                      type="button"
+                      onClick={() => {
+                        setActiveImage(index);
+                        resetGalleryMotion();
+                      }}
+                      className={activeImage === index ? "is-active" : ""}
+                      aria-label={`${index + 1}-ci şəkil`}
+                    >
+                      <img src={img} alt="" />
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="animate-[detailsUp_.62s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <h1 className="text-[30px] font-medium leading-[1.08] tracking-[-0.035em] text-zinc-950 md:text-[40px]">
-                  {product.name}
-                </h1>
+            <aside className="nb-product-info">
+              <div className="nb-product-info__topline">
+                <div>
+                  <p>{product.brandName || "nemesisbaku"}</p>
+                  {product.productCode && <span>#{product.productCode}</span>}
+                </div>
 
                 <button
                   type="button"
                   onClick={toggleFavorite}
                   disabled={actionLoading}
-                  className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-zinc-50 text-xl text-zinc-950 transition duration-300 hover:bg-zinc-100 hover:scale-105 active:scale-95"
+                  className={`nb-product-info__favorite ${favorite ? "is-active" : ""}`}
+                  aria-label={
+                    favorite ? "Seçilmişlərdən çıxar" : "Seçilmişlərə əlavə et"
+                  }
                 >
-                  {favorite ? (
-                    <FaHeart className="text-red-600" />
-                  ) : (
-                    <FiHeart />
-                  )}
+                  {favorite ? <FaHeart /> : <FiHeart />}
                 </button>
               </div>
 
+              <h1>{product.name}</h1>
+
+              <div className="nb-product-info__price">
+                <strong>{hasDiscount ? discountPrice : price} ₼</strong>
+                {hasDiscount && (
+                  <>
+                    <del>{price} ₼</del>
+                    <span>−{discountPercent}%</span>
+                  </>
+                )}
+              </div>
+
               {description && (
-                <div className="mt-4">
-                  {!descriptionOpen ? (
-                    <div
-                      className={`relative overflow-hidden ${
-                        shouldClampDescription ? "max-h-[84px]" : ""
-                      }`}
+                <div className="nb-product-info__description">
+                  <div
+                    className={
+                      !descriptionOpen && shouldClampDescription
+                        ? "is-clamped"
+                        : ""
+                    }
+                  >
+                    {description}
+                  </div>
+
+                  {shouldClampDescription && (
+                    <button
+                      type="button"
+                      onClick={() => setDescriptionOpen((current) => !current)}
                     >
-                      <p className="whitespace-pre-wrap break-words text-[15px] font-normal leading-7 text-zinc-500">
-                        {description}
-                      </p>
-
-                      {shouldClampDescription && (
-                        <div className="absolute bottom-0 right-0 flex h-7 w-[42%] items-center justify-end bg-gradient-to-l from-white via-white/95 to-transparent">
-                          <button
-                            type="button"
-                            onClick={() => setDescriptionOpen(true)}
-                            className="bg-white pl-2 text-[15px] font-medium text-zinc-950"
-                          >
-                            {text.showMore || "Daha çox"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <p className="whitespace-pre-wrap break-words text-[15px] font-normal leading-7 text-zinc-500">
-                        {description}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => setDescriptionOpen(false)}
-                        className="mt-1 text-[15px] font-medium text-zinc-950"
-                      >
-                        {text.showLess || "Daha az"}
-                      </button>
-                    </>
+                      {descriptionOpen
+                        ? text.showLess || "Daha az"
+                        : text.showMore || "Daha çox"}
+                    </button>
                   )}
                 </div>
               )}
 
-              <div className="mt-5 flex items-end gap-3">
-                <p
-                  className={`text-[30px] font-medium ${
-                    hasDiscount ? "text-red-600" : "text-zinc-950"
-                  }`}
-                >
-                  {hasDiscount ? discountPrice : price} ₼
-                </p>
-
-                {hasDiscount && (
-                  <p className="pb-1 text-base font-normal text-zinc-400 line-through">
-                    {price} ₼
-                  </p>
-                )}
-              </div>
+              <div className="nb-product-info__rule" />
 
               {colors.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex min-h-[44px] flex-wrap items-center gap-2">
+                <div className="nb-product-option">
+                  <div className="nb-product-option__head">
+                    <span>{text.color || "Rəng"}</span>
+                    <strong>{selectedColor || "—"}</strong>
+                  </div>
+
+                  <div className="nb-product-colors">
                     {colors.map((color) => {
                       const active = selectedColor === color.name;
 
@@ -689,16 +819,10 @@ export default function ProductDetailsPage() {
                           type="button"
                           onClick={() => chooseColor(color.name)}
                           title={color.name}
-                          className="grid h-11 w-11 place-items-center rounded-full transition"
+                          className={active ? "is-active" : ""}
+                          aria-label={color.name}
                         >
-                          <span
-                            className={`rounded-full border border-black/10 transition-all duration-300 ${
-                              active
-                                ? "h-[33px] w-[33px] shadow-[0_0_0_4px_rgba(0,0,0,0.06)]"
-                                : "h-7 w-7 hover:scale-105"
-                            }`}
-                            style={{ backgroundColor: color.hex }}
-                          />
+                          <span style={{ backgroundColor: color.hex }} />
                         </button>
                       );
                     })}
@@ -706,8 +830,17 @@ export default function ProductDetailsPage() {
                 </div>
               )}
 
-              <div className="mt-6">
-                <div className="flex min-h-[52px] flex-wrap items-center gap-2">
+              <div className="nb-product-option">
+                <div className="nb-product-option__head">
+                  <span>{text.size || "Ölçü"}</span>
+                  {selectedVariant && (
+                    <strong>
+                      {selectedVariant.sizeValue} · {stock} ədəd
+                    </strong>
+                  )}
+                </div>
+
+                <div className="nb-product-sizes">
                   {availableSizes.map((item) => {
                     const active = selectedVariantId === item.variantId;
                     const lowStock =
@@ -718,144 +851,159 @@ export default function ProductDetailsPage() {
                         key={item.variantId}
                         type="button"
                         onClick={() => chooseSize(item)}
-                        className={`relative h-12 min-w-12 rounded-[12px] border px-4 text-sm transition-all duration-300 ${
-                          active
-                            ? "border-zinc-950 bg-white font-semibold text-zinc-950 shadow-[0_0_0_1px_rgba(9,9,11,1)]"
-                            : "border-zinc-200 bg-white font-normal text-zinc-700 hover:border-zinc-500"
-                        }`}
+                        className={active ? "is-active" : ""}
                       >
-                        {lowStock && (
-                          <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 animate-[stockPulse_1.15s_ease-in-out_infinite] items-center justify-center gap-0.5 rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-[0_0_0_4px_rgba(220,38,38,0.12)]">
-                            <FiZap className="fill-white text-[10px]" />
-                            {item.stock}
-                          </span>
-                        )}
-
                         {item.size}
+                        {lowStock && (
+                          <small>
+                            <FiZap /> {item.stock}
+                          </small>
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="mt-6">
-                <div className="inline-flex h-12 overflow-hidden rounded-[12px] border border-zinc-200 bg-white">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
-                  >
-                    <FiMinus />
-                  </button>
+              <button
+                type="button"
+                onClick={openWhatsapp}
+                className="nb-product-whatsapp"
+              >
+                <span>
+                  <FaWhatsapp />
+                  {text.askWhatsapp}
+                </span>
+                <FiArrowUpRight />
+              </button>
 
-                  <div className="grid w-14 place-items-center text-sm font-medium">
-                    {quantity}
-                  </div>
+              <div className="nb-product-info__signature">
+                <span>nemesisbaku</span>
+                <i />
+                <small>
+                  {product.categoryName || product.brandName || "nemesisbaku"}
+                </small>
+              </div>
+            </aside>
+          </section>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setQuantity((q) => Math.min(stock || 99, q + 1))
-                    }
-                    className="grid w-12 place-items-center text-zinc-950 transition hover:bg-zinc-50 active:scale-95"
-                  >
-                    <FiPlus />
-                  </button>
-                </div>
+          <section
+            className="nb-product-assurances"
+            aria-label="Məhsul məlumatları"
+          >
+            <button type="button" onClick={() => navigate("/about")}>
+              <span className="nb-product-assurances__number">01</span>
+              <span className="nb-product-assurances__icon">
+                <FiAward />
+              </span>
+              <span className="nb-product-assurances__copy">
+                <strong>{serviceText.qualityTitle}</strong>
+                <small>{qualitySummary}</small>
+              </span>
+              <FiArrowUpRight className="nb-product-assurances__arrow" />
+            </button>
+
+            <button type="button" onClick={() => navigate("/delivery")}>
+              <span className="nb-product-assurances__number">02</span>
+              <span className="nb-product-assurances__icon">
+                <FiTruck />
+              </span>
+              <span className="nb-product-assurances__copy">
+                <strong>{serviceText.deliveryTitle}</strong>
+                <small>{deliverySummary}</small>
+              </span>
+              <FiArrowUpRight className="nb-product-assurances__arrow" />
+            </button>
+
+            <button type="button" onClick={() => navigate("/return-policy")}>
+              <span className="nb-product-assurances__number">03</span>
+              <span className="nb-product-assurances__icon">
+                <FiRefreshCcw />
+              </span>
+              <span className="nb-product-assurances__copy">
+                <strong>{serviceText.returnTitle}</strong>
+                <small>{returnSummary}</small>
+              </span>
+              <FiArrowUpRight className="nb-product-assurances__arrow" />
+            </button>
+          </section>
+
+          {createPortal(
+            <div className="nb-product-buy-dock">
+              <div
+                className="nb-product-quantity"
+                aria-label={text.quantity || "Say"}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQuantity((current) => Math.max(1, current - 1))
+                  }
+                  aria-label="Azalt"
+                >
+                  <FiMinus />
+                </button>
+                <span>{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQuantity((current) => Math.min(stock || 99, current + 1))
+                  }
+                  aria-label="Artır"
+                >
+                  <FiPlus />
+                </button>
               </div>
 
               <button
                 type="button"
                 onClick={addBasket}
                 disabled={actionLoading}
-                className={`group relative mt-7 inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-[14px] text-sm font-medium text-white transition duration-300 active:scale-[0.98] disabled:opacity-50 ${
-                  basketSuccess
-                    ? "bg-emerald-600"
-                    : "bg-zinc-950 hover:bg-zinc-800"
-                }`}
+                className={`nb-product-add ${basketSuccess ? "is-success" : ""}`}
               >
-                <span
-                  className={`absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-zinc-950 transition-all duration-500 ${
-                    basketSuccess
-                      ? "scale-[9] opacity-100"
-                      : "scale-0 opacity-0"
-                  }`}
-                />
-
-                <span
-                  className={`relative z-10 flex items-center gap-2 transition-all duration-500 ${
-                    basketSuccess ? "scale-105 text-zinc-950" : "text-white"
-                  }`}
-                >
-                  {basketSuccess ? (
-                    <>
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-zinc-950 text-white">
-                        ✓
-                      </span>
-                      {text.addedToBasket}
-                    </>
-                  ) : (
-                    <>
-                      <FiShoppingBag />
-                      {text.addToBasket}
-                    </>
-                  )}
+                <span>
+                  {basketSuccess ? "✓" : <FiShoppingBag />}
+                  {basketSuccess ? text.addedToBasket : text.addToBasket}
                 </span>
+                {!basketSuccess && <FiArrowUpRight />}
               </button>
-
-              <button
-                type="button"
-                onClick={openWhatsapp}
-                className="mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition duration-300 hover:opacity-95 active:scale-[0.98]"
-              >
-                <FaWhatsapp className="text-xl" />
-                {text.askWhatsapp}
-              </button>
-            </div>
-          </section>
+            </div>,
+            document.body,
+          )}
 
           {relatedProducts.length > 0 && (
-            <section className="mt-10 animate-[detailsUp_.72s_cubic-bezier(.22,1,.36,1)_both]">
-              <div className="relative px-0 py-6 md:px-5 md:py-8">
-                <div className="mb-5 text-center">
-                  <h2 className="text-[25px] font-medium tracking-[-0.035em] text-zinc-950 md:text-[32px]">
-                    {text.selectedForYou}
-                  </h2>
-
-                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
-                    {text.swipe}
-                  </p>
+            <section className="nb-product-related">
+              <div className="nb-product-related__head">
+                <div>
+                  <span>nemesisbaku</span>
+                  <h2>{text.selectedForYou}</h2>
                 </div>
+                <p>{text.swipe}</p>
+              </div>
 
-                <div className="overflow-hidden">
+              <div ref={relatedRef} className="nb-product-related__track">
+                {relatedProducts.map((item) => (
                   <div
-                    ref={relatedRef}
-                    className="flex justify-start gap-3 overflow-x-auto pb-3 scroll-smooth md:gap-4"
+                    key={item.id}
+                    data-related-card
+                    className="nb-product-related__card"
                   >
-                    {relatedProducts.map((item) => (
-                      <div
-                        key={item.id}
-                        data-related-card
-                        className="w-[47%] min-w-[47%] sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]"
-                      >
-                        <ProductCard product={item} />
-                      </div>
-                    ))}
-
-                    {relatedHasMore && (
-                      <div className="grid w-[47%] min-w-[47%] place-items-center sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]">
-                        <button
-                          type="button"
-                          onClick={() => loadRelated(product, relatedPage + 1)}
-                          disabled={relatedLoading}
-                          className="h-14 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
-                        >
-                          {relatedLoading ? text.loading : text.more}
-                        </button>
-                      </div>
-                    )}
+                    <ProductCard product={item} />
                   </div>
-                </div>
+                ))}
+
+                {relatedHasMore && (
+                  <div className="nb-product-related__more-wrap">
+                    <button
+                      type="button"
+                      onClick={() => loadRelated(product, relatedPage + 1)}
+                      disabled={relatedLoading}
+                    >
+                      {relatedLoading ? text.loading : text.more}
+                      <FiArrowUpRight />
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -864,14 +1012,26 @@ export default function ProductDetailsPage() {
 
       {modalOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[99999] flex h-dvh w-screen touch-none items-center justify-center overflow-hidden bg-black/95 p-2 md:p-8">
+          <div className="nb-product-modal">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="fixed right-4 top-4 z-[100002] text-[34px] text-white transition hover:scale-110 active:scale-95 md:right-7 md:top-7"
+              className="nb-product-modal__close"
+              aria-label="Bağla"
             >
               <FiX />
             </button>
+
+            {images.length > 1 && (
+              <button
+                type="button"
+                onClick={modalPrev}
+                className="nb-product-modal__arrow nb-product-modal__arrow--prev"
+                aria-label="Əvvəlki şəkil"
+              >
+                <FiChevronLeft />
+              </button>
+            )}
 
             <img
               key={images[activeImage]}
@@ -885,34 +1045,31 @@ export default function ProductDetailsPage() {
                 setModalDragging(false);
                 setModalDragX(0);
               }}
-              className="block max-h-[98dvh] max-w-[98vw] select-none animate-[modalImage_.28s_cubic-bezier(.22,1,.36,1)_both] rounded-[14px] object-contain"
+              className="nb-product-modal__image"
               style={{
                 transform: `translateX(${modalDragX}px)`,
                 transition: modalDragging ? "none" : "transform 260ms ease-out",
                 touchAction: "none",
               }}
             />
+
+            {images.length > 1 && (
+              <button
+                type="button"
+                onClick={modalNext}
+                className="nb-product-modal__arrow nb-product-modal__arrow--next"
+                aria-label="Növbəti şəkil"
+              >
+                <FiChevronRight />
+              </button>
+            )}
+
+            <div className="nb-product-modal__counter">
+              {activeImage + 1} / {images.length}
+            </div>
           </div>,
           document.body,
         )}
-
-      <style>{`
-        @keyframes detailsUp {
-          from { opacity: 0; transform: translateY(22px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes modalImage {
-          from { opacity: 0; transform: scale(.94); }
-          to { opacity: 1; transform: scale(1); }
-        }
-
-        @keyframes stockPulse {
-          0% { box-shadow: 0 0 0 0 rgba(220,38,38,.35); transform: scale(1); }
-          70% { box-shadow: 0 0 0 8px rgba(220,38,38,0); transform: scale(1.04); }
-          100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); transform: scale(1); }
-        }
-      `}</style>
     </>
   );
 }
