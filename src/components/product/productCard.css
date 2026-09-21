@@ -1,0 +1,192 @@
+.nemesis-product-card {
+  --product-card-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  height: 100%;
+  transform: translateZ(0);
+  transform-style: preserve-3d;
+  transition:
+    transform 420ms var(--product-card-ease),
+    border-color 260ms ease,
+    box-shadow 420ms var(--product-card-ease);
+  will-change: transform;
+}
+
+.nemesis-product-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 10% -16px;
+  z-index: -1;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  filter: blur(17px);
+  opacity: 0;
+  transform: translateY(-5px) scale(0.82);
+  transition: opacity 420ms ease, transform 420ms var(--product-card-ease);
+  pointer-events: none;
+}
+
+.nemesis-product-card:hover {
+  z-index: 3;
+  border-color: rgba(24, 24, 27, 0.12);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.09);
+  transform: translate3d(0, -6px, 14px) rotateX(0.7deg);
+}
+
+.nemesis-product-card:hover::after {
+  opacity: 0.4;
+  transform: translateY(0) scale(1);
+}
+
+.nemesis-product-card__media {
+  isolation: isolate;
+  transform: translateZ(1px);
+}
+
+.nemesis-product-card__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  background: linear-gradient(118deg, transparent 24%, rgba(255, 255, 255, 0.34) 46%, transparent 67%);
+  transform: translateX(-115%);
+  transition: transform 800ms var(--product-card-ease);
+}
+
+.nemesis-product-card:hover .nemesis-product-card__media::after {
+  transform: translateX(115%);
+}
+
+.nemesis-product-card__media-frame {
+  position: absolute;
+  inset: 9px;
+  z-index: 16;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0.54;
+  transition: inset 420ms var(--product-card-ease), opacity 260ms ease;
+}
+
+.nemesis-product-card:hover .nemesis-product-card__media-frame {
+  inset: 12px;
+  opacity: 0.82;
+}
+
+.nemesis-product-card__viewport {
+  transform: translateZ(0);
+}
+
+.nemesis-product-card__image {
+  transition: transform 650ms var(--product-card-ease), filter 420ms ease;
+  backface-visibility: hidden;
+}
+
+.nemesis-product-card:hover .nemesis-product-card__image {
+  transform: scale(1.045) translateY(-2px);
+  filter: saturate(1.025) contrast(1.015);
+}
+
+.nemesis-product-card__discount,
+.nemesis-product-card__favorite {
+  transform: translateZ(22px);
+}
+
+.nemesis-product-card__discount {
+  letter-spacing: 0.03em;
+}
+
+.nemesis-product-card__favorite {
+  transition:
+    transform 260ms var(--product-card-ease),
+    box-shadow 260ms ease,
+    background-color 260ms ease;
+}
+
+.nemesis-product-card__favorite:hover {
+  transform: translate3d(0, -2px, 26px) scale(1.06);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+}
+
+.nemesis-product-card__body {
+  position: relative;
+  z-index: 2;
+  min-height: 118px;
+  background: #fff;
+  transform: translateZ(5px);
+}
+
+.nemesis-product-card__open {
+  transition:
+    color 260ms ease,
+    background-color 260ms ease,
+    transform 320ms var(--product-card-ease);
+}
+
+.nemesis-product-card:hover .nemesis-product-card__open {
+  color: #fff;
+  background: #18181b;
+  transform: translate3d(1px, -1px, 12px) rotate(6deg);
+}
+
+.nemesis-product-card__price {
+  border-top: 1px solid rgba(24, 24, 27, 0.06);
+  padding-top: 10px;
+}
+
+@media (max-width: 639px) {
+  .nemesis-product-card {
+    border-radius: 15px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 350px;
+  }
+
+  .nemesis-product-card:hover {
+    transform: none;
+  }
+
+  .nemesis-product-card:hover::after {
+    opacity: 0;
+  }
+
+  .nemesis-product-card__media-frame {
+    inset: 7px;
+    border-radius: 10px;
+  }
+
+  .nemesis-product-card__discount {
+    left: 9px;
+    top: 9px;
+    min-height: 29px;
+    padding-inline: 10px;
+  }
+
+  .nemesis-product-card__favorite {
+    right: 9px;
+    top: 9px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .nemesis-product-card__body {
+    min-height: 112px;
+  }
+
+}
+
+@media (hover: none) {
+  .nemesis-product-card__media::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nemesis-product-card,
+  .nemesis-product-card *,
+  .nemesis-product-card::before,
+  .nemesis-product-card::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

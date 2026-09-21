@@ -16,6 +16,7 @@ import {
   getOrderStatus,
   money,
 } from "../../helpers/orderStatus";
+import "./myOrdersPage.css";
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
@@ -96,10 +97,6 @@ export default function MyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
   async function loadOrders() {
     try {
       setLoading(true);
@@ -166,6 +163,13 @@ export default function MyOrdersPage() {
     setProductDetails(loaded);
   }
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadOrders();
+    // The initial request intentionally runs once when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (loading) {
     return createPortal(
       <div className="fixed inset-0 z-[9999999999] grid h-dvh w-full place-items-center overflow-hidden bg-[#fafafa]">
@@ -176,17 +180,17 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <main className="min-h-dvh w-full overflow-x-clip bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
-      <div className="mx-auto w-full min-w-0 max-w-[1180px]">
+    <main className="orders-page min-h-dvh w-full overflow-x-clip bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
+      <div className="orders-page__shell mx-auto w-full min-w-0 max-w-[1180px]">
         <button
           type="button"
           onClick={() => navigate("/profile")}
-          className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl text-zinc-950 shadow-[0_12px_35px_rgba(0,0,0,0.06)] transition hover:-translate-x-0.5 active:scale-95"
+          className="orders-page__back mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl text-zinc-950 shadow-[0_12px_35px_rgba(0,0,0,0.06)] transition active:scale-95"
         >
           <FiChevronLeft />
         </button>
 
-        <div className="mb-7 animate-[ordersUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
+        <div className="orders-page__header mb-7 text-center">
           <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
             nemesisbaku
           </p>
@@ -198,16 +202,26 @@ export default function MyOrdersPage() {
           <p className="mx-auto mt-2 max-w-[520px] text-sm font-normal leading-6 text-zinc-500">
             {text.myOrdersDesc}
           </p>
+
+          {orders.length > 0 && (
+            <span className="orders-page__count mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600">
+              <FiPackage />
+              {orders.length}
+            </span>
+          )}
         </div>
 
         {error && (
-          <div className="mb-5 rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div
+            role="alert"
+            className="orders-page__error rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+          >
             {error}
           </div>
         )}
 
         {orders.length === 0 ? (
-          <div className="grid min-h-[380px] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+          <div className="orders-page__empty grid min-h-[380px] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
             <div>
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-zinc-50 text-3xl text-zinc-400">
                 <FiPackage />
@@ -223,7 +237,7 @@ export default function MyOrdersPage() {
             </div>
           </div>
         ) : (
-          <section className="grid min-w-0 gap-3">
+          <section className="orders-page__list grid min-w-0 gap-3">
             {orders.map((order, index) => (
               <OrderCard
                 key={order.id}
@@ -238,17 +252,6 @@ export default function MyOrdersPage() {
         )}
       </div>
 
-      <style>{`
-        @keyframes ordersUp {
-          from { opacity: 0; transform: translateY(18px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes orderCard {
-          from { opacity: 0; transform: translateY(14px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </main>
   );
 }
@@ -263,8 +266,8 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
   return (
     <article
       onClick={onOpen}
-      className="group w-full min-w-0 cursor-pointer overflow-hidden rounded-[18px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition animate-[orderCard_.42s_cubic-bezier(.22,1,.36,1)_both] hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] sm:p-4"
-      style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
+      className="order-card group w-full min-w-0 cursor-pointer overflow-hidden rounded-[18px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] sm:p-4"
+      style={{ "--order-delay": `${Math.min(index * 45, 360)}ms` }}
     >
       <div className="grid min-w-0 gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-4">
         <div className="order-2 flex max-w-full min-w-0 shrink-0 -space-x-3 overflow-hidden py-1 sm:order-1 sm:-space-x-4 sm:pt-1">
@@ -275,7 +278,7 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
               return (
                 <div
                   key={item.id || getProductId(item) || itemIndex}
-                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[14px] bg-zinc-100 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px]"
+                  className="order-card__image relative h-14 w-14 shrink-0 overflow-hidden rounded-[14px] bg-zinc-100 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px]"
                   title={getItemName(item)}
                 >
                   {image ? (
@@ -339,7 +342,7 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
         </div>
       </div>
 
-      <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 sm:mt-4 sm:pt-4">
+      <div className="order-card__footer mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 sm:mt-4 sm:pt-4">
         <p className="min-w-0 truncate text-xs font-medium text-zinc-400 sm:text-sm">
           {text.viewOrderDetails}
         </p>

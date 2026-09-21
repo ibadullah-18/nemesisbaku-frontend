@@ -5,6 +5,7 @@ import FavoritesPageSkeleton from "../../components/favorites/FavoritesPageSkele
 import { favoritesApi } from "../../api/favoritesApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
+import "./favoritesPage.css";
 
 function unwrap(res) {
   return res?.data?.data ?? res?.data ?? res;
@@ -93,19 +94,25 @@ export default function FavoritesPage() {
  if (loading) return <FavoritesPageSkeleton />;
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
-        <div className="mb-7 animate-[favoritesUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
+    <main className="nemesis-favorites-page min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
+      <div className="nemesis-favorites-shell mx-auto max-w-[1180px]">
+        <div className="nemesis-favorites-heading mb-7 animate-[favoritesUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
           <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
             nemesisbaku
           </p>
           <h1 className="mt-2 text-[34px] font-medium tracking-[-0.045em] text-zinc-950 md:text-[46px]">
             {text.favorites}
           </h1>
+
+          {products.length > 0 && (
+            <span className="nemesis-favorites-count">
+              <FiHeart aria-hidden="true" /> {products.length}
+            </span>
+          )}
         </div>
 
         {products.length === 0 ? (
-          <div className="grid min-h-[360px] animate-[favoritesUp_.5s_cubic-bezier(.22,1,.36,1)_both] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+          <div className="nemesis-favorites-empty grid min-h-[360px] animate-[favoritesUp_.5s_cubic-bezier(.22,1,.36,1)_both] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
             <div>
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-zinc-50 text-3xl text-zinc-400">
                 <FiHeart />
@@ -119,12 +126,14 @@ export default function FavoritesPage() {
             </div>
           </div>
         ) : (
-          <div className="grid animate-[favoritesUp_.5s_cubic-bezier(.22,1,.36,1)_both] grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4">
+          <div className="nemesis-favorites-grid grid animate-[favoritesUp_.5s_cubic-bezier(.22,1,.36,1)_both] grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4">
             {products.map((product, index) => (
               <div
                 key={product.id}
-                className="animate-[favoriteCard_.45s_cubic-bezier(.22,1,.36,1)_both]"
-                style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
+                className="nemesis-favorite-card animate-[favoriteCard_.45s_cubic-bezier(.22,1,.36,1)_both]"
+                style={{
+                  "--favorite-delay": `${Math.min(index * 45, 360)}ms`,
+                }}
               >
                 <ProductCard product={product} />
               </div>
@@ -133,17 +142,6 @@ export default function FavoritesPage() {
         )}
       </div>
 
-      <style>{`
-        @keyframes favoritesUp {
-          from { opacity: 0; transform: translateY(18px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes favoriteCard {
-          from { opacity: 0; transform: translateY(14px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </main>
   );
 }

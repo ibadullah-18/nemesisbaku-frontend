@@ -17,6 +17,7 @@ import ProfilePageSkeleton from "../../components/profile/ProfilePageSkeleton";
 import { profileApi } from "../../api/profileApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
+import "./profilePage.css";
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
@@ -76,10 +77,6 @@ export default function ProfilePage() {
   const loyalty = loyaltyText[language] || loyaltyText.az;
 
   useEffect(() => {
-    loadPage();
-  }, []);
-
-  useEffect(() => {
     const syncLanguage = () => setLanguage(getStoredLanguage());
 
     window.addEventListener("storage", syncLanguage);
@@ -111,18 +108,25 @@ export default function ProfilePage() {
         );
       }
     } catch (err) {
-  setProfile(null);
+      setProfile(null);
 
-  showUserToast(
-    err.message ||
-      text.profileLoadError ||
-      "Profil məlumatları yüklənmədi.",
-    "error",
-  );
-} finally {
-  setLoading(false);
-}
+      showUserToast(
+        err.message ||
+          text.profileLoadError ||
+          "Profil məlumatları yüklənmədi.",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPage();
+    // Profile data is loaded once; language switching is handled separately.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function logout() {
     localStorage.removeItem("accessToken");
@@ -135,19 +139,19 @@ export default function ProfilePage() {
     navigate("/login");
   }
 
-if (loading) {
-  return <ProfilePageSkeleton />;
-}
+  if (loading) {
+    return <ProfilePageSkeleton />;
+  }
 
   const defaultAddress =
     addresses.find((x) => x.isDefault) || addresses[0] || null;
   const loyaltyCardCode = normalizeLoyaltyCode(profile?.loyaltyCardCode);
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
-        <section className="relative animate-[profileUp_.42s_cubic-bezier(.22,1,.36,1)_both] overflow-hidden rounded-[22px] bg-[#111] shadow-[0_22px_70px_rgba(0,0,0,0.12)]">
-          <div className="absolute inset-0 opacity-80">
+    <main className="profile-page min-h-screen bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
+      <div className="profile-page__shell mx-auto max-w-[1180px]">
+        <section className="profile-hero relative overflow-hidden rounded-[22px] bg-[#111] shadow-[0_22px_70px_rgba(0,0,0,0.12)]">
+          <div className="profile-hero__ambient absolute inset-0 opacity-80">
             <div className="absolute -left-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute -bottom-20 right-0 h-64 w-64 rounded-full bg-[#d8c8aa]/20 blur-3xl" />
             <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
@@ -162,15 +166,15 @@ if (loading) {
               <button
                 type="button"
                 onClick={() => navigate("/profile/settings")}
-                className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium text-white/80 backdrop-blur transition hover:bg-white/15 active:scale-[0.98]"
+                className="profile-hero__settings min-h-10 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium text-white/80 backdrop-blur transition hover:bg-white/15 active:scale-[0.98]"
               >
                 {text.profileSettings}
               </button>
             </div>
 
             <div className="mt-8 grid gap-6 md:grid-cols-[auto_1fr] md:items-end">
-              <div className="relative mx-auto md:mx-0">
-                <div className="h-[132px] w-[132px] overflow-hidden rounded-[30px] bg-white/10 p-1 ring-1 ring-white/15">
+              <div className="profile-avatar relative mx-auto md:mx-0">
+                <div className="profile-avatar__frame h-[116px] w-[116px] overflow-hidden rounded-[28px] bg-white/10 p-1 ring-1 ring-white/15 sm:h-[132px] sm:w-[132px] sm:rounded-[30px]">
                   <div className="h-full w-full overflow-hidden rounded-[26px] bg-zinc-900">
                     {profile?.profileImageUrl ? (
                       <img
@@ -187,7 +191,7 @@ if (loading) {
                 </div>
 
                 <div className="absolute -bottom-2 -right-2 rounded-full bg-white px-3 py-1 text-[11px] font-medium text-zinc-950 shadow-lg">
-                  Profile
+                  {text.profile}
                 </div>
               </div>
 
@@ -197,12 +201,12 @@ if (loading) {
                 </h1>
 
                 <div className="mt-4 flex flex-wrap justify-center gap-2 md:justify-start">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white/75 backdrop-blur">
+                  <span className="profile-hero__contact inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white/75 backdrop-blur">
                     <FiPhone />
                     {profile?.phoneNumber || text.none}
                   </span>
 
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white/75 backdrop-blur">
+                  <span className="profile-hero__contact inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white/75 backdrop-blur">
                     <FiMail />
                     {profile?.email || text.none}
                   </span>
@@ -211,7 +215,7 @@ if (loading) {
             </div>
           </div>
 
-          <div className="relative grid border-t border-white/10 bg-white/[0.04] md:grid-cols-3">
+          <div className="profile-stats relative grid border-t border-white/10 bg-white/[0.04] md:grid-cols-3">
             <ProfileMiniStat
               label={text.email}
               value={profile?.email || text.none}
@@ -231,7 +235,7 @@ if (loading) {
           </div>
         </section>
 
-        <section className="mt-5 grid gap-3 md:grid-cols-2">
+        <section className="profile-actions mt-5 grid gap-3 md:grid-cols-2">
           {!loyaltyCardCode && (
             <LoyaltyInviteCard
               title={loyalty.add}
@@ -271,7 +275,7 @@ if (loading) {
           <button
             type="button"
             onClick={logout}
-            className="group flex items-center justify-between rounded-[18px] bg-white px-5 py-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] active:scale-[0.98]"
+            className="profile-action profile-action--logout group flex min-h-[88px] items-center justify-between rounded-[18px] bg-white px-5 py-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.04)] active:scale-[0.98]"
           >
             <div className="flex items-center gap-4">
               <div className="grid h-12 w-12 place-items-center rounded-[15px] bg-red-50 text-xl text-red-500">
@@ -290,7 +294,7 @@ if (loading) {
           </button>
         </section>
 
-        <section className="mt-5 animate-[profileUp_.5s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
+        <section className="profile-address mt-5 rounded-[18px] bg-white p-5 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
           <div className="flex items-start gap-4">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950">
               <FiHome />
@@ -329,7 +333,7 @@ if (loading) {
             <button
               type="button"
               onClick={() => navigate("/profile/settings/addresses")}
-              className="rounded-[12px] bg-zinc-950 px-4 py-2 text-xs font-medium text-white transition active:scale-[0.98]"
+              className="profile-address__button min-h-10 shrink-0 rounded-[12px] bg-zinc-950 px-4 py-2 text-xs font-medium text-white transition active:scale-[0.98]"
             >
               {defaultAddress ? text.edit : text.add}
             </button>
@@ -337,19 +341,13 @@ if (loading) {
         </section>
       </div>
 
-      <style>{`
-        @keyframes profileUp {
-          from { opacity: 0; transform: translateY(18px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </main>
   );
 }
 
 function ProfileMiniStat({ label, value, actionLabel, onAction }) {
   return (
-    <div className="border-t border-white/10 px-5 py-4 md:border-l md:border-t-0 first:md:border-l-0">
+    <div className="profile-stat border-t border-white/10 px-5 py-4 md:border-l md:border-t-0 first:md:border-l-0">
       <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/35">
         {label}
       </p>
@@ -376,7 +374,7 @@ function LoyaltyInviteCard({ title, desc, action, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="group relative overflow-hidden rounded-[20px] bg-zinc-950 px-5 py-5 text-left text-white shadow-[0_20px_55px_rgba(0,0,0,0.14)] transition duration-500 hover:-translate-y-1 active:scale-[0.98] md:col-span-2"
+      className="profile-loyalty group relative overflow-hidden rounded-[20px] bg-zinc-950 px-5 py-5 text-left text-white shadow-[0_20px_55px_rgba(0,0,0,0.14)] active:scale-[0.98] md:col-span-2"
     >
       <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10 blur-3xl transition duration-700 group-hover:scale-125" />
       <div className="absolute bottom-0 left-1/3 h-px w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
@@ -408,7 +406,7 @@ function ActionCard({ icon, title, desc, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center justify-between rounded-[18px] bg-white px-5 py-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] active:scale-[0.98]"
+      className="profile-action group flex min-h-[88px] items-center justify-between rounded-[18px] bg-white px-5 py-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.04)] active:scale-[0.98]"
     >
       <div className="flex min-w-0 items-center gap-4">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950">

@@ -1,0 +1,389 @@
+.nemesis-checkout-page {
+  position: relative;
+  overflow: clip;
+  background: #fafafa;
+}
+
+.nemesis-checkout-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.nemesis-checkout-topbar button {
+  border: 1px solid rgba(31, 25, 24, 0.06);
+  box-shadow: 0 10px 25px rgba(30, 22, 21, 0.055);
+}
+
+.nemesis-checkout-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(151, 68, 76, 0.22), transparent 28%),
+    linear-gradient(145deg, #181415, #080808);
+  transform: perspective(1300px) rotateX(0deg) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 420ms ease;
+}
+
+.nemesis-checkout-hero::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.13) 0.8px, transparent 0.8px);
+  background-size: 22px 22px;
+  content: "";
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.nemesis-checkout-hero > * {
+  transform: translateZ(18px);
+}
+
+.nemesis-checkout-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  max-width: 720px;
+  margin-top: 25px;
+}
+
+.nemesis-checkout-steps > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(8px);
+}
+
+.nemesis-checkout-steps span {
+  color: #c78f95;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.nemesis-checkout-steps p {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nemesis-checkout-error {
+  position: fixed;
+  z-index: 100;
+  right: 22px;
+  bottom: 22px;
+  width: min(390px, calc(100vw - 40px));
+  margin: 0;
+  border: 1px solid rgba(190, 18, 60, 0.12);
+  box-shadow: 0 20px 60px rgba(82, 25, 32, 0.18);
+  animation: checkoutErrorIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nemesis-checkout-card,
+.nemesis-checkout-summary {
+  border: 1px solid rgba(31, 25, 24, 0.065);
+}
+
+.nemesis-checkout-card {
+  position: relative;
+  transition: border-color 300ms ease, box-shadow 300ms ease,
+    transform 300ms ease;
+}
+
+.nemesis-checkout-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 18px;
+}
+
+.nemesis-checkout-card__heading > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  place-items: center;
+  color: #8a454d;
+  background: #f8f1f2;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.nemesis-checkout-product {
+  position: relative;
+  transition: transform 260ms ease, background 260ms ease;
+}
+
+.nemesis-checkout-product__image {
+  box-shadow: 0 13px 28px rgba(32, 24, 22, 0.09);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nemesis-checkout-control {
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.82);
+}
+
+.nemesis-checkout-control:focus {
+  border-color: rgba(138, 69, 77, 0.38) !important;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(138, 69, 77, 0.065);
+}
+
+.nemesis-checkout-address {
+  transform: perspective(700px) translateZ(0);
+  transform-style: preserve-3d;
+}
+
+.nemesis-checkout-address[data-selected="true"] {
+  box-shadow: 0 14px 30px rgba(29, 22, 21, 0.12);
+  transform: perspective(700px) translateY(-2px) translateZ(6px);
+}
+
+.nemesis-checkout-map {
+  box-shadow: 0 15px 35px rgba(31, 23, 22, 0.08);
+}
+
+.nemesis-checkout-map-point {
+  border: 1px solid rgba(31, 25, 24, 0.055);
+}
+
+.nemesis-checkout-summary {
+  position: relative;
+  overflow: hidden;
+  transform: perspective(1100px) rotateY(0deg) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 420ms ease;
+}
+
+.nemesis-checkout-summary::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #171314, #9b555d, #171314);
+  content: "";
+}
+
+.nemesis-checkout-summary-row {
+  min-height: 25px;
+}
+
+.nemesis-checkout-submit,
+.nemesis-checkout-whatsapp {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(24, 18, 18, 0.13);
+  transform: perspective(700px) translateZ(0);
+  transform-style: preserve-3d;
+}
+
+.nemesis-checkout-submit::before,
+.nemesis-checkout-whatsapp::before {
+  position: absolute;
+  top: -180%;
+  left: -35%;
+  width: 28%;
+  height: 460%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  content: "";
+  transform: rotate(24deg);
+  transition: left 650ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nemesis-checkout-hero:hover {
+    box-shadow: 0 31px 78px rgba(20, 15, 15, 0.17);
+    transform: perspective(1300px) rotateX(0.7deg) translateY(-3px)
+      translateZ(5px);
+  }
+
+  .nemesis-checkout-card:hover {
+    border-color: rgba(138, 69, 77, 0.13);
+    box-shadow: 0 24px 62px rgba(33, 25, 23, 0.07);
+  }
+
+  .nemesis-checkout-product:hover {
+    transform: translateX(3px);
+  }
+
+  .nemesis-checkout-product:hover .nemesis-checkout-product__image {
+    transform: perspective(600px) rotateY(3deg) translateZ(4px);
+  }
+
+  .nemesis-checkout-address:hover {
+    transform: perspective(700px) translateY(-3px) translateZ(5px);
+  }
+
+  .nemesis-checkout-summary:hover {
+    box-shadow: 0 30px 75px rgba(31, 23, 22, 0.105);
+    transform: perspective(1100px) rotateY(-1deg) translateY(-3px)
+      translateZ(6px);
+  }
+
+  .nemesis-checkout-submit:hover,
+  .nemesis-checkout-whatsapp:hover {
+    transform: perspective(700px) translateY(-2px) translateZ(7px);
+  }
+
+  .nemesis-checkout-submit:hover::before,
+  .nemesis-checkout-whatsapp:hover::before {
+    left: 112%;
+  }
+}
+
+@keyframes checkoutUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes checkoutErrorIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 767px) {
+  .nemesis-checkout-page {
+    padding: 18px 10px 30px;
+  }
+
+  .nemesis-checkout-hero {
+    margin-top: 18px;
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+
+  .nemesis-checkout-hero h1 {
+    margin-top: 8px;
+    font-size: 34px;
+  }
+
+  .nemesis-checkout-steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 18px;
+  }
+
+  .nemesis-checkout-steps > div {
+    min-height: 66px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 9px;
+  }
+
+  .nemesis-checkout-steps p {
+    width: 100%;
+    font-size: 9px;
+    white-space: normal;
+  }
+
+  .nemesis-checkout-error {
+    right: 12px;
+    left: 12px;
+    bottom: 88px;
+    width: auto;
+  }
+
+  .nemesis-checkout-grid {
+    gap: 13px;
+  }
+
+  .nemesis-checkout-form {
+    gap: 13px;
+  }
+
+  .nemesis-checkout-card {
+    padding: 16px 13px;
+    border-radius: 18px;
+  }
+
+  .nemesis-checkout-card__heading {
+    margin-bottom: 13px;
+  }
+
+  .nemesis-checkout-product {
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .nemesis-checkout-product__image {
+    width: 74px !important;
+    height: 92px !important;
+    border-radius: 13px;
+  }
+
+  .nemesis-checkout-product__price {
+    display: flex;
+    grid-column: 2;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 7px;
+    margin-top: -27px;
+  }
+
+  .nemesis-checkout-product__price p:last-child {
+    display: none;
+  }
+
+  .nemesis-checkout-address-layout {
+    gap: 18px;
+  }
+
+  .nemesis-checkout-map {
+    aspect-ratio: 1.12 / 1;
+  }
+
+  .nemesis-checkout-save-address {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nemesis-checkout-summary {
+    padding: 18px 15px;
+    border-radius: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nemesis-checkout-hero,
+  .nemesis-checkout-card,
+  .nemesis-checkout-address,
+  .nemesis-checkout-summary,
+  .nemesis-checkout-submit,
+  .nemesis-checkout-whatsapp,
+  .nemesis-checkout-product,
+  .nemesis-checkout-product__image,
+  .nemesis-checkout-error {
+    animation: none !important;
+    transform: none !important;
+    transition-duration: 1ms !important;
+  }
+}

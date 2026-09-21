@@ -1,0 +1,460 @@
+.nemesis-basket-page {
+  position: relative;
+  overflow: clip;
+  background: #fafafa;
+}
+
+.nemesis-basket-page::before {
+  position: absolute;
+  z-index: 0;
+  top: 80px;
+  left: 50%;
+  width: min(80vw, 900px);
+  height: 330px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(125, 73, 78, 0.055),
+    transparent 68%
+  );
+  content: "";
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.nemesis-basket-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.nemesis-basket-empty {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(30, 25, 24, 0.06);
+  transform: perspective(1100px) rotateX(0deg);
+  transform-style: preserve-3d;
+}
+
+.nemesis-basket-empty::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.7),
+    transparent 38%,
+    rgba(132, 70, 77, 0.035)
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.nemesis-basket-select-all,
+.nemesis-basket-card,
+.nemesis-basket-summary {
+  border: 1px solid rgba(35, 29, 28, 0.065);
+}
+
+.nemesis-basket-select-all {
+  backdrop-filter: blur(10px);
+}
+
+.nemesis-basket-card {
+  position: relative;
+  isolation: isolate;
+  animation-delay: var(--basket-card-delay) !important;
+  transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0);
+  transform-style: preserve-3d;
+  transition:
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 360ms ease,
+    border-color 260ms ease;
+}
+
+.nemesis-basket-card::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.75),
+    transparent 31%,
+    transparent 72%,
+    rgba(132, 70, 77, 0.045)
+  );
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.nemesis-basket-card[data-selected="true"] {
+  border-color: rgba(132, 70, 77, 0.17);
+}
+
+.nemesis-basket-card__image {
+  box-shadow: 0 15px 32px rgba(31, 23, 22, 0.1);
+  transform: translateZ(18px);
+}
+
+.nemesis-basket-card__select {
+  min-width: 24px;
+  transform: translateZ(24px);
+}
+
+.nemesis-basket-card__content {
+  transform: translateZ(9px);
+}
+
+.nemesis-basket-quantity {
+  height: 42px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.75);
+}
+
+.nemesis-basket-quantity button {
+  width: 42px;
+  min-width: 42px;
+}
+
+.nemesis-basket-quantity__value {
+  width: 48px;
+  animation: basketQuantityPop 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nemesis-basket-summary {
+  position: relative;
+  transform: perspective(1200px) rotateY(0deg) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 420ms ease;
+}
+
+.nemesis-basket-summary__visual {
+  position: relative;
+  height: 104px;
+  overflow: hidden;
+  color: #fff;
+  background: #141112;
+  isolation: isolate;
+}
+
+.nemesis-basket-summary__fallback,
+.nemesis-basket-threeui {
+  position: absolute !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.nemesis-basket-summary__fallback {
+  background:
+    radial-gradient(circle at 18% 35%, rgba(157, 79, 88, 0.28), transparent 31%),
+    linear-gradient(145deg, #181314, #090808);
+}
+
+.nemesis-basket-threeui {
+  z-index: 1;
+  background: transparent !important;
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.nemesis-basket-threeui canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.nemesis-basket-summary__visual::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(8, 7, 7, 0.5), transparent 68%);
+  content: "";
+  pointer-events: none;
+}
+
+.nemesis-basket-summary__brand {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.nemesis-basket-summary__brand span {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.nemesis-basket-summary__brand strong {
+  display: grid;
+  min-width: 48px;
+  height: 32px;
+  padding-inline: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(8px);
+}
+
+.nemesis-basket-summary__body {
+  padding: 22px;
+}
+
+.nemesis-basket-checkout,
+.nemesis-basket-whatsapp {
+  position: relative;
+  overflow: hidden;
+  transform: perspective(700px) translateZ(0);
+  transform-style: preserve-3d;
+  box-shadow: 0 15px 30px rgba(20, 16, 16, 0.14);
+}
+
+.nemesis-basket-checkout::before,
+.nemesis-basket-whatsapp::before {
+  position: absolute;
+  top: -180%;
+  left: -35%;
+  width: 28%;
+  height: 460%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.24),
+    transparent
+  );
+  content: "";
+  transform: rotate(24deg);
+  transition: left 650ms ease;
+}
+
+.nemesis-basket-checkout:hover::before,
+.nemesis-basket-whatsapp:hover::before {
+  left: 112%;
+}
+
+.nemesis-basket-related {
+  border-radius: 22px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nemesis-basket-card:nth-of-type(even):hover {
+    border-color: rgba(132, 70, 77, 0.17);
+    box-shadow: 0 28px 58px rgba(36, 27, 25, 0.1);
+    transform: perspective(1000px) rotateX(1.2deg) rotateY(-1.25deg)
+      translateY(-6px) translateZ(8px);
+  }
+
+  .nemesis-basket-card:nth-of-type(odd):hover {
+    border-color: rgba(132, 70, 77, 0.17);
+    box-shadow: 0 28px 58px rgba(36, 27, 25, 0.1);
+    transform: perspective(1000px) rotateX(1.2deg) rotateY(1.25deg)
+      translateY(-6px) translateZ(8px);
+  }
+
+  .nemesis-basket-card:hover::after {
+    opacity: 1;
+  }
+
+  .nemesis-basket-summary:hover {
+    box-shadow: 0 30px 75px rgba(31, 23, 22, 0.105);
+    transform: perspective(1200px) rotateY(-1deg) translateY(-3px)
+      translateZ(6px);
+  }
+
+  .nemesis-basket-checkout:hover,
+  .nemesis-basket-whatsapp:hover {
+    transform: perspective(700px) translateY(-2px) translateZ(7px);
+  }
+}
+
+@keyframes basketQuantityPop {
+  from {
+    opacity: 0.3;
+    transform: translateY(5px) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 767px) {
+  .nemesis-basket-page {
+    padding: 20px 10px 28px;
+  }
+
+  .nemesis-basket-heading {
+    margin-bottom: 20px;
+  }
+
+  .nemesis-basket-heading p {
+    font-size: 12px;
+  }
+
+  .nemesis-basket-heading h1 {
+    margin-top: 3px;
+    font-size: 34px;
+  }
+
+  .nemesis-basket-grid {
+    gap: 13px;
+  }
+
+  .nemesis-basket-select-all {
+    border-radius: 16px;
+    padding: 12px 13px;
+  }
+
+  .nemesis-basket-card {
+    border-radius: 17px;
+    padding: 10px;
+  }
+
+  .nemesis-basket-card__layout {
+    position: relative;
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .nemesis-basket-card__select {
+    position: absolute;
+    z-index: 4;
+    top: 7px;
+    left: 7px;
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    border-color: rgba(20, 17, 17, 0.16);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 5px 14px rgba(19, 15, 15, 0.09);
+    backdrop-filter: blur(8px);
+  }
+
+  .nemesis-basket-card__select.bg-zinc-950 {
+    background: #181415;
+  }
+
+  .nemesis-basket-card__image {
+    width: 104px !important;
+    height: 140px !important;
+    border-radius: 14px;
+    transform: none;
+  }
+
+  .nemesis-basket-card__content {
+    min-width: 0;
+    transform: none;
+  }
+
+  .nemesis-basket-card__content h2 {
+    padding-right: 2px;
+    font-size: 14px;
+    line-height: 1.25rem;
+  }
+
+  .nemesis-basket-card__content > div:first-child > button {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .nemesis-basket-card__meta {
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .nemesis-basket-card__meta > span {
+    max-width: 100%;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .nemesis-basket-card__footer {
+    align-items: flex-end;
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .nemesis-basket-quantity {
+    height: 40px;
+  }
+
+  .nemesis-basket-quantity button {
+    width: 38px;
+    min-width: 38px;
+  }
+
+  .nemesis-basket-quantity__value {
+    width: 38px;
+  }
+
+  .nemesis-basket-card__price p:nth-last-child(2) {
+    font-size: 16px;
+  }
+
+  .nemesis-basket-card__price p:last-child {
+    display: none;
+  }
+
+  .nemesis-basket-summary {
+    border-radius: 20px;
+  }
+
+  .nemesis-basket-summary__visual {
+    height: 88px;
+  }
+
+  .nemesis-basket-summary__brand {
+    padding: 16px;
+  }
+
+  .nemesis-basket-summary__body {
+    padding: 18px 15px;
+  }
+}
+
+@media (max-width: 390px) {
+  .nemesis-basket-card__layout {
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .nemesis-basket-card__image {
+    width: 94px !important;
+    height: 132px !important;
+  }
+
+  .nemesis-basket-card__footer {
+    flex-wrap: wrap;
+  }
+
+  .nemesis-basket-card__price {
+    margin-left: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nemesis-basket-threeui {
+    display: none;
+  }
+
+  .nemesis-basket-card,
+  .nemesis-basket-summary,
+  .nemesis-basket-checkout,
+  .nemesis-basket-whatsapp {
+    animation: none !important;
+    transform: none !important;
+    transition-duration: 1ms !important;
+  }
+}

@@ -933,9 +933,10 @@ export default function HomePage() {
                 ))}
             </div>
 
-            <HomeQuickDiscovery lang={lang} />
           </>
         )}
+
+        <HomeQuickDiscovery lang={lang} activeFilters={discoveryFilters} />
 
         {(products.length > 0 || filterLoading) && (
           <section

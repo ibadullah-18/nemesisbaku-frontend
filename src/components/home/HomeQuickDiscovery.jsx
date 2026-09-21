@@ -49,7 +49,10 @@ function sendPreset(detail) {
   );
 }
 
-export default function HomeQuickDiscovery({ lang = "az" }) {
+export default function HomeQuickDiscovery({
+  lang = "az",
+  activeFilters = {},
+}) {
   const text = copy[lang] || copy.az;
   const [categories, setCategories] = useState([]);
 
@@ -101,7 +104,18 @@ export default function HomeQuickDiscovery({ lang = "az" }) {
             key={action.title}
             type="button"
             onClick={() => sendPreset(action.preset)}
-            className="nemesis-home-quick__action"
+            aria-pressed={
+              (action.preset.sortOrder &&
+                activeFilters.sortOrder === action.preset.sortOrder) ||
+              (action.preset.stockOnly && activeFilters.stockOnly === true)
+            }
+            className={`nemesis-home-quick__action ${
+              (action.preset.sortOrder &&
+                activeFilters.sortOrder === action.preset.sortOrder) ||
+              (action.preset.stockOnly && activeFilters.stockOnly === true)
+                ? "is-active"
+                : ""
+            }`}
           >
             <i aria-hidden="true">{action.icon}</i>
             <span>
@@ -122,6 +136,14 @@ export default function HomeQuickDiscovery({ lang = "az" }) {
                 key={category.id}
                 type="button"
                 onClick={() => sendPreset({ categoryId: category.id })}
+                aria-pressed={
+                  String(activeFilters.categoryId || "") === String(category.id)
+                }
+                className={
+                  String(activeFilters.categoryId || "") === String(category.id)
+                    ? "is-active"
+                    : ""
+                }
               >
                 {category.name}
               </button>

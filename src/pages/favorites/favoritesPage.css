@@ -1,0 +1,166 @@
+.nemesis-favorites-page {
+  position: relative;
+  overflow: clip;
+  background: #fafafa;
+}
+
+.nemesis-favorites-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.nemesis-favorites-heading {
+  position: relative;
+}
+
+.nemesis-favorites-count {
+  display: inline-flex;
+  min-width: 58px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding-inline: 14px;
+  border: 1px solid rgba(40, 33, 31, 0.07);
+  border-radius: 999px;
+  color: #8b4850;
+  background: #fff;
+  box-shadow: 0 9px 24px rgba(36, 27, 25, 0.055);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nemesis-favorites-empty {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(31, 25, 24, 0.06);
+  transform: perspective(1100px) rotateX(0deg) translateZ(0);
+  transform-style: preserve-3d;
+}
+
+.nemesis-favorites-empty::before {
+  position: absolute;
+  top: -130px;
+  right: -100px;
+  width: 300px;
+  height: 300px;
+  border: 1px solid rgba(139, 72, 80, 0.08);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.nemesis-favorites-empty > div {
+  position: relative;
+  z-index: 1;
+  transform: translateZ(16px);
+}
+
+.nemesis-favorites-grid {
+  perspective: 1400px;
+}
+
+.nemesis-favorite-card {
+  animation-delay: var(--favorite-delay) !important;
+  transform: perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 380ms ease;
+}
+
+.nemesis-favorite-card > a {
+  border-color: rgba(35, 29, 28, 0.07);
+  box-shadow: 0 13px 34px rgba(33, 25, 23, 0.05);
+  transition: border-color 300ms ease, box-shadow 380ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nemesis-favorite-card:nth-child(odd):hover {
+    filter: drop-shadow(0 24px 34px rgba(40, 29, 27, 0.1));
+    transform: perspective(900px) rotateX(1.2deg) rotateY(1.7deg)
+      translateY(-7px) translateZ(8px);
+  }
+
+  .nemesis-favorite-card:nth-child(even):hover {
+    filter: drop-shadow(0 24px 34px rgba(40, 29, 27, 0.1));
+    transform: perspective(900px) rotateX(1.2deg) rotateY(-1.7deg)
+      translateY(-7px) translateZ(8px);
+  }
+
+  .nemesis-favorite-card:hover > a {
+    border-color: rgba(139, 72, 80, 0.17);
+    box-shadow: 0 25px 58px rgba(38, 28, 26, 0.1);
+  }
+
+  .nemesis-favorites-empty:hover {
+    transform: perspective(1100px) rotateX(0.8deg) translateY(-3px)
+      translateZ(5px);
+  }
+}
+
+@keyframes favoritesUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes favoriteCard {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 767px) {
+  .nemesis-favorites-page {
+    padding: 20px 10px 30px;
+  }
+
+  .nemesis-favorites-heading {
+    margin-bottom: 20px;
+  }
+
+  .nemesis-favorites-heading p {
+    font-size: 12px;
+  }
+
+  .nemesis-favorites-heading h1 {
+    margin-top: 3px;
+    font-size: 34px;
+  }
+
+  .nemesis-favorites-count {
+    height: 32px;
+    margin-top: 10px;
+  }
+
+  .nemesis-favorites-grid {
+    gap: 10px;
+  }
+
+  .nemesis-favorites-empty {
+    min-height: 330px;
+    border-radius: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nemesis-favorites-heading,
+  .nemesis-favorites-empty,
+  .nemesis-favorite-card {
+    animation: none !important;
+    filter: none !important;
+    transform: none !important;
+    transition-duration: 1ms !important;
+  }
+}

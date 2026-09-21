@@ -6,13 +6,18 @@ import {
   useState,
 } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { FiChevronLeft, FiChevronRight, FiHeart } from "react-icons/fi";
+import {
+  FiArrowUpRight,
+  FiChevronLeft,
+  FiChevronRight,
+  FiHeart,
+} from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { favoritesApi } from "../../api/favoritesApi";
+import "./productCard.css";
 
 const RESET_IMAGE_DELAY = 5000;
-const HIDE_SIZES_DELAY = 2600;
 const SWIPE_LIMIT = 45;
 const RUBBER_LIMIT = 42;
 
@@ -36,42 +41,13 @@ function getImageUrl(x) {
   );
 }
 
-function getVariantSizeValue(variant) {
-  if (!variant) return null;
-
+function getBrandName(product) {
   return (
-    variant.sizeValue ||
-    variant.sizeName ||
-    variant.size?.value ||
-    variant.size?.name ||
-    (typeof variant.size === "string" || typeof variant.size === "number"
-      ? variant.size
-      : null)
+    product?.brandName ||
+    product?.brand?.name ||
+    product?.brandTitle ||
+    "nemesisbaku"
   );
-}
-
-function getNumericSize(value) {
-  const text = String(value ?? "")
-    .trim()
-    .replace(",", ".");
-  const match = text.match(/\d+(?:\.\d+)?/);
-  const number = match ? Number(match[0]) : Number.POSITIVE_INFINITY;
-
-  return Number.isFinite(number) ? number : Number.POSITIVE_INFINITY;
-}
-
-function sortSizesAscending(values) {
-  return [...values].sort((a, b) => {
-    const aValue = getNumericSize(a);
-    const bValue = getNumericSize(b);
-
-    if (aValue !== bValue) return aValue - bValue;
-
-    return String(a).localeCompare(String(b), "az", {
-      numeric: true,
-      sensitivity: "base",
-    });
-  });
 }
 
 export default function ProductCard({ product }) {
@@ -80,7 +56,6 @@ export default function ProductCard({ product }) {
 
   const cardRef = useRef(null);
   const resetTimerRef = useRef(null);
-  const hideSizesTimerRef = useRef(null);
   const pointerStartXRef = useRef(null);
   const pointerStartYRef = useRef(null);
   const detailLoadedRef = useRef(false);
@@ -93,7 +68,6 @@ export default function ProductCard({ product }) {
   const [isDragging, setIsDragging] = useState(false);
   const [didSwipe, setDidSwipe] = useState(false);
 
-  const [showSizes, setShowSizes] = useState(false);
   const [favorite, setFavorite] = useState(Boolean(product?.isFavorite));
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -136,18 +110,6 @@ export default function ProductCard({ product }) {
     );
   }, [activeImage, images]);
 
-  const sizes = useMemo(() => {
-    const variants = mergedProduct?.variants || [];
-
-    const result = variants
-      .filter((x) => Number(x.stockCount ?? x.stock ?? 0) > 0)
-      .map(getVariantSizeValue)
-      .filter((value) => value !== null && value !== undefined && value !== "")
-      .map(String);
-
-    return sortSizesAscending(new Set(result));
-  }, [mergedProduct]);
-
   const price = Number(mergedProduct?.price || 0);
   const discountPrice = Number(mergedProduct?.discountPrice || 0);
   const hasDiscount = discountPrice > 0 && discountPrice < price;
@@ -155,11 +117,11 @@ export default function ProductCard({ product }) {
   const discountPercent = hasDiscount
     ? Math.round(((price - discountPrice) / price) * 100)
     : 0;
+  const brandName = getBrandName(mergedProduct);
 
   useEffect(() => {
     return () => {
       window.clearTimeout(resetTimerRef.current);
-      window.clearTimeout(hideSizesTimerRef.current);
     };
   }, []);
 
@@ -258,29 +220,8 @@ export default function ProductCard({ product }) {
     }, RESET_IMAGE_DELAY);
   }
 
-  function showSizesNow() {
-    window.clearTimeout(hideSizesTimerRef.current);
-    setShowSizes(true);
-    loadDetailOnce();
-  }
-
-  function hideSizesLater() {
-    window.clearTimeout(hideSizesTimerRef.current);
-
-    hideSizesTimerRef.current = window.setTimeout(() => {
-      setShowSizes(false);
-    }, HIDE_SIZES_DELAY);
-  }
-
-  function hideSizesNow() {
-    window.clearTimeout(hideSizesTimerRef.current);
-    setShowSizes(false);
-  }
-
   function changeImage(direction) {
     if (images.length <= 1) return;
-
-    setShowSizes(false);
 
     setActiveImage((prev) => {
       const next = direction === "next"
@@ -295,7 +236,6 @@ export default function ProductCard({ product }) {
   function goToImage(index) {
     if (index < 0 || index >= images.length || index === activeImage) return;
 
-    setShowSizes(false);
     setActiveImage(index);
     setDragX(0);
     startResetTimer(index);
@@ -317,12 +257,7 @@ export default function ProductCard({ product }) {
     changeImage(action);
   }
 
-  function handleMouseEnter() {
-    showSizesNow();
-  }
-
   function handleMouseLeave() {
-    hideSizesNow();
     setDragX(0);
     setIsDragging(false);
   }
@@ -335,7 +270,6 @@ export default function ProductCard({ product }) {
 
     setIsDragging(true);
     setDidSwipe(false);
-    showSizesNow();
 
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
@@ -352,7 +286,6 @@ export default function ProductCard({ product }) {
 
     if (Math.abs(diffX) > 8) {
       setDidSwipe(true);
-      setShowSizes(false);
     }
 
     const isFirst = activeImage === 0;
@@ -381,8 +314,6 @@ export default function ProductCard({ product }) {
     if (Math.abs(diffX) > SWIPE_LIMIT) {
       if (diffX < 0) changeImage("next");
       if (diffX > 0) changeImage("prev");
-    } else {
-      hideSizesLater();
     }
 
     setDragX(0);
@@ -469,12 +400,11 @@ export default function ProductCard({ product }) {
         returnTo: `${location.pathname}${location.search}`,
       }}
       onClick={handleCardClick}
-      onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group block overflow-hidden rounded-[16px] border border-zinc-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.035)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-200 hover:shadow-[0_16px_42px_rgba(0,0,0,0.07)]"
+      className="nemesis-product-card group block overflow-hidden rounded-[18px] border border-zinc-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.035)]"
     >
       <div
-        className="relative aspect-[5/6] touch-pan-y overflow-hidden bg-[#f5f5f5]"
+        className="nemesis-product-card__media relative aspect-[5/6] touch-pan-y overflow-hidden bg-[#f5f5f5]"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -483,9 +413,16 @@ export default function ProductCard({ product }) {
           pointerStartYRef.current = null;
           setIsDragging(false);
           setDragX(0);
-          hideSizesLater();
         }}
       >
+        <div className="nemesis-product-card__media-frame" aria-hidden="true" />
+
+        {hasDiscount && (
+          <span className="nemesis-product-card__discount absolute left-3 top-3 z-30 inline-flex min-h-8 items-center rounded-full border border-red-100 bg-red-50 px-3 text-[11px] font-semibold text-red-600 shadow-[0_8px_22px_rgba(127,29,29,0.10)]">
+            -{discountPercent}%
+          </span>
+        )}
+
         <button
           type="button"
           onClick={handleFavorite}
@@ -498,7 +435,11 @@ export default function ProductCard({ product }) {
             e.stopPropagation();
           }}
           disabled={actionLoading}
-          className="absolute right-3 top-3 z-30 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-[18px] text-zinc-950 shadow-sm backdrop-blur transition active:scale-90"
+          className={`nemesis-product-card__favorite absolute right-3 top-3 z-30 grid h-10 w-10 place-items-center rounded-full border text-[18px] shadow-sm backdrop-blur transition active:scale-90 ${
+            favorite
+              ? "border-red-100 bg-white text-red-500"
+              : "border-white/70 bg-white/90 text-zinc-950"
+          }`}
           aria-label={
             favorite ? "Favoritlərdən çıxar" : "Favoritlərə əlavə et"
           }
@@ -506,7 +447,7 @@ export default function ProductCard({ product }) {
           {favorite ? <FaHeart className="text-red-500" /> : <FiHeart />}
         </button>
 
-        <div className="h-full w-full overflow-hidden">
+        <div className="nemesis-product-card__viewport h-full w-full overflow-hidden">
           {images.length ? (
             <div
               className="flex h-full transition-transform duration-300 ease-out"
@@ -530,7 +471,7 @@ export default function ProductCard({ product }) {
                         current.includes(img) ? current : [...current, img],
                       )
                     }
-                    className="h-full w-full select-none object-cover transition duration-500 group-hover:scale-[1.025]"
+                    className="nemesis-product-card__image h-full w-full select-none object-cover"
                   />
                 </div>
               ))}
@@ -548,7 +489,7 @@ export default function ProductCard({ product }) {
               type="button"
               onPointerDown={stopImageControlEvent}
               onClick={(e) => handleImageControlClick(e, "prev")}
-              className="absolute left-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
+              className="nemesis-product-card__arrow absolute left-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
               aria-label="Əvvəlki şəkil"
             >
               <FiChevronLeft />
@@ -558,7 +499,7 @@ export default function ProductCard({ product }) {
               type="button"
               onPointerDown={stopImageControlEvent}
               onClick={(e) => handleImageControlClick(e, "next")}
-              className="absolute right-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
+              className="nemesis-product-card__arrow absolute right-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
               aria-label="Növbəti şəkil"
             >
               <FiChevronRight />
@@ -567,32 +508,9 @@ export default function ProductCard({ product }) {
           </>
         )}
 
-        {sizes.length > 0 && (
-          <div
-            className={`absolute bottom-10 left-1/2 z-20 max-w-[88%] -translate-x-1/2 transition-all duration-200 ease-out ${
-              showSizes
-                ? "translate-y-0 opacity-100"
-                : "translate-y-5 opacity-0 pointer-events-none"
-            }`}
-          >
-            <div className="max-w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex w-max overflow-hidden border border-zinc-200 bg-white/95 shadow-sm backdrop-blur">
-                {sizes.map((size) => (
-                  <span
-                    key={size}
-                    className="grid h-6 min-w-7 place-items-center border-r border-zinc-200 px-2 text-[10px] font-extrabold text-zinc-950 last:border-r-0"
-                  >
-                    {size}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {images.length > 1 && (
           <div
-            className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5"
+            className="nemesis-product-card__dots absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white/70 px-1.5 py-0.5 shadow-sm backdrop-blur"
             onPointerDown={stopImageControlEvent}
           >
             {visibleDotIndexes.map((imageIndex) => (
@@ -616,26 +534,34 @@ export default function ProductCard({ product }) {
         )}
       </div>
 
-      <div className="p-3 pt-2.5">
-        <h3 className="line-clamp-2 min-h-[38px] text-[15px] font-normal leading-5 tracking-[-0.01em] text-black">
+      <div className="nemesis-product-card__body p-3 pt-3.5 sm:p-4 sm:pt-3.5">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400 sm:text-[11px]">
+            {brandName}
+          </p>
+
+          <span className="nemesis-product-card__open grid h-7 w-7 shrink-0 place-items-center rounded-full bg-zinc-50 text-sm text-zinc-500">
+            <FiArrowUpRight />
+          </span>
+        </div>
+
+        <h3 className="mt-1.5 line-clamp-2 min-h-[40px] text-[14px] font-medium leading-5 tracking-[-0.015em] text-zinc-950 sm:text-[15px]">
           {mergedProduct?.name || mergedProduct?.productName}
         </h3>
 
-        <div className="mt-2.5 flex items-center gap-2 text-[16px] leading-none tracking-[-0.01em]">
-          <span className="font-normal text-black">
+        <div className="nemesis-product-card__price mt-3 flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-[15px] leading-none tracking-[-0.01em] sm:text-[16px]">
+          <span
+            className={`font-semibold ${
+              hasDiscount ? "text-red-600" : "text-zinc-950"
+            }`}
+          >
             {hasDiscount ? discountPrice : price}₼
           </span>
 
           {hasDiscount && (
-            <>
-              <span className="font-normal text-zinc-400 line-through">
-                {price}₼
-              </span>
-
-              <span className="font-normal text-red-600">
-                -{discountPercent}%
-              </span>
-            </>
+            <span className="text-[12px] font-medium text-zinc-400 line-through sm:text-[13px]">
+              {price}₼
+            </span>
           )}
         </div>
       </div>

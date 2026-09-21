@@ -16,6 +16,7 @@ import { basketApi } from "../../api/basketApi";
 import { ordersApi } from "../../api/ordersApi";
 import { profileApi } from "../../api/profileApi";
 import { useLanguage } from "../../i18n/LanguageContext";
+import "./checkoutPage.css";
 
 const BAKU_CENTER = [40.4093, 49.8671];
 const STORE_WHATSAPP_NUMBER = "994514349829";
@@ -121,24 +122,6 @@ export default function CheckoutPage() {
     0,
     productTotal + deliveryPrice - Number(promo.discountAmount || 0),
   );
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    loadPage();
-  }, []);
-
-  useEffect(() => {
-    if (Number(form.deliveryType) === 1 && form.latitude && form.longitude) {
-      calculateDelivery(form.latitude, form.longitude);
-    } else {
-      setDeliveryCalc({
-        distanceKm: 0,
-        deliveryPrice: 0,
-        available: true,
-        message: "",
-      });
-    }
-  }, [form.latitude, form.longitude, form.deliveryType]);
 
   async function loadPage() {
     try {
@@ -254,6 +237,25 @@ export default function CheckoutPage() {
       });
     }
   }
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // API-dən ilkin checkout məlumatlarını effect daxilində yükləyirik.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPage();
+    // Səhifə məlumatları yalnız checkout ilk dəfə açılanda yüklənir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (Number(form.deliveryType) === 1 && form.latitude && form.longitude) {
+      // Xəritə koordinatı dəyişəndə serverdən çatdırılmanı yenidən hesablayırıq.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      calculateDelivery(form.latitude, form.longitude);
+    }
+    // Hesablama yalnız xəritə nöqtəsi və çatdırılma növü dəyişəndə yenilənir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.latitude, form.longitude, form.deliveryType]);
 
   function update(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -453,13 +455,13 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
+    <main className="nemesis-checkout-page min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       {saving && <AppLoader text={text.orderSaving} />}
 
-      <div className="mx-auto max-w-[1180px]">
+      <div className="nemesis-checkout-shell mx-auto max-w-[1180px]">
         <TopBar title={text.checkout} onBack={() => navigate("/basket")} />
 
-        <section className="mt-7 animate-[checkoutUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[24px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
+        <section className="nemesis-checkout-hero mt-7 animate-[checkoutUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[24px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
           <p className="text-[15px] font-medium  tracking-[0.17em] text-white/45">
             nemesisbaku
           </p>
@@ -471,17 +473,33 @@ export default function CheckoutPage() {
           <p className="mt-3 max-w-[560px] text-sm leading-6 text-white/55">
             {text.checkoutDesc}
           </p>
+
+          <div className="nemesis-checkout-steps" aria-label={text.checkout}>
+            {[
+              text.selectedProducts,
+              text.customerInfo,
+              text.deliveryAddress,
+            ].map((label, index) => (
+              <div key={label}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <p>{label}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {error && (
-          <div className="mt-5 rounded-[16px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div
+            role="alert"
+            className="nemesis-checkout-error mt-5 rounded-[16px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+          >
             {error}
           </div>
         )}
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_370px]">
-          <section className="space-y-5">
-            <Card title={text.selectedProducts}>
+        <div className="nemesis-checkout-grid mt-5 grid gap-5 lg:grid-cols-[1fr_370px]">
+          <section className="nemesis-checkout-form space-y-5">
+            <Card title={text.selectedProducts} step="01">
               <div className="divide-y divide-zinc-100">
                 {items.map((item) => {
                   const hasDiscount =
@@ -491,12 +509,12 @@ export default function CheckoutPage() {
                   return (
                     <article
                       key={item.id}
-                      className="grid grid-cols-[82px_1fr_auto] gap-3 py-4"
+                      className="nemesis-checkout-product grid grid-cols-[82px_1fr_auto] gap-3 py-4"
                     >
                       <img
                         src={item.productImageUrl}
                         alt={item.productName}
-                        className="h-[96px] w-[82px] rounded-[16px] object-cover"
+                        className="nemesis-checkout-product__image h-[96px] w-[82px] rounded-[16px] object-cover"
                       />
 
                       <div className="min-w-0">
@@ -513,7 +531,7 @@ export default function CheckoutPage() {
                         </p>
                       </div>
 
-                      <div className="text-right">
+                      <div className="nemesis-checkout-product__price text-right">
                         {hasDiscount && (
                           <p className="text-xs font-medium text-zinc-400 line-through">
                             {money(item.originalTotalPrice)} ₼
@@ -538,7 +556,7 @@ export default function CheckoutPage() {
               </div>
             </Card>
 
-            <Card title={text.customerInfo}>
+            <Card title={text.customerInfo} step="02">
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label={text.customerFullName}
@@ -584,7 +602,7 @@ export default function CheckoutPage() {
             </Card>
 
             {Number(form.deliveryType) === 1 && (
-              <Card title={text.deliveryAddress}>
+              <Card title={text.deliveryAddress} step="03">
                 {addresses.length > 0 && (
                   <div className="mb-5">
                     <p className="mb-3 text-sm font-medium text-zinc-800">
@@ -597,7 +615,8 @@ export default function CheckoutPage() {
                           key={address.id}
                           type="button"
                           onClick={() => selectSavedAddress(address)}
-                          className={`rounded-[16px] border p-4 text-left transition active:scale-[0.98] ${
+                          data-selected={selectedAddressId === address.id}
+                          className={`nemesis-checkout-address rounded-[16px] border p-4 text-left transition active:scale-[0.98] ${
                             selectedAddressId === address.id
                               ? "border-zinc-950 bg-zinc-950 text-white"
                               : "border-zinc-100 bg-zinc-50 text-zinc-950 hover:bg-white"
@@ -637,7 +656,8 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={useNewAddress}
-                        className={`rounded-[16px] border border-dashed p-4 text-left transition active:scale-[0.98] ${
+                        data-selected={saveNewAddress}
+                        className={`nemesis-checkout-address rounded-[16px] border border-dashed p-4 text-left transition active:scale-[0.98] ${
                           saveNewAddress
                             ? "border-zinc-950 bg-white"
                             : "border-zinc-200 bg-zinc-50"
@@ -655,7 +675,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+                <div className="nemesis-checkout-address-layout grid gap-5 lg:grid-cols-[1fr_360px]">
                   <div className="space-y-4">
                     {saveNewAddress && (
                       <Input
@@ -705,7 +725,7 @@ export default function CheckoutPage() {
                         value={form.note}
                         onChange={(e) => update("note", e.target.value)}
                         rows={4}
-                        className="w-full resize-none rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
+                        className="nemesis-checkout-control w-full resize-none rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
                       />
                     </label>
 
@@ -715,7 +735,7 @@ export default function CheckoutPage() {
                         setSaveNewAddress((prev) => !prev);
                         setSelectedAddressId("");
                       }}
-                      className={`inline-flex h-11 items-center gap-2 rounded-[14px] px-4 text-sm font-medium transition ${
+                      className={`nemesis-checkout-save-address inline-flex h-11 items-center gap-2 rounded-[14px] px-4 text-sm font-medium transition ${
                         saveNewAddress
                           ? "bg-zinc-950 text-white"
                           : "bg-zinc-50 text-zinc-950"
@@ -742,7 +762,7 @@ export default function CheckoutPage() {
                       </button>
                     </div>
 
-                    <div className="aspect-square overflow-hidden rounded-[18px] border border-zinc-100 bg-zinc-100">
+                    <div className="nemesis-checkout-map aspect-square overflow-hidden rounded-[18px] border border-zinc-100 bg-zinc-100">
                       <MapContainer
                         center={[form.latitude, form.longitude]}
                         zoom={12}
@@ -766,7 +786,7 @@ export default function CheckoutPage() {
                       </MapContainer>
                     </div>
 
-                    <div className="mt-3 rounded-[15px] bg-zinc-50 px-4 py-3">
+                    <div className="nemesis-checkout-map-point mt-3 rounded-[15px] bg-zinc-50 px-4 py-3">
                       <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
                         {text.selectedMapPoint}
                       </p>
@@ -786,7 +806,7 @@ export default function CheckoutPage() {
             )}
           </section>
 
-          <aside className="h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
+          <aside className="nemesis-checkout-summary h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
             <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
               {text.receipt}
             </h2>
@@ -866,7 +886,7 @@ export default function CheckoutPage() {
               disabled={
                 Number(form.deliveryType) === 1 && !deliveryCalc.available
               }
-              className="mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="nemesis-checkout-submit mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FiSave />
               {text.completeOrder}
@@ -875,7 +895,7 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={orderWithWhatsapp}
-              className="mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition hover:opacity-95 active:scale-[0.98]"
+              className="nemesis-checkout-whatsapp mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition hover:opacity-95 active:scale-[0.98]"
             >
               <FaWhatsapp className="text-xl" />
               {text.orderWithWhatsapp}
@@ -884,12 +904,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <style>{`
-        @keyframes checkoutUp {
-          from { opacity: 0; transform: translateY(18px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </main>
   );
 }
@@ -914,7 +928,7 @@ function MapPicker({ lat, lng, onPick }) {
 
 function TopBar({ title, onBack }) {
   return (
-    <header className="grid grid-cols-[44px_1fr_44px] items-center">
+    <header className="nemesis-checkout-topbar grid grid-cols-[44px_1fr_44px] items-center">
       <button
         type="button"
         onClick={onBack}
@@ -938,12 +952,15 @@ function TopBar({ title, onBack }) {
   );
 }
 
-function Card({ title, children }) {
+function Card({ title, step, children }) {
   return (
-    <section className="rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
-      <h2 className="mb-4 text-xl font-medium tracking-[-0.03em] text-zinc-950">
-        {title}
-      </h2>
+    <section className="nemesis-checkout-card rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+      <div className="nemesis-checkout-card__heading">
+        {step && <span>{step}</span>}
+        <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
+          {title}
+        </h2>
+      </div>
 
       {children}
     </section>
@@ -962,7 +979,7 @@ function Input({ label, value, onChange, type = "text", placeholder = "" }) {
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
+        className="nemesis-checkout-control h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
       />
     </label>
   );
@@ -978,7 +995,7 @@ function Select({ label, value, onChange, items }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
+        className="nemesis-checkout-control h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
       >
         {items.map((item) => (
           <option key={item.value} value={item.value}>
@@ -992,7 +1009,7 @@ function Select({ label, value, onChange, items }) {
 
 function SummaryRow({ label, value, valueClass = "text-zinc-950" }) {
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="nemesis-checkout-summary-row flex items-center justify-between text-sm">
       <p className="font-normal text-zinc-500">{label}</p>
       <p className={`font-medium ${valueClass}`}>{value}</p>
     </div>

@@ -1,5 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiCheck,
@@ -19,6 +25,13 @@ import { getProducts } from "../../api/homeApi";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
+import "./basketPage.css";
+
+const ThreeUIDotMatrix = lazy(() =>
+  import("@designcodeio/threeui/components/DotMatrixBackground").then(
+    (module) => ({ default: module.DotMatrixBackground }),
+  ),
+);
 
 const STORE_WHATSAPP_NUMBER = "994514349829";
 const SWIPE_LIMIT = 45;
@@ -81,6 +94,18 @@ function getProductSizes(product) {
   ];
 }
 
+function canUseThreeUiEffect() {
+  if (typeof window === "undefined") return false;
+
+  const wideScreen = window.matchMedia("(min-width: 768px)").matches;
+  const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  const enoughCpu = (navigator.hardwareConcurrency || 4) >= 4;
+
+  return wideScreen && !reducedMotion && enoughCpu;
+}
+
 export default function BasketPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
@@ -108,6 +133,7 @@ export default function BasketPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
+  const [showThreeUi, setShowThreeUi] = useState(canUseThreeUiEffect);
 
   const items = useMemo(() => basket.items || [], [basket.items]);
 
@@ -146,7 +172,26 @@ export default function BasketPage() {
 useEffect(() => {
   loadBasket();
   loadRelatedProducts(1, true);
+  // İlk səbət yüklənməsi yalnız səhifə açılarkən işləməlidir.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
+
+  useEffect(() => {
+    const screenQuery = window.matchMedia("(min-width: 768px)");
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function syncThreeUiAvailability() {
+      setShowThreeUi(canUseThreeUiEffect());
+    }
+
+    screenQuery.addEventListener("change", syncThreeUiAvailability);
+    motionQuery.addEventListener("change", syncThreeUiAvailability);
+
+    return () => {
+      screenQuery.removeEventListener("change", syncThreeUiAvailability);
+      motionQuery.removeEventListener("change", syncThreeUiAvailability);
+    };
+  }, []);
 
 function showError(message) {
   showUserToast(message, "error");
@@ -397,9 +442,9 @@ if (loading) {
 }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
-        <div className="mb-7 animate-[basketUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
+    <main className="nemesis-basket-page min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
+      <div className="nemesis-basket-shell mx-auto max-w-[1180px]">
+        <div className="nemesis-basket-heading mb-7 animate-[basketUp_.42s_cubic-bezier(.22,1,.36,1)_both] text-center">
           <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
             nemesisbaku
           </p>
@@ -410,7 +455,7 @@ if (loading) {
         </div>
 
         {items.length === 0 ? (
-          <div className="grid min-h-[380px] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+          <div className="nemesis-basket-empty grid min-h-[380px] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
             <div>
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-zinc-50 text-3xl text-zinc-400">
                 <FiShoppingBag />
@@ -426,9 +471,9 @@ if (loading) {
             </div>
           </div>
         ) : (
-          <div className="grid gap-5 lg:grid-cols-[1fr_370px]">
-            <section className="order-1 space-y-3">
-              <div className="flex items-center justify-between rounded-[18px] bg-white px-4 py-4 shadow-[0_12px_35px_rgba(0,0,0,0.035)]">
+          <div className="nemesis-basket-grid grid gap-5 lg:grid-cols-[1fr_370px]">
+            <section className="nemesis-basket-items order-1 space-y-3">
+              <div className="nemesis-basket-select-all flex items-center justify-between rounded-[18px] bg-white px-4 py-4 shadow-[0_12px_35px_rgba(0,0,0,0.035)]">
                 <button
                   type="button"
                   onClick={toggleAll}
@@ -466,18 +511,22 @@ if (loading) {
                 return (
                   <article
                     key={item.id}
+                    data-selected={selected}
                     onClick={() => navigate(`/products/${item.productId}`)}
-                    className="cursor-pointer animate-[basketCard_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] md:p-4"
-                    style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}
+                    className="nemesis-basket-card cursor-pointer animate-[basketCard_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition md:p-4"
+                    style={{
+                      "--basket-card-delay": `${Math.min(index * 45, 300)}ms`,
+                    }}
                   >
-                    <div className="flex gap-3 md:gap-4">
+                    <div className="nemesis-basket-card__layout flex gap-3 md:gap-4">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleItem(item.id);
                         }}
-                        className={`mt-2 grid h-6 w-6 shrink-0 place-items-center rounded-[8px] border transition ${
+                        aria-label={selected ? "Məhsulu seçimdən çıxar" : "Məhsulu seç"}
+                        className={`nemesis-basket-card__select mt-2 grid h-6 w-6 shrink-0 place-items-center rounded-[8px] border transition ${
                           selected
                             ? "border-zinc-950 bg-zinc-950 text-white"
                             : "border-zinc-200 bg-white"
@@ -489,10 +538,10 @@ if (loading) {
                       <SwipeImage
                         images={images}
                         name={item.productName}
-                        className="h-[112px] w-[92px] md:h-[132px] md:w-[108px]"
+                        className="nemesis-basket-card__image h-[122px] w-[102px] md:h-[142px] md:w-[118px]"
                       />
 
-                      <div className="min-w-0 flex-1">
+                      <div className="nemesis-basket-card__content min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h2 className="line-clamp-2 text-[15px] font-medium leading-5 text-zinc-950 md:text-[17px]">
@@ -517,7 +566,7 @@ if (loading) {
                           </button>
                         </div>
 
-                        <div className="mt-3 flex flex-col items-start gap-2">
+                        <div className="nemesis-basket-card__meta mt-3 flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700">
                             <span
                               className="h-4 w-4 rounded-full border border-black/10"
@@ -534,10 +583,10 @@ if (loading) {
                           </span>
                         </div>
 
-                        <div className="mt-4 flex items-end justify-between gap-3">
+                        <div className="nemesis-basket-card__footer mt-4 flex items-end justify-between gap-3">
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex h-10 overflow-hidden rounded-[12px] border border-zinc-200 bg-white"
+                            className="nemesis-basket-quantity inline-flex overflow-hidden rounded-[12px] border border-zinc-200 bg-white"
                           >
                             <button
                               type="button"
@@ -545,12 +594,16 @@ if (loading) {
                                 updateQuantity(item, item.quantity - 1)
                               }
                               disabled={busy || item.quantity <= 1}
-                              className="grid w-10 place-items-center transition hover:bg-zinc-50 disabled:opacity-40"
+                              aria-label="Sayı azalt"
+                              className="grid place-items-center transition hover:bg-zinc-50 disabled:opacity-40"
                             >
                               <FiMinus />
                             </button>
 
-                            <div className="grid w-12 place-items-center text-sm font-medium">
+                            <div
+                              key={item.quantity}
+                              className="nemesis-basket-quantity__value grid place-items-center text-sm font-medium"
+                            >
                               {item.quantity}
                             </div>
 
@@ -562,13 +615,14 @@ if (loading) {
                               disabled={
                                 busy || item.quantity >= item.stockCount
                               }
-                              className="grid w-10 place-items-center transition hover:bg-zinc-50 disabled:opacity-40"
+                              aria-label="Sayı artır"
+                              className="grid place-items-center transition hover:bg-zinc-50 disabled:opacity-40"
                             >
                               <FiPlus />
                             </button>
                           </div>
 
-                          <div className="text-right">
+                          <div className="nemesis-basket-card__price text-right">
                             {itemHasDiscount && (
                               <p className="text-xs font-medium text-zinc-400 line-through">
                                 {money(item.originalTotalPrice)} ₼
@@ -597,10 +651,35 @@ if (loading) {
               })}
             </section>
 
-            <aside className="order-2 h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
-              <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
-                {text.orderSummary}
-              </h2>
+            <aside className="nemesis-basket-summary order-2 h-max overflow-hidden rounded-[18px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
+              <div className="nemesis-basket-summary__visual">
+                <div className="nemesis-basket-summary__fallback" />
+                {showThreeUi && (
+                  <Suspense fallback={null}>
+                    <ThreeUIDotMatrix
+                      className="nemesis-basket-threeui"
+                      speed={0.38}
+                      gridScale={74}
+                      mouseAmount={0.025}
+                      pulseSpeed={0.24}
+                      radius={0.12}
+                      opacity={0.22}
+                      hue={338}
+                    />
+                  </Suspense>
+                )}
+                <div className="nemesis-basket-summary__brand">
+                  <span>nemesisbaku</span>
+                  <strong>
+                    {selectedItems.length}/{items.length}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="nemesis-basket-summary__body">
+                <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
+                  {text.orderSummary}
+                </h2>
 
               <div className="mt-5 space-y-3">
                 <SummaryRow
@@ -682,7 +761,7 @@ if (loading) {
               <button
                 type="button"
                 onClick={goCheckout}
-                className="mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98]"
+                className="nemesis-basket-checkout mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition active:scale-[0.98]"
               >
                 {text.completeOrder}
                 <FiChevronRight />
@@ -691,15 +770,16 @@ if (loading) {
               <button
                 type="button"
                 onClick={orderWithWhatsapp}
-                className="mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition hover:opacity-95 active:scale-[0.98]"
+                className="nemesis-basket-whatsapp mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition hover:opacity-95 active:scale-[0.98]"
               >
                 <FaWhatsapp className="text-xl" />
                 {text.orderWithWhatsapp}
               </button>
+              </div>
             </aside>
 
             {relatedProducts.length > 0 && (
-              <section className="order-3 lg:col-span-1">
+              <section className="nemesis-basket-related order-3 lg:col-span-1">
                 <div className="mt-2 divide-y divide-zinc-200/70 border-t border-zinc-200/70">
                   {relatedProducts.map((product, index) => (
                     <RelatedProductRow
@@ -838,10 +918,10 @@ function SwipeImage({ images, name, className }) {
 
     if (Math.abs(diffX) > SWIPE_LIMIT && images.length > 1) {
       setActiveImage((prev) => {
-        let next = prev;
-
-        if (diffX < 0) next = Math.min(images.length - 1, prev + 1);
-        else next = Math.max(0, prev - 1);
+        const next =
+          diffX < 0
+            ? Math.min(images.length - 1, prev + 1)
+            : Math.max(0, prev - 1);
 
         resetLater(next);
         return next;
@@ -934,7 +1014,9 @@ function RelatedProductRow({ product, index, text }) {
         setFavorite(Boolean(favResult));
 
         if (detailRes) setDetailProduct(unwrap(detailRes));
-      } catch {}
+      } catch {
+        // Tövsiyə məhsulu alınmasa əsas səbət axını işləməyə davam edir.
+      }
     }
 
     init();

@@ -17,6 +17,7 @@ import {
   getOrderStatus,
   money,
 } from "../../helpers/orderStatus";
+import "./orderDetailsPage.css";
 
 function unwrap(res) {
   return res?.data?.data || res?.data || res;
@@ -44,11 +45,6 @@ export default function OrderDetailsPage() {
     [order?.status, text],
   );
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    loadOrder();
-  }, [id]);
-
   async function loadOrder() {
     try {
       setLoading(true);
@@ -62,6 +58,14 @@ export default function OrderDetailsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadOrder();
+    // The request is keyed by the route id; language changes must not refetch it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (loading) {
     return (
@@ -84,20 +88,20 @@ export default function OrderDetailsPage() {
   const isBadStatus = Number(order.status) === 6 || Number(order.status) === 7;
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-7 md:px-8 md:py-10">
-      <div className="mx-auto max-w-[1180px]">
+    <main className="order-details-page min-h-screen bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
+      <div className="order-details-page__shell mx-auto max-w-[1180px]">
         <button
           type="button"
           onClick={() => navigate("/orders")}
-          className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:-translate-x-0.5 active:scale-[0.98]"
+          className="order-details-page__back mb-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm active:scale-[0.98]"
         >
           <FiArrowLeft />
           {text.backToOrders}
         </button>
 
-        <section className="grid gap-5 lg:grid-cols-[1fr_370px]">
+        <section className="order-details-page__grid grid gap-5 lg:grid-cols-[1fr_370px]">
           <div className="space-y-5">
-            <div className="animate-[detailsUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+            <div className="order-details-card order-details-card--overview rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
@@ -145,10 +149,10 @@ export default function OrderDetailsPage() {
                         return (
                           <div
                             key={step.status}
-                            className="flex flex-1 items-center"
+                            className="order-timeline__group flex flex-1 items-center"
                           >
                             <div
-                              className={`flex min-h-[112px] flex-1 flex-col items-center justify-center rounded-[16px] border px-3 py-4 text-center transition-all duration-300 ${
+                              className={`order-timeline__step flex min-h-[112px] flex-1 flex-col items-center justify-center rounded-[16px] border px-3 py-4 text-center transition-all duration-300 ${
                                 active
                                   ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_16px_35px_rgba(0,0,0,0.12)]"
                                   : "border-zinc-100 bg-zinc-50 text-zinc-400"
@@ -193,7 +197,7 @@ export default function OrderDetailsPage() {
                         return (
                           <div
                             key={step.status}
-                            className="relative flex gap-3 pb-5 last:pb-0"
+                            className="order-timeline__mobile-step relative flex gap-3 pb-5 last:pb-0"
                           >
                             {index !== timeline.length - 1 && (
                               <div
@@ -245,22 +249,23 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            <div className="animate-[detailsUp_.5s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+            <div className="order-details-card order-details-card--products rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
               <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
                 {text.orderedProducts}
               </h2>
 
-              <div className="mt-5 divide-y divide-zinc-100">
+              <div className="order-products mt-5 divide-y divide-zinc-100">
                 {(order.items || []).map((item, index) => (
                   <article
                     key={`${item.productId}-${item.productVariantId}-${index}`}
                     onClick={() => navigate(`/products/${item.productId}`)}
-                    className="grid cursor-pointer grid-cols-[86px_1fr] gap-3 py-4 transition hover:bg-zinc-50 md:grid-cols-[104px_1fr_auto]"
+                    className="order-product grid cursor-pointer grid-cols-[86px_1fr] gap-3 rounded-[16px] py-4 transition md:grid-cols-[104px_1fr_auto]"
                   >
                     <img
                       src={item.productImageUrl}
                       alt={item.productName}
-                      className="h-[104px] w-[86px] rounded-[16px] object-cover md:h-[124px] md:w-[104px]"
+                      className="order-product__image h-[104px] w-[86px] rounded-[16px] object-cover md:h-[124px] md:w-[104px]"
+                      draggable="false"
                     />
 
                     <div className="min-w-0">
@@ -296,7 +301,7 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            <div className="animate-[detailsUp_.58s_cubic-bezier(.22,1,.36,1)_both] rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+            <div className="order-details-card order-details-card--delivery rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
               <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
                 {text.deliveryInfo}
               </h2>
@@ -330,7 +335,7 @@ export default function OrderDetailsPage() {
             </div>
           </div>
 
-          <aside className="h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
+          <aside className="order-receipt h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
             <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
               {text.receipt}
             </h2>
@@ -374,8 +379,8 @@ export default function OrderDetailsPage() {
 
             <button
               type="button"
-              onClick={() => navigate("/")}
-              className="mt-5 h-13 w-full rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98]"
+              onClick={() => navigate("/orders")}
+              className="order-receipt__button mt-5 h-13 w-full rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98]"
             >
               {text.close}
             </button>
@@ -383,17 +388,6 @@ export default function OrderDetailsPage() {
         </section>
       </div>
 
-      <style>{`
-        @keyframes detailsUp {
-          from { opacity: 0; transform: translateY(18px) scale(.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes timelineIn {
-          from { opacity: 0; transform: translateY(10px) scale(.96); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </main>
   );
 }
@@ -401,7 +395,7 @@ export default function OrderDetailsPage() {
 function Info({ label, value, wide }) {
   return (
     <div
-      className={`rounded-[14px] bg-zinc-50 px-4 py-3 ${
+      className={`order-info rounded-[14px] bg-zinc-50 px-4 py-3 ${
         wide ? "md:col-span-2" : ""
       }`}
     >
