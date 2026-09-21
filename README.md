@@ -1,16 +1,26 @@
-# React + Vite
+# nemesisbaku homepage — mərhələ 1
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Bu paket mövcud API məntiqini dəyişmədən homepage dizaynını yeniləyir.
 
-Currently, two official plugins are available:
+## Əlavə olunanlar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- backend kampaniyaları ilə işləyən premium 3D hero;
+- ThreeUI `DotMatrixBackground` WebGL effekti;
+- desktop üçün mouse-parallax və 3D tilt;
+- mobil və reduced-motion rejimində WebGL-in avtomatik söndürülməsi;
+- məhsul bölmələri və kartlar üçün yumşaq 3D dərinlik;
+- AZ/RU/EN “Yeni kolleksiya” tərcümələri;
+- ThreeUI-nin ayrıca lazy chunk kimi yüklənməsi.
 
-## React Compiler
+## Quraşdırma
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+ZIP-i frontend layihəsinin kökünə çıxarın və faylların əvəzlənməsinə icazə verin.
 
-## Expanding the ESLint configuration
+```powershell
+cd "C:\Users\lenovo\OneDrive\Desktop\nemesis-fornted\nemesisbaku-frontend"
+npm.cmd install
+npm.cmd run build
+npm.cmd run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`npm.cmd` istifadə olunur, buna görə PowerShell execution-policy xətası yaranmır.

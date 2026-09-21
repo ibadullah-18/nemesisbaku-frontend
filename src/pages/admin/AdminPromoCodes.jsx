@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   FiCalendar,
+  FiClock,
+  FiHash,
   FiPercent,
   FiPlus,
   FiRefreshCw,
@@ -9,17 +11,15 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import { adminPromoCodesApi, listAdmin } from "../../api/admin/adminApi";
+import AdminFloatingActions from "../../components/admin/AdminFloatingActions";
 import AppLoader from "../../components/common/AppLoader";
-import {
-  isEndAfterStart,
-  localDateTimeToIso,
-  toLocalDateTimeInput,
-} from "../../utils/dataTime";
+import { isEndAfterStart, localDateTimeToIso } from "../../utils/dataTime";
 import { useAdminToastState } from "../../utils/adminToast";
+import "./adminCommunications.css";
 
 const emptyForm = {
   code: "",
-  discountType: 1,
+  discountType: "1",
   discountValue: "",
   usageLimit: "",
   minOrderAmount: "",
@@ -29,101 +29,110 @@ const emptyForm = {
 };
 
 function formatDate(value) {
-  if (!value) return "—";
-  return String(value).replace("T", " ").slice(0, 16);
+  if (!value) return "Limitsiz";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).replace("T", " ").slice(0, 16);
+  return date.toLocaleString("az-AZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function discountText(item) {
-  if (Number(item.discountType) === 1) return `${item.discountValue || 0}%`;
-  return `${item.discountValue || 0} ₼`;
+  const value = Number(item.discountValue || 0);
+  return Number(item.discountType) === 1 ? `${value}%` : `${value.toFixed(2)} ₼`;
+}
+
+function promoState(item) {
+  const now = Date.now();
+  const start = item.startDate ? new Date(item.startDate).getTime() : 0;
+  const end = item.endDate ? new Date(item.endDate).getTime() : null;
+  const limit = item.usageLimit == null ? null : Number(item.usageLimit);
+  const used = Number(item.usedCount || 0);
+
+  if (!item.isActive) return { label: "Deaktiv", tone: "is-inactive" };
+  if (limit !== null && used >= limit) return { label: "Limit bitib", tone: "is-warning" };
+  if (start > now) return { label: "Planlanıb", tone: "is-planned" };
+  if (end !== null && end < now) return { label: "Vaxtı bitib", tone: "is-inactive" };
+  return { label: "Aktiv", tone: "is-active" };
 }
 
 export default function AdminPromoCodes() {
   const [promoCodes, setPromoCodes] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
-
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useAdminToastState("error");
-  const [success, setSuccess] = useAdminToastState("success");
+  const [deletingId, setDeletingId] = useState("");
+  const [, setError] = useAdminToastState("error");
+  const [, setSuccess] = useAdminToastState("success");
 
-  useEffect(() => {
-    loadPromoCodes();
-  }, []);
-
-  async function loadPromoCodes() {
+  async function loadPromoCodes(showNotice = false) {
     try {
-      setError("");
-      setLoading(true);
-
-      const res = await adminPromoCodesApi.list();
-      setPromoCodes(listAdmin(res));
-    } catch (err) {
-      setError(err.message || "Promo kodlar yüklənmədi.");
+      if (showNotice) setRefreshing(true);
+      else setLoading(true);
+      const response = await adminPromoCodesApi.list();
+      setPromoCodes(listAdmin(response));
+      if (showNotice) setSuccess("Promo kod siyahısı yeniləndi.");
+    } catch (error) {
+      setError(error.message || "Promo kodlar yüklənmədi.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
-  function updateForm(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPromoCodes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function createPromoCode(e) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  async function createPromoCode(event) {
+    event.preventDefault();
+    const discountValue = Number(form.discountValue);
+    const usageLimit = form.usageLimit === "" ? null : Number(form.usageLimit);
+    const minOrderAmount = form.minOrderAmount === "" ? null : Number(form.minOrderAmount);
 
     if (!form.code.trim()) return setError("Promo kod yazılmalıdır.");
-    if (!form.discountValue || Number(form.discountValue) <= 0) {
-      return setError("Endirim dəyəri 0-dan böyük olmalıdır.");
-    }
-    if (!form.usageLimit || Number(form.usageLimit) <= 0) {
-      return setError("İstifadə limiti 0-dan böyük olmalıdır.");
-    }
-    if (!Number.isInteger(Number(form.usageLimit))) {
-      return setError("İstifadə limiti tam ədəd olmalıdır.");
-    }
-    if (Number(form.discountType) === 1 && Number(form.discountValue) > 100) {
-      return setError("Faiz endirimi 100-dən böyük ola bilməz.");
-    }
+    if (!Number.isFinite(discountValue) || discountValue <= 0) return setError("Endirim dəyəri 0-dan böyük olmalıdır.");
+    if (Number(form.discountType) === 1 && discountValue > 100) return setError("Faiz endirimi 100-dən böyük ola bilməz.");
+    if (usageLimit !== null && (!Number.isInteger(usageLimit) || usageLimit <= 0)) return setError("İstifadə limiti müsbət tam ədəd olmalıdır.");
+    if (minOrderAmount !== null && (!Number.isFinite(minOrderAmount) || minOrderAmount < 0)) return setError("Minimum sifariş məbləği 0 və ya daha böyük olmalıdır.");
     if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
-    if (!form.endDate) return setError("Bitmə tarixi seçilməlidir.");
 
     let startDate;
-    let endDate;
-
+    let endDate = null;
     try {
       startDate = localDateTimeToIso(form.startDate);
-      endDate = localDateTimeToIso(form.endDate);
-    } catch (err) {
-      return setError(err.message);
+      if (form.endDate) endDate = localDateTimeToIso(form.endDate);
+    } catch (error) {
+      return setError(error.message || "Tarix formatı düzgün deyil.");
     }
 
-    if (!isEndAfterStart(startDate, endDate)) {
-      return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
-    }
+    if (endDate && !isEndAfterStart(startDate, endDate)) return setError("Bitmə tarixi başlama tarixindən sonra olmalıdır.");
 
     try {
       setSaving(true);
-
       await adminPromoCodesApi.create({
         code: form.code.trim().toUpperCase(),
         discountType: Number(form.discountType),
-        discountValue: Number(form.discountValue),
-        usageLimit: Number(form.usageLimit),
-        minOrderAmount: Number(form.minOrderAmount || 0),
+        discountValue,
+        usageLimit,
+        minOrderAmount,
         startDate,
         endDate,
         isActive: Boolean(form.isActive),
       });
-
       setForm(emptyForm);
       setSuccess("Promo kod əlavə edildi.");
       await loadPromoCodes();
-    } catch (err) {
-      setError(err.message || "Promo kod əlavə edilmədi.");
+    } catch (error) {
+      setError(error.message || "Promo kod əlavə edilmədi.");
     } finally {
       setSaving(false);
     }
@@ -131,326 +140,125 @@ export default function AdminPromoCodes() {
 
   async function deletePromoCode(item) {
     const id = item.id || item.promoCodeId;
-
-    if (!id) {
-      setError("Bu promo kod üçün ID gəlmədi. Silmək mümkün deyil.");
-      return;
-    }
-
-    const ok = confirm(`${item.code || "Promo kod"} silinsin?`);
-    if (!ok) return;
+    if (!id) return setError("Promo kod ID-si gəlmədi.");
+    if (!window.confirm(`${item.code || "Bu promo kod"} silinsin?`)) return;
 
     try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
+      setDeletingId(id);
       await adminPromoCodesApi.delete(id);
-      setPromoCodes((prev) =>
-        prev.filter((x) => (x.id || x.promoCodeId) !== id),
-      );
+      setPromoCodes((items) => items.filter((promo) => (promo.id || promo.promoCodeId) !== id));
       setSuccess("Promo kod silindi.");
-    } catch (err) {
-      setError(err.message || "Promo kod silinmədi.");
+    } catch (error) {
+      setError(error.message || "Promo kod silinmədi.");
     } finally {
-      setSaving(false);
+      setDeletingId("");
     }
   }
 
-  const filteredPromoCodes = useMemo(() => {
-    const text = search.trim().toLowerCase();
-    if (!text) return promoCodes;
-
-    return promoCodes.filter((item) =>
-      String(item.code || "")
-        .toLowerCase()
-        .includes(text),
-    );
+  const filtered = useMemo(() => {
+    const value = search.trim().toLowerCase();
+    if (!value) return promoCodes;
+    return promoCodes.filter((item) => String(item.code || "").toLowerCase().includes(value));
   }, [promoCodes, search]);
+
+  const activeCount = promoCodes.filter((item) => promoState(item).tone === "is-active").length;
+  const totalUsed = promoCodes.reduce((total, item) => total + Number(item.usedCount || 0), 0);
 
   if (loading) return <AppLoader text="Promo kodlar yüklənir" />;
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Yadda saxlanılır" />}
-
-      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <main className="nb-comm-page nb-promo-page">
+      <header className="nb-comm-header">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Admin promo kodlar
-          </p>
-
-          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
-            Promo kodlar
-          </h1>
-
-          <p className="mt-1 text-sm font-medium text-zinc-500">
-            Endirim kodlarını yaradın, aktiv edin və silin.
-          </p>
+          <p className="nb-comm-eyebrow">nemesisbaku · satış alətləri</p>
+          <h1>Promo kodlar</h1>
+          <p>Faiz və ya məbləğ endirimi yaradın, istifadə limitini və tarix aralığını idarə edin.</p>
         </div>
+        <div className="nb-comm-header__signal"><FiTag /><span><small>Hazırda aktiv</small><strong>{activeCount} promo kod</strong></span></div>
+      </header>
 
-        <button
-          type="button"
-          onClick={loadPromoCodes}
-          className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white"
-        >
-          <FiRefreshCw />
-          Yenilə
-        </button>
-      </div>
+      <section className="nb-comm-stats">
+        <Stat icon={<FiHash />} label="Bütün kodlar" value={promoCodes.length} />
+        <Stat icon={<FiPercent />} label="Aktiv kodlar" value={activeCount} accent />
+        <Stat icon={<FiTag />} label="Ümumi istifadə" value={totalUsed} />
+      </section>
 
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-5 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-          {success}
-        </div>
-      )}
-
-      <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-            Yeni promo kod
-          </h2>
-
-          <p className="mt-1 text-sm font-medium text-zinc-500">
-            Məsələn: NEMESIS20, SUMMER10.
-          </p>
-
-          <form onSubmit={createPromoCode} className="mt-5 space-y-4">
-            <AdminInput
-              label="Kod"
-              placeholder="NEMESIS20"
-              value={form.code}
-              onChange={(v) => updateForm("code", v)}
-            />
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-zinc-800">
-                Endirim tipi
-              </span>
-
-              <select
-                value={form.discountType}
-                onChange={(e) => updateForm("discountType", e.target.value)}
-                className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none"
-              >
-                <option value={1}>Faizlə endirim</option>
-                <option value={2}>Məbləğlə endirim</option>
-              </select>
-            </label>
-
-            <AdminInput
-              label="Endirim dəyəri"
-              type="number"
-              placeholder={Number(form.discountType) === 1 ? "20" : "10"}
-              value={form.discountValue}
-              onChange={(v) => updateForm("discountValue", v)}
-            />
-
-            <AdminInput
-              label="İstifadə limiti"
-              type="number"
-              placeholder="100"
-              value={form.usageLimit}
-              onChange={(v) => updateForm("usageLimit", v)}
-            />
-
-            <AdminInput
-              label="Minimum sifariş məbləği"
-              type="number"
-              placeholder="0"
-              value={form.minOrderAmount}
-              onChange={(v) => updateForm("minOrderAmount", v)}
-            />
-
-            <AdminInput
-              label="Başlama tarixi"
-              type="datetime-local"
-              value={toLocalDateTimeInput(form.startDate)}
-              onChange={(v) => updateForm("startDate", v)}
-            />
-
-            <AdminInput
-              label="Bitmə tarixi"
-              type="datetime-local"
-              value={toLocalDateTimeInput(form.endDate)}
-              onChange={(v) => updateForm("endDate", v)}
-            />
-
-            <button
-              type="button"
-              onClick={() => updateForm("isActive", !form.isActive)}
-              className={`flex w-full items-center justify-between rounded-[18px] border p-4 text-left ${
-                form.isActive
-                  ? "border-[#244989] bg-[#244989]/8"
-                  : "border-zinc-100 bg-zinc-50"
-              }`}
-            >
-              <span className="text-sm font-extrabold text-zinc-900">
-                Aktiv promo kod
-              </span>
-
-              <span
-                className={`h-6 w-11 rounded-full p-1 ${
-                  form.isActive ? "bg-[#244989]" : "bg-zinc-300"
-                }`}
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-white transition ${
-                    form.isActive ? "translate-x-5" : ""
-                  }`}
-                />
-              </span>
-            </button>
-
-            <button className="flex h-13 w-full items-center justify-center gap-2 rounded-[16px] bg-[#244989] text-sm font-extrabold text-white">
-              <FiPlus />
-              Promo kod əlavə et
+      <div className="nb-promo-layout">
+        <section className="nb-comm-card nb-comm-form-card">
+          <div className="nb-comm-card__head"><div><p className="nb-comm-eyebrow">Yeni endirim</p><h2>Promo kod yarat</h2></div><span className="nb-optional-badge">Limit və bitmə opsionaldır</span></div>
+          <form id="admin-promo-form" className="nb-comm-form" onSubmit={createPromoCode}>
+            <Field label="Promo kod" placeholder="NEMESIS20" value={form.code} onChange={(value) => setForm((old) => ({ ...old, code: value.toUpperCase().replace(/\s/g, "") }))} />
+            <div className="nb-two-fields">
+              <label className="nb-comm-field"><span>Endirim tipi</span><select value={form.discountType} onChange={(event) => setForm((old) => ({ ...old, discountType: event.target.value }))}><option value="1">Faizlə endirim</option><option value="2">Məbləğlə endirim</option></select></label>
+              <Field type="number" label={Number(form.discountType) === 1 ? "Endirim faizi" : "Endirim məbləği"} placeholder={Number(form.discountType) === 1 ? "20" : "10"} value={form.discountValue} onChange={(value) => setForm((old) => ({ ...old, discountValue: value }))} />
+            </div>
+            <div className="nb-two-fields">
+              <Field type="number" label="İstifadə limiti · opsional" placeholder="Limitsiz" value={form.usageLimit} onChange={(value) => setForm((old) => ({ ...old, usageLimit: value }))} />
+              <Field type="number" label="Minimum sifariş · opsional" placeholder="Məhdudiyyət yoxdur" value={form.minOrderAmount} onChange={(value) => setForm((old) => ({ ...old, minOrderAmount: value }))} />
+            </div>
+            <div className="nb-two-fields">
+              <Field type="datetime-local" label="Başlama tarixi" value={form.startDate} onChange={(value) => setForm((old) => ({ ...old, startDate: value }))} />
+              <Field type="datetime-local" label="Bitmə tarixi · opsional" value={form.endDate} onChange={(value) => setForm((old) => ({ ...old, endDate: value }))} />
+            </div>
+            <button className={`nb-switch-row ${form.isActive ? "is-on" : ""}`} type="button" onClick={() => setForm((old) => ({ ...old, isActive: !old.isActive }))}>
+              <span><FiClock /><span><strong>Promo kod aktiv olsun</strong><small>Tarix aralığında istifadə edilə bilsin</small></span></span><i><b /></i>
             </button>
           </form>
+
+          <div className="nb-promo-preview">
+            <span>CANLI ÖNİZLƏMƏ</span>
+            <strong>{form.code || "NEMESIS"}</strong>
+            <b>{form.discountValue ? (Number(form.discountType) === 1 ? `${form.discountValue}%` : `${form.discountValue} ₼`) : "—"}</b>
+            <small>{form.usageLimit ? `${form.usageLimit} istifadə limiti` : "Limitsiz istifadə"}</small>
+          </div>
         </section>
 
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-                Promo kod siyahısı
-              </h2>
-
-              <p className="text-sm font-medium text-zinc-500">
-                Cəmi {promoCodes.length} promo kod.
-              </p>
-            </div>
-
-            <div className="flex h-12 items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 md:w-[300px]">
-              <FiSearch className="text-zinc-400" />
-
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Kod axtar"
-                className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold outline-none"
-              />
-            </div>
+        <section className="nb-comm-card">
+          <div className="nb-comm-list-head">
+            <div><h2>Promo kod siyahısı</h2><p>{promoCodes.length} kod · {totalUsed} istifadə</p></div>
+            <label className="nb-comm-search"><FiSearch /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Promo kod axtar" /></label>
           </div>
 
-          <div className="grid gap-3">
-            {filteredPromoCodes.map((item) => {
+          <div className="nb-promo-grid">
+            {filtered.map((item) => {
               const id = item.id || item.promoCodeId;
+              const status = promoState(item);
+              const limit = item.usageLimit == null ? null : Number(item.usageLimit);
+              const used = Number(item.usedCount || 0);
+              const usagePercent = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
 
               return (
-                <article
-                  key={id || item.code}
-                  className="rounded-[24px] border border-zinc-100 bg-zinc-50 p-4 transition hover:-translate-y-1 hover:bg-white hover:shadow-[0_16px_42px_rgba(0,0,0,0.04)]"
-                >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#244989]/8 text-[#244989]">
-                        {Number(item.discountType) === 1 ? (
-                          <FiPercent />
-                        ) : (
-                          <FiTag />
-                        )}
-                      </div>
-
-                      <div>
-                        <h3 className="text-lg font-extrabold text-zinc-950">
-                          {item.code || "—"}
-                        </h3>
-
-                        <p className="text-sm font-bold text-zinc-500">
-                          Endirim: {discountText(item)} · Minimum sifariş:{" "}
-                          {item.minOrderAmount || 0} ₼
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-extrabold ${
-                          item.isActive
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {item.isActive ? "Aktiv" : "Deaktiv"}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => deletePromoCode(item)}
-                        className="grid h-10 w-10 place-items-center rounded-full bg-red-50 text-red-600"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
+                <article key={id || item.code} className="nb-promo-card">
+                  <div className="nb-promo-card__top">
+                    <span className="nb-promo-card__value">{discountText(item)}</span>
+                    <em className={status.tone}>{status.label}</em>
+                    <button type="button" disabled={deletingId === id} onClick={() => deletePromoCode(item)} aria-label="Promo kodu sil"><FiTrash2 /></button>
                   </div>
-
-                  <div className="mt-4 grid gap-2 text-xs font-bold text-zinc-500 md:grid-cols-3">
-                    <Info
-                      icon={<FiCalendar />}
-                      label="Başlama"
-                      value={formatDate(item.startDate)}
-                    />
-                    <Info
-                      icon={<FiCalendar />}
-                      label="Bitmə"
-                      value={formatDate(item.endDate)}
-                    />
-                    <Info
-                      icon={<FiTag />}
-                      label="Limit"
-                      value={`${item.usedCount || item.usageCount || 0} / ${
-                        item.usageLimit || 0
-                      }`}
-                    />
-                  </div>
+                  <h3>{item.code || "—"}</h3>
+                  <p>Minimum sifariş: {item.minOrderAmount == null ? "Yoxdur" : `${Number(item.minOrderAmount).toFixed(2)} ₼`}</p>
+                  <div className="nb-usage-row"><span>İstifadə</span><strong>{used} / {limit ?? "∞"}</strong></div>
+                  {limit ? <div className="nb-send-progress"><i style={{ width: `${usagePercent}%` }} /></div> : null}
+                  <div className="nb-promo-card__dates"><span><FiCalendar /> {formatDate(item.startDate)}</span><span><FiCalendar /> {formatDate(item.endDate)}</span></div>
                 </article>
               );
             })}
-
-            {filteredPromoCodes.length === 0 && (
-              <div className="rounded-[22px] bg-zinc-50 p-8 text-center text-sm font-extrabold text-zinc-400">
-                Promo kod tapılmadı.
-              </div>
-            )}
+            {filtered.length === 0 ? <div className="nb-comm-empty">Promo kod tapılmadı.</div> : null}
           </div>
         </section>
       </div>
-    </div>
+
+      <AdminFloatingActions status={saving ? "Promo kod yaradılır…" : "Yeni promo kod"}>
+        <button type="button" disabled={refreshing || saving} onClick={() => loadPromoCodes(true)}><FiRefreshCw /> Yenilə</button>
+        <button className="is-primary" form="admin-promo-form" type="submit" disabled={saving}><FiPlus /> {saving ? "Yaradılır…" : "Promo kod yarat"}</button>
+      </AdminFloatingActions>
+    </main>
   );
 }
 
-function AdminInput({ label, placeholder, value, onChange, type = "text" }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold text-zinc-800">
-        {label}
-      </span>
-
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
-      />
-    </label>
-  );
+function Stat({ icon, label, value, accent = false }) {
+  return <article className={`nb-comm-stat ${accent ? "is-accent" : ""}`}><span>{icon}</span><div><small>{label}</small><strong>{value}</strong></div></article>;
 }
 
-function Info({ icon, label, value }) {
-  return (
-    <div className="flex items-center gap-2 rounded-[14px] bg-white px-3 py-2">
-      <span className="text-[#244989]">{icon}</span>
-      <span>
-        {label}: {value}
-      </span>
-    </div>
-  );
+function Field({ label, placeholder = "", value, onChange, type = "text" }) {
+  return <label className="nb-comm-field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>;
 }

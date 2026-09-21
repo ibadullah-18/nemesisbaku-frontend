@@ -494,8 +494,28 @@ export const adminUsersApi = {
 };
 
 export const adminAuditLogsApi = {
-  list: ({ page = 1, pageSize = 20, search = "" } = {}) =>
-    adminFetch(`/api/AdminAuditLogs${buildQuery({ page, pageSize, search })}`),
+  list: ({
+    page = 1,
+    pageSize = 20,
+    search = "",
+    action = "",
+    entityName = "",
+    userId = "",
+    fromDate = "",
+    toDate = "",
+  } = {}) =>
+    adminFetch(
+      `/api/AdminAuditLogs${buildQuery({
+        page,
+        pageSize,
+        search,
+        action,
+        entityName,
+        userId,
+        fromDate,
+        toDate,
+      })}`,
+    ),
 };
 
 export const adminPromoPagesApi = {

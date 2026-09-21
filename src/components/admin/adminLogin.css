@@ -1,0 +1,118 @@
+.nb-login {
+  --login-blue: #244989;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 26px;
+  background:
+    radial-gradient(circle at 11% 14%, rgba(36, 73, 137, .1), transparent 26%),
+    radial-gradient(circle at 90% 88%, rgba(36, 73, 137, .08), transparent 24%),
+    #f2f4f7;
+  color: #171e29;
+}
+.nb-login__shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 450px;
+  width: min(1160px, 100%);
+  min-height: 650px;
+  overflow: hidden;
+  border: 1px solid #dce2e9;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 34px 90px rgba(15, 29, 50, .14);
+}
+.nb-login__visual {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 34px 38px;
+  background: linear-gradient(145deg, #10151e 0%, #172233 58%, #1d3150 100%);
+  color: #fff;
+}
+.nb-login__visual::before {
+  position: absolute;
+  inset: 0;
+  opacity: .18;
+  background-image: linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom right, #000, transparent 72%);
+  content: "";
+}
+.nb-login__brand { position: relative; z-index: 2; display: flex; align-items: center; gap: 11px; }
+.nb-login__brand > span,
+.nb-login__mobile-brand > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #fff; color: #121923; font: 700 25px/1 Georgia, serif; letter-spacing: -.12em; padding-right: 3px; }
+.nb-login__brand > strong,
+.nb-login__mobile-brand > strong { font: 700 23px/1 Georgia, serif; letter-spacing: -.055em; }
+.nb-login__hero-copy { position: relative; z-index: 2; margin-top: 58px; max-width: 570px; }
+.nb-login__hero-copy > p { margin: 0; color: #9db8df; font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.nb-login__hero-copy h1 { margin: 13px 0 13px; font: 700 clamp(43px, 4.3vw, 65px)/.98 Georgia, serif; letter-spacing: -.058em; }
+.nb-login__hero-copy > span { display: block; max-width: 530px; color: #aeb8c8; font-size: 13px; font-weight: 600; line-height: 1.7; }
+.nb-login__scene { position: relative; z-index: 1; flex: 1; min-height: 220px; perspective: 900px; }
+.nb-login__orb { position: absolute; right: 4%; bottom: -38px; width: 260px; height: 260px; border: 1px solid rgba(146, 181, 232, .22); border-radius: 50%; box-shadow: inset 0 0 60px rgba(76, 122, 190, .1), 0 0 80px rgba(32, 83, 158, .12); }
+.nb-login__orb::before,
+.nb-login__orb::after { position: absolute; inset: 26px; border: 1px solid rgba(146, 181, 232, .18); border-radius: 50%; content: ""; }
+.nb-login__orb::after { inset: 62px; background: radial-gradient(circle at 35% 30%, #426da9, #172337 65%); box-shadow: 0 28px 70px rgba(3, 12, 25, .42); }
+.nb-login__scene-card { position: absolute; right: 14%; bottom: 47px; z-index: 2; width: 205px; border: 1px solid rgba(255,255,255,.16); border-radius: 17px; padding: 17px; background: rgba(16, 24, 37, .78); box-shadow: 0 25px 45px rgba(4, 11, 22, .35); backdrop-filter: blur(12px); transform: rotateY(-9deg) rotateX(3deg); }
+.nb-login__scene-card small,
+.nb-login__scene-card strong,
+.nb-login__scene-card span { display: block; }
+.nb-login__scene-card small { color: #8192aa; font-size: 7px; font-weight: 800; letter-spacing: .13em; }
+.nb-login__scene-card strong { margin: 8px 0 15px; font: 700 24px/1 Georgia, serif; }
+.nb-login__scene-card span { display: flex; align-items: center; gap: 6px; color: #a8b4c5; font-size: 8px; font-weight: 700; }
+.nb-login__scene-card i { width: 6px; height: 6px; border-radius: 50%; background: #76c997; box-shadow: 0 0 12px #76c997; }
+.nb-login__features { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.nb-login__features > div { display: flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 9px 10px; background: rgba(255,255,255,.045); color: #abb6c6; font-size: 8px; font-weight: 750; }
+.nb-login__features svg { color: #9bb7df; }
+.nb-login__form-side { display: flex; flex-direction: column; justify-content: center; padding: 52px 46px; }
+.nb-login__mobile-brand { display: none; align-items: center; gap: 10px; margin-bottom: 34px; }
+.nb-login__mobile-brand > span { background: #121923; color: #fff; }
+.nb-login__role { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; border: 1px solid #d8e1ed; border-radius: 999px; padding: 7px 10px; background: #f3f6fa; color: #244989; font-size: 9px; font-weight: 800; }
+.nb-login__form-side h2 { margin: 17px 0 5px; font: 700 36px/1.08 Georgia, serif; letter-spacing: -.045em; }
+.nb-login__form-side > p { margin: 0 0 27px; color: #7d8898; font-size: 12px; font-weight: 600; }
+.nb-login__form-side form { display: grid; gap: 14px; }
+.nb-login__field { display: grid; gap: 7px; }
+.nb-login__field > span { color: #536176; font-size: 10px; font-weight: 750; }
+.nb-login__field > div { display: flex; align-items: center; gap: 10px; min-height: 50px; border: 1px solid #dce2e9; border-radius: 11px; padding: 0 13px; background: #fafbfd; color: #8793a3; transition: border-color 160ms, box-shadow 160ms, background 160ms; }
+.nb-login__field > div:focus-within { border-color: #244989; background: #fff; box-shadow: 0 0 0 3px rgba(36, 73, 137, .09); }
+.nb-login__field input { min-width: 0; width: 100%; height: 48px; border: 0; background: transparent; color: #222c3a; font-size: 11px; font-weight: 650; outline: 0; }
+.nb-login__field button { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: 8px; background: transparent; color: #667388; cursor: pointer; }
+.nb-login__field button:hover { background: #edf1f6; }
+.nb-login__submit { display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin-top: 5px; border: 0; border-radius: 11px; padding: 0 17px; background: #244989; color: #fff; font-family: inherit; font-size: 11px; font-weight: 800; cursor: pointer; box-shadow: 0 13px 25px rgba(36, 73, 137, .2); transition: transform 170ms, box-shadow 170ms; }
+.nb-login__submit:hover { transform: translateY(-2px); box-shadow: 0 17px 30px rgba(36, 73, 137, .27); }
+.nb-login__submit:disabled { opacity: .62; cursor: wait; transform: none; }
+.nb-login__secure { display: flex; align-items: center; gap: 9px; margin-top: 26px; border-top: 1px solid #e7ebf0; padding-top: 17px; color: #8994a3; }
+.nb-login__secure > svg { flex: none; }
+.nb-login__secure strong,
+.nb-login__secure small { display: block; }
+.nb-login__secure strong { margin-bottom: 2px; color: #59677a; font-size: 9px; }
+.nb-login__secure small { font-size: 8px; font-weight: 600; }
+.nb-login-toast { position: fixed; right: 22px; bottom: 22px; z-index: 200; display: flex; align-items: flex-start; gap: 10px; width: min(390px, calc(100vw - 32px)); border-radius: 13px; padding: 13px; color: #fff; box-shadow: 0 22px 55px rgba(12, 19, 31, .25); animation: nbLoginToastIn 240ms cubic-bezier(.22, 1, .36, 1) both; }
+.nb-login-toast.is-error { background: #a33f4a; }
+.nb-login-toast.is-success { background: #397153; }
+.nb-login-toast > svg { width: 21px; height: 21px; flex: none; }
+.nb-login-toast > div { min-width: 0; display: grid; gap: 2px; }
+.nb-login-toast strong { font-size: 11px; }
+.nb-login-toast span { overflow-wrap: anywhere; color: rgba(255,255,255,.9); font-size: 10px; line-height: 1.45; }
+.nb-login-toast button { margin-left: auto; border: 0; background: transparent; color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
+@keyframes nbLoginToastIn { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) {
+  .nb-login { padding: 18px; }
+  .nb-login__shell { grid-template-columns: 1fr; width: min(500px, 100%); min-height: 0; }
+  .nb-login__visual { display: none; }
+  .nb-login__form-side { padding: 38px; }
+  .nb-login__mobile-brand { display: flex; }
+}
+@media (max-width: 520px) {
+  .nb-login { align-items: stretch; padding: 0; background: #fff; }
+  .nb-login__shell { width: 100%; min-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+  .nb-login__form-side { justify-content: center; padding: 28px 22px; }
+  .nb-login__form-side h2 { font-size: 32px; }
+  .nb-login-toast { right: 16px; bottom: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nb-login__submit { transition: none; }
+  .nb-login__submit:hover { transform: none; }
+}

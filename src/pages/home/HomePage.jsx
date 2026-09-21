@@ -26,6 +26,7 @@ import {
 } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
+import "./homePage.css";
 
 const HOME_VIEW_STATE_KEY = "nemesis_home_view_state_v2";
 const HOME_RETURN_PRODUCT_KEY = "nemesis_return_product_id";
@@ -796,7 +797,7 @@ export default function HomePage() {
   return (
     <main
       onClickCapture={rememberHomeBeforeProductOpen}
-      className="min-h-screen bg-[#fafafa] text-zinc-950"
+      className="nemesis-home-page min-h-screen bg-[#f7f5f2] text-zinc-950"
     >
       <style>
         {`
@@ -870,12 +871,12 @@ export default function HomePage() {
         `}
       </style>
 
-      <div className="relative min-h-screen bg-[#fafafa]">
+      <div className="nemesis-home-canvas relative min-h-screen">
         <div
           className={
             restoredFromDetails
-              ? "relative z-30"
-              : "relative z-30 animate-[softHomeIn_0.22s_ease-out_both]"
+              ? "nemesis-home-discovery relative z-30"
+              : "nemesis-home-discovery relative z-30 animate-[softHomeIn_0.22s_ease-out_both]"
           }
         >
           <ProductDiscoveryBar
@@ -890,14 +891,14 @@ export default function HomePage() {
             <div
               className={
                 restoredFromDetails
-                  ? "relative z-10"
-                  : "relative z-10 animate-[softHomeIn_0.22s_ease-out_both]"
+                  ? "nemesis-home-feature relative z-10"
+                  : "nemesis-home-feature relative z-10 animate-[softHomeIn_0.22s_ease-out_both]"
               }
             >
               <HomePromoSlider promos={sliderCampaigns} />
             </div>
 
-            <div className="space-y-2">
+            <div className="nemesis-home-sections space-y-2">
               {homeSections
                 .slice()
                 .sort(
@@ -929,10 +930,10 @@ export default function HomePage() {
         {(products.length > 0 || filterLoading) && (
           <section
             ref={allProductsRef}
-            className="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-11"
+            className="nemesis-home-catalog mx-auto max-w-[1240px] px-5 py-8 md:px-8 md:py-12"
           >
             <div
-              className="mb-5 flex items-end justify-between gap-4"
+              className="nemesis-home-catalog__heading mb-6 flex items-end justify-between gap-4"
               style={{
                 opacity: 1,
                 visibility: "visible",
@@ -964,7 +965,7 @@ export default function HomePage() {
 
             <div
               key={`products-grid-${productsAnimationVersion}`}
-              className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+              className="nemesis-home-product-grid grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4"
               style={{
                 animation: !resultAnimationsEnabled
                   ? "none"
@@ -1016,7 +1017,7 @@ export default function HomePage() {
                   type="button"
                   onClick={loadMore}
                   disabled={moreLoading}
-                  className="rounded-full bg-[#120d09] px-8 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(15,15,15,0.16)] transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
+                  className="nemesis-home-load-more rounded-full bg-[#120d09] px-8 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(15,15,15,0.16)] transition duration-300 hover:-translate-y-1 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
                 >
                   {text.loadMore}
                 </button>

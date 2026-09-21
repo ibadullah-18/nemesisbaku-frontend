@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheck,
-  FiImage,
   FiRefreshCw,
   FiSave,
   FiSearch,
@@ -15,6 +14,8 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import AdminMediaPreview from "../../components/admin/AdminMediaPreview";
+import AdminFloatingActions from "../../components/admin/AdminFloatingActions";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import { showAdminToast } from "../../utils/adminToast";
 import {
@@ -22,6 +23,7 @@ import {
   localDateTimeToIso,
   toLocalDateTimeInput,
 } from "../../utils/dataTime";
+import "./adminMerchandising.css";
 
 const emptyForm = {
   title: "",
@@ -81,6 +83,7 @@ export default function AdminHomeSectionForm({ mode }) {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const basePath = getPanelBasePath();
 
@@ -93,30 +96,25 @@ export default function AdminHomeSectionForm({ mode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, mode]);
 
-  async function loadAll() {
+  async function loadAll({ silent = false, notify = false } = {}) {
     try {
-      setLoading(true);
-      const availableProducts =
-        await adminHomeSectionsApi.availableProducts();
-      const activeProducts = Array.isArray(availableProducts)
-        ? availableProducts
-        : [];
-      const activeProductIds = new Set(
-        activeProducts.map(getProductId).filter(Boolean),
-      );
-
-      setProducts(activeProducts);
+      if (!silent) setLoading(true);
+      if (notify) setRefreshing(true);
+      const [productsResult, sectionResult] = await Promise.allSettled([
+        adminHomeSectionsApi.availableProducts(),
+        isEdit ? adminHomeSectionsApi.detail(id) : Promise.resolve(null),
+      ]);
+      if (sectionResult.status === "rejected") throw sectionResult.reason;
+      setProducts(productsResult.status === "fulfilled" && Array.isArray(productsResult.value) ? productsResult.value : []);
+      if (productsResult.status === "rejected") {
+        showToast("Məhsul siyahısı yüklənmədi. Bölmədəki seçimlər saxlanılıb; yenidən yoxlayın.");
+      }
 
       if (isEdit) {
-        const sectionRes = await adminHomeSectionsApi.detail(id);
-        const section = unwrapAdmin(sectionRes);
+        const section = unwrapAdmin(sectionResult.value);
         const savedProductIds = normalizeAdminGuidList(
           section?.productIds || section?.products,
         );
-        const availableProductIds = savedProductIds.filter((productId) =>
-          activeProductIds.has(productId),
-        );
-
         setForm({
           title: section?.title || "",
           subtitle: section?.subtitle || "",
@@ -124,21 +122,17 @@ export default function AdminHomeSectionForm({ mode }) {
           startDate: toLocalDateTimeInput(section?.startDate),
           endDate: toLocalDateTimeInput(section?.endDate),
           isActive: section?.isActive ?? true,
-          productIds: availableProductIds,
+          productIds: savedProductIds,
         });
-
-        if (savedProductIds.length !== availableProductIds.length) {
-          showToast(
-            "Artıq aktiv olmayan məhsul seçimdən avtomatik çıxarıldı.",
-          );
-        }
       } else {
         setForm(emptyForm);
       }
+      if (notify) showToast("Bölmə məlumatları yeniləndi.", "success");
     } catch (err) {
-      showToast(err.message || "Section məlumatları yüklənmədi.");
+      showToast(err.message || "Bölmə məlumatları yüklənmədi.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      if (notify) setRefreshing(false);
     }
   }
 
@@ -178,7 +172,7 @@ export default function AdminHomeSectionForm({ mode }) {
     e.preventDefault();
 
     if (!form.title.trim()) {
-      return showToast("Section başlığı yazılmalıdır.");
+      return showToast("Bölmənin başlığını yazın.");
     }
 
     if (!form.displayOrder || Number(form.displayOrder) <= 0) {
@@ -189,23 +183,7 @@ export default function AdminHomeSectionForm({ mode }) {
     if (!form.endDate) return showToast("Bitmə tarixi seçilməlidir.");
 
     const selectedProductIds = normalizeAdminGuidList(form.productIds);
-    const activeProductIdSet = new Set(
-      products.map(getProductId).filter(Boolean),
-    );
-    const availableProductIds = selectedProductIds.filter((productId) =>
-      activeProductIdSet.has(productId),
-    );
-
-    if (availableProductIds.length === 0) {
-      return showToast("Ən azı 1 aktiv məhsul seçilməlidir.");
-    }
-
-    if (selectedProductIds.length !== availableProductIds.length) {
-      setForm((prev) => ({ ...prev, productIds: availableProductIds }));
-      return showToast(
-        "Seçilmiş məhsullardan biri artıq aktiv deyil. Siyahı yeniləndi, yenidən yoxlayın.",
-      );
-    }
+    if (selectedProductIds.length === 0) return showToast("Ən azı 1 məhsul seçilməlidir.");
 
     let startDate;
     let endDate;
@@ -228,7 +206,7 @@ export default function AdminHomeSectionForm({ mode }) {
       startDate,
       endDate,
       isActive: Boolean(form.isActive),
-      productIds: availableProductIds,
+      productIds: selectedProductIds,
     };
 
     try {
@@ -236,13 +214,13 @@ export default function AdminHomeSectionForm({ mode }) {
 
       if (isEdit) {
         await adminHomeSectionsApi.update(id, payload);
-        showToast("Home section yeniləndi.", "success");
+        showToast("Ana səhifə bölməsi yeniləndi.", "success");
       } else {
         await adminHomeSectionsApi.create(payload);
-        navigate(`${basePath}/home-sections`);
+        navigate(`${basePath}/home-sections`, { state: { adminNotice: { type: "success", message: "Ana səhifə bölməsi yaradıldı." } } });
       }
     } catch (err) {
-      showToast(err.message || "Section yadda saxlanmadı.");
+      showToast(err.message || "Bölmə yadda saxlanmadı.");
     } finally {
       setSaving(false);
     }
@@ -277,51 +255,36 @@ export default function AdminHomeSectionForm({ mode }) {
       .filter(Boolean);
   }, [form.productIds, products]);
 
+  const unlistedIds = useMemo(() => {
+    const visibleIds = new Set(products.map(getProductId).filter(Boolean));
+    return normalizeAdminGuidList(form.productIds).filter((productId) => !visibleIds.has(productId));
+  }, [form.productIds, products]);
+
   const selectedProductIdSet = useMemo(
     () => new Set(normalizeAdminGuidList(form.productIds)),
     [form.productIds],
   );
 
-  if (loading) return <AppLoader text="Section form hazırlanır" />;
+  if (loading) return <AppLoader text="Bölmə hazırlanır" />;
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Yadda saxlanılır" />}
-
-      <button
-        type="button"
-        onClick={() => navigate(`${basePath}/home-sections`)}
-        className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition active:scale-[0.97]"
-      >
-        <FiArrowLeft />
-        Home sections-a qayıt
-      </button>
+    <div className="nb-merch nb-merch__form pb-32">
 
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Homepage containers
+            nemesisbaku · ana səhifə
           </p>
 
           <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
-            {isEdit ? "Section yenilə" : "Section yarat"}
+            {isEdit ? "Bölməyə düzəliş et" : "Yeni bölmə"}
           </h1>
 
           <p className="mt-1 text-sm font-medium text-zinc-500">
-            Homepage məhsul konteyneri üçün başlıq, sıra və məhsul seçimi.
+            Başlıq, göstərilmə tarixi və məhsulları təyin edin.
           </p>
         </div>
 
-        {isEdit && (
-          <button
-            type="button"
-            onClick={loadAll}
-            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white"
-          >
-            <FiRefreshCw />
-            Yenilə
-          </button>
-        )}
       </div>
 
       <form
@@ -336,7 +299,7 @@ export default function AdminHomeSectionForm({ mode }) {
 
             <div className="grid gap-4 md:grid-cols-2">
               <AdminInput
-                label="Section başlığı"
+                label="Bölmənin başlığı"
                 placeholder="Yeni Gələnlər"
                 value={form.title}
                 onChange={(v) => updateForm("title", v)}
@@ -381,8 +344,8 @@ export default function AdminHomeSectionForm({ mode }) {
 
             <div className="mt-4">
               <ToggleRow
-                title="Aktiv section"
-                subtitle="Aktiv olduqda homepage-də görünəcək."
+                title="Aktiv bölmə"
+                subtitle="Tarix aralığında ana səhifədə görünəcək."
                 checked={form.isActive}
                 onChange={() => updateForm("isActive", !form.isActive)}
               />
@@ -444,7 +407,7 @@ export default function AdminHomeSectionForm({ mode }) {
             </h2>
 
             <p className="mt-1 text-sm font-medium text-zinc-500">
-              {selectedProducts.length} məhsul seçilib.
+              {form.productIds.length} məhsul seçilib.
             </p>
 
             <div className="mt-5 space-y-3">
@@ -456,19 +419,7 @@ export default function AdminHomeSectionForm({ mode }) {
                     key={productId}
                     className="flex items-center gap-3 rounded-[20px] bg-zinc-50 p-3"
                   >
-                    <div className="h-14 w-14 overflow-hidden rounded-[16px] bg-white">
-                      {getProductImage(product) ? (
-                        <img
-                          src={getProductImage(product)}
-                          alt={product.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-zinc-300">
-                          <FiImage />
-                        </div>
-                      )}
-                    </div>
+                    <AdminMediaPreview className="h-14 w-14 shrink-0" src={getProductImage(product)} alt={product.name} />
 
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-1 text-sm font-extrabold text-zinc-950">
@@ -491,22 +442,22 @@ export default function AdminHomeSectionForm({ mode }) {
                 );
               })}
 
-              {selectedProducts.length === 0 && (
+              {unlistedIds.length > 0 && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">{unlistedIds.length} əvvəl seçilmiş məhsul cari siyahıda görünmür. Əlaqələr qorunur; lazım olsa buradan silin.</p>}
+              {unlistedIds.map((productId) => <div key={productId} className="flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-900"><span className="min-w-0 flex-1 break-all">Siyahıda olmayan məhsul: {productId}</span><button type="button" aria-label="Seçimi sil" onClick={() => removeSelectedProduct(productId)}><FiX /></button></div>)}
+              {form.productIds.length === 0 && (
                 <div className="rounded-[22px] bg-zinc-50 p-6 text-center text-sm font-bold text-zinc-400">
                   Hələ məhsul seçilməyib.
                 </div>
               )}
             </div>
 
-            <button
-              disabled={saving}
-              className="mt-5 flex h-13 w-full items-center justify-center gap-2 rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition active:scale-[0.98] disabled:opacity-60"
-            >
-              <FiSave />
-              {isEdit ? "Section yenilə" : "Section yarat"}
-            </button>
           </section>
         </aside>
+        <AdminFloatingActions status={saving ? "Bölmə yadda saxlanılır…" : refreshing ? "Məlumatlar yenilənir…" : "Əməliyyat düymələri həmişə burada görünür"}>
+          <button type="button" onClick={() => navigate(`${basePath}/home-sections`)} disabled={saving}><FiArrowLeft /> Geri</button>
+          <button type="button" onClick={() => loadAll({ silent: true, notify: true })} disabled={saving || refreshing}><FiRefreshCw /> {refreshing ? "Yenilənir…" : "Yenilə"}</button>
+          <button className="is-primary" type="submit" disabled={saving || refreshing}><FiSave /> {saving ? "Saxlanılır…" : isEdit ? "Yadda saxla" : "Bölmə yarat"}</button>
+        </AdminFloatingActions>
       </form>
     </div>
   );
@@ -526,17 +477,7 @@ function ProductCard({ product, selected, onClick }) {
       }`}
     >
       <div className="relative h-40 bg-white">
-        {image ? (
-          <img
-            src={image}
-            alt={product.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-zinc-300">
-            <FiImage className="text-[32px]" />
-          </div>
-        )}
+        <AdminMediaPreview className="h-full w-full" src={image} alt={product.name} />
 
         <span
           className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-sm ${

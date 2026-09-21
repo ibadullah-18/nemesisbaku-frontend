@@ -1,661 +1,318 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import {
-  FiAlertTriangle,
   FiArrowLeft,
-  FiBarChart2,
   FiBox,
-  FiCheckCircle,
   FiEdit3,
-  FiEye,
   FiImage,
+  FiLayers,
   FiPackage,
+  FiPercent,
   FiRefreshCw,
   FiTag,
   FiTrash2,
-  FiXCircle,
 } from "react-icons/fi";
 import { adminProductsApi, unwrapAdmin } from "../../api/admin/adminApi";
-import AppLoader from "../../components/common/AppLoader";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
+import AdminFloatingActions from "../../components/admin/AdminFloatingActions";
+import AdminMediaPreview from "../../components/admin/AdminMediaPreview";
+import AppLoader from "../../components/common/AppLoader";
 import { useAdminToastState } from "../../utils/adminToast";
+import { getDiscountInfo } from "../../utils/productPricing";
+import "./adminInsights.css";
 
 function money(value) {
-  return `${Number(value || 0).toFixed(2)} ₼`;
+  const number = Number(value);
+  return Number.isFinite(number) ? `${number.toFixed(2)} ₼` : "—";
 }
 
-function getImageUrl(image) {
-  if (!image) return null;
+function imageUrl(image) {
   if (typeof image === "string") return image;
-
-  return (
-    image.imageUrl ||
-    image.mainImageUrl ||
-    image.url ||
-    image.fileUrl ||
-    image.path ||
-    image.secureUrl ||
-    image.src ||
-    null
-  );
+  return image?.imageUrl || image?.url || "";
 }
 
-function getProductImages(product) {
-  const raw =
-    product.images ||
-    product.productImages ||
-    product.imageDtos ||
-    product.productImageDtos ||
-    product.imageUrls ||
-    [];
+function productImages(product) {
+  const raw = Array.isArray(product?.images) ? product.images : [];
 
-  const list = Array.isArray(raw) ? raw : [];
-
-  const images = list
-    .map((img, index) => ({
-      id: img?.id || index,
-      isMain: Boolean(img?.isMain || img?.isMainImage),
-      displayOrder: img?.displayOrder ?? img?.order ?? index,
-      src: getImageUrl(img),
+  return raw
+    .map((image, index) => ({
+      id: image?.id || `image-${index}`,
+      src: imageUrl(image),
+      isMain: Boolean(image?.isMain),
+      order: Number(image?.displayOrder ?? index),
     }))
-    .filter((img) => img.src)
-    .sort((a, b) => Number(a.displayOrder) - Number(b.displayOrder));
-
-  const mainFromProduct =
-    product.mainImageUrl ||
-    product.imageUrl ||
-    product.image ||
-    product.photoUrl ||
-    product.coverImageUrl;
-
-  if (mainFromProduct && !images.some((x) => x.src === mainFromProduct)) {
-    images.unshift({
-      id: "main",
-      isMain: true,
-      displayOrder: -1,
-      src: mainFromProduct,
-    });
-  }
-
-  return images;
+    .filter((image) => image.src)
+    .sort((a, b) => a.order - b.order);
 }
 
-function getVariants(product) {
-  const variants =
-    product.variants ||
-    product.productVariants ||
-    product.productVariantDtos ||
-    [];
-
-  return Array.isArray(variants) ? variants : [];
+function variantsOf(product) {
+  return Array.isArray(product?.variants) ? product.variants : [];
 }
 
-function getTotalStock(product) {
-  return getVariants(product).reduce(
-    (sum, variant) => sum + Number(variant.stockCount || variant.stock || 0),
+function totalStock(variants) {
+  return variants.reduce(
+    (total, variant) => total + Number(variant?.stockCount || 0),
     0,
   );
-}
-
-function getVariantSize(variant) {
-  return (
-    variant.sizeValue ||
-    variant.size ||
-    variant.sizeName ||
-    variant.size?.value ||
-    variant.size?.name ||
-    "—"
-  );
-}
-
-function getVariantColor(variant) {
-  return variant.colorName || variant.color || variant.color?.name || "—";
-}
-
-function getVariantHex(variant) {
-  return (
-    variant.colorHex ||
-    variant.hexCode ||
-    variant.hex ||
-    variant.color?.hexCode ||
-    variant.color?.hex ||
-    ""
-  );
-}
-
-function isBrokenVariant(variant) {
-  return (
-    !getVariantSize(variant) ||
-    getVariantSize(variant) === "—" ||
-    !getVariantColor(variant) ||
-    getVariantColor(variant) === "—"
-  );
-}
-
-function getStatusInfo(product) {
-  if (product.isDeleted) {
-    return {
-      label: "Silinib",
-      className: "bg-red-50 text-red-600",
-      icon: <FiTrash2 />,
-    };
-  }
-
-  if (product.isActive === false) {
-    return {
-      label: "Deaktiv",
-      className: "bg-orange-50 text-orange-600",
-      icon: <FiXCircle />,
-    };
-  }
-
-  return {
-    label: "Aktiv",
-    className: "bg-green-50 text-green-700",
-    icon: <FiCheckCircle />,
-  };
-}
-
-function yesNo(value) {
-  return value ? "Bəli" : "Xeyr";
 }
 
 export default function AdminProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-
+  const basePath = getPanelBasePath();
   const [product, setProduct] = useState(null);
   const [selectedImage, setSelectedImage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useAdminToastState("error");
+  const [refreshing, setRefreshing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [, setError] = useAdminToastState("error");
+  const [, setSuccess] = useAdminToastState("success");
 
-  const basePath = getPanelBasePath();
+  async function loadProduct(showNotice = false) {
+    try {
+      if (showNotice) setRefreshing(true);
+      else setLoading(true);
+
+      const response = await adminProductsApi.detail(id);
+      const data = unwrapAdmin(response);
+      const images = productImages(data);
+
+      setProduct(data || null);
+      setSelectedImage((current) =>
+        images.some((image) => image.src === current)
+          ? current
+          : images.find((image) => image.isMain)?.src || images[0]?.src || "",
+      );
+
+      if (showNotice) setSuccess("Məhsul məlumatları yeniləndi.");
+    } catch (error) {
+      setError(error.message || "Məhsul detalları yüklənmədi.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProduct();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function loadProduct() {
-    try {
-      setError("");
-      setLoading(true);
-
-      const res = await adminProductsApi.detail(id);
-      const data = unwrapAdmin(res);
-
-      setProduct(data);
-
-      const images = getProductImages(data);
-      setSelectedImage(images[0]?.src || "");
-    } catch (err) {
-      setError(err.message || "Məhsul detalları yüklənmədi.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function deleteProduct() {
-    const ok = confirm(`${product?.name || "Bu məhsul"} silinsin?`);
-    if (!ok) return;
+    if (!window.confirm(`${product?.name || "Bu məhsul"} silinsin?`)) return;
 
     try {
-      setSaving(true);
+      setDeleting(true);
       await adminProductsApi.delete(id);
+      setSuccess("Məhsul uğurla silindi.");
       navigate(`${basePath}/products`);
-    } catch (err) {
-      setError(err.message || "Məhsul silinmədi.");
+    } catch (error) {
+      setError(error.message || "Məhsul silinmədi.");
     } finally {
-      setSaving(false);
+      setDeleting(false);
     }
   }
 
-  const images = useMemo(() => getProductImages(product || {}), [product]);
-  const variants = useMemo(() => getVariants(product || {}), [product]);
-  const status = product ? getStatusInfo(product) : null;
-
-  const warnings = useMemo(() => {
-    const result = [];
-
-    if (
-      !product?.categoryId &&
-      !product?.categoryName &&
-      !product?.category?.name
-    ) {
-      result.push("Məhsulun kateqoriya məlumatı gəlmədi.");
-    }
-
-    if (!product?.brandId && !product?.brandName && !product?.brand?.name) {
-      result.push("Məhsulun brend məlumatı gəlmədi.");
-    }
-
-    variants.forEach((variant, index) => {
-      if (isBrokenVariant(variant)) {
-        result.push(
-          `Variant #${index + 1} üçün ölçü və ya rəng məlumatı tapılmadı.`,
-        );
-      }
-    });
-
-    if (variants.length === 0) {
-      result.push("Bu məhsulda heç bir variant yoxdur.");
-    }
-
-    if (images.length === 0) {
-      result.push("Bu məhsulda şəkil yoxdur.");
-    }
-
-    return result;
-  }, [product, variants, images]);
+  const images = useMemo(() => productImages(product), [product]);
+  const variants = useMemo(() => variantsOf(product), [product]);
+  const discount = getDiscountInfo(product?.price, product?.discountPrice);
+  const stock = totalStock(variants);
 
   if (loading) return <AppLoader text="Məhsul açılır" />;
 
   if (!product) {
     return (
-      <div className="px-4 py-5 md:px-8 md:py-8">
-        <div className="rounded-[24px] bg-red-50 p-5 text-sm font-extrabold text-red-600">
-          Məhsul tapılmadı.
-        </div>
-      </div>
+      <main className="nb-insight-page">
+        <section className="nb-insight-empty">
+          <FiPackage />
+          <h1>Məhsul tapılmadı</h1>
+          <button type="button" onClick={() => navigate(`${basePath}/products`)}>
+            Siyahıya qayıt
+          </button>
+        </section>
+      </main>
     );
   }
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Əməliyyat icra olunur" />}
-
-      <button
-        type="button"
-        onClick={() => navigate(`${basePath}/products`)}
-        className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.97]"
-      >
-        <FiArrowLeft />
-        Məhsullara qayıt
-      </button>
-
-      <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <main className="nb-insight-page nb-product-detail">
+      <header className="nb-insight-header">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Admin məhsul detalları
+          <p className="nb-insight-eyebrow">nemesisbaku · məhsul detalları</p>
+          <h1>{product.name || "Adsız məhsul"}</h1>
+          <p>
+            {product.brandName || "Brend göstərilməyib"} · {product.model || "Model göstərilməyib"}
           </p>
-
-          <h1 className="mt-2 text-[30px] font-extrabold tracking-[-0.045em] md:text-[44px]">
-            {product.name || "Məhsul"}
-          </h1>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-extrabold ${status.className}`}
-            >
-              {status.icon}
-              {status.label}
-            </span>
-
-            {product.isDiscounted || product.discountPrice ? (
-              <span className="rounded-full bg-[#244989]/8 px-3 py-1 text-xs font-extrabold text-[#244989]">
-                Endirim bölməsində görünür
-              </span>
-            ) : null}
-
-            {product.isFeatured ? (
-              <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-extrabold text-purple-600">
-                Önə çıxan məhsuldur
-              </span>
-            ) : null}
-
-            {product.isNew ? (
-              <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-extrabold text-green-700">
-                Yeni məhsuldur
-              </span>
-            ) : null}
-          </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={loadProduct}
-            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
-          >
-            <FiRefreshCw />
-            Yenilə
-          </button>
+        <span className={`nb-insight-badge ${discount.valid ? "is-discount" : ""}`}>
+          {discount.valid ? `${discount.percent}% endirim` : "Standart qiymət"}
+        </span>
+      </header>
 
-          <NavLink
-            to={`${basePath}/products/${product.id}`}
-            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#244989] px-5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
-          >
-            <FiEdit3 />
-            Redaktə et
-          </NavLink>
+      <section className="nb-insight-stats">
+        <StatCard icon={<FiTag />} label="Əsas qiymət" value={money(product.price)} />
+        <StatCard
+          icon={<FiPercent />}
+          label="Endirimli qiymət"
+          value={discount.valid ? money(discount.discountPrice) : "Endirim yoxdur"}
+          accent={discount.valid}
+        />
+        <StatCard
+          icon={<FiLayers />}
+          label="Qənaət"
+          value={discount.valid ? `${money(discount.amount)} · ${discount.percent}%` : "0.00 ₼"}
+        />
+        <StatCard icon={<FiBox />} label="Ümumi stok" value={`${stock} ədəd`} />
+      </section>
 
-          <button
-            type="button"
-            onClick={deleteProduct}
-            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-red-50 px-5 text-sm font-extrabold text-red-600 transition hover:-translate-y-0.5 active:scale-[0.97]"
-          >
-            <FiTrash2 />
-            Sil
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
-        </div>
-      )}
-
-      {warnings.length > 0 && (
-        <div className="mb-5 rounded-[24px] border border-orange-100 bg-orange-50 p-5">
-          <div className="flex items-center gap-3 text-orange-700">
-            <FiAlertTriangle />
-            <h2 className="font-extrabold">Sistem xəbərdarlığı</h2>
-          </div>
-
-          <div className="mt-3 space-y-2">
-            {warnings.map((warning, index) => (
-              <p key={index} className="text-sm font-bold text-orange-700">
-                {warning}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
-        <main className="space-y-5">
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <InfoCard
-              icon={<FiTag />}
-              label="Qiymət"
-              value={money(product.price)}
-            />
-            <InfoCard
-              icon={<FiTag />}
-              label="Endirim qiyməti"
-              value={
-                product.discountPrice ? money(product.discountPrice) : "Yoxdur"
-              }
-            />
-            <InfoCard
-              icon={<FiPackage />}
-              label="Ümumi stok"
-              value={getTotalStock(product)}
-            />
-            <InfoCard
-              icon={<FiEye />}
-              label="Baxış sayı"
-              value={
-                product.viewCount ?? product.viewsCount ?? product.views ?? 0
-              }
-            />
-          </section>
-
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#244989]/8 text-[#244989]">
-                <FiImage />
-              </div>
-
+      <div className="nb-insight-layout">
+        <section className="nb-insight-main">
+          <article className="nb-insight-card">
+            <div className="nb-insight-card__heading">
+              <span><FiImage /></span>
               <div>
-                <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-                  Şəkillər
-                </h2>
-                <p className="text-sm font-bold text-zinc-500">
-                  Məhsulun əsas və əlavə şəkillərinə baxış.
-                </p>
+                <h2>Şəkil qalereyası</h2>
+                <p>{images.length} şəkil · silinmiş linklər təhlükəsiz əvəzlənir</p>
               </div>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
-              <div className="grid min-h-[360px] place-items-center overflow-hidden rounded-[28px] bg-zinc-50">
-                {selectedImage ? (
-                  <img
-                    src={selectedImage}
-                    alt={product.name}
-                    className="h-full max-h-[520px] w-full object-contain p-4"
-                  />
-                ) : (
-                  <div className="grid h-full min-h-[360px] w-full place-items-center text-zinc-300">
-                    <FiImage className="text-[44px]" />
-                  </div>
-                )}
-              </div>
+            <div className="nb-product-gallery">
+              <AdminMediaPreview
+                src={selectedImage}
+                alt={product.name || "Məhsul"}
+                className="nb-product-gallery__main"
+              />
 
-              <div className="grid max-h-[520px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="nb-product-gallery__thumbs">
                 {images.map((image, index) => (
                   <button
                     key={image.id}
                     type="button"
+                    className={selectedImage === image.src ? "is-selected" : ""}
                     onClick={() => setSelectedImage(image.src)}
-                    className={`overflow-hidden rounded-[22px] border bg-zinc-50 p-2 transition hover:-translate-y-0.5 active:scale-[0.98] ${
-                      selectedImage === image.src
-                        ? "border-[#244989]"
-                        : "border-zinc-100"
-                    }`}
                   >
-                    <div className="h-28 w-full overflow-hidden rounded-[18px] bg-white">
-                      <img
-                        src={image.src}
-                        alt={`${product.name || "Məhsul"} şəkil ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    <p className="mt-2 text-left text-xs font-extrabold text-zinc-500">
-                      {image.isMain || index === 0
-                        ? "Əsas şəkil"
-                        : `Əlavə şəkil ${index + 1}`}
-                    </p>
+                    <AdminMediaPreview
+                      src={image.src}
+                      alt={`${product.name || "Məhsul"} ${index + 1}`}
+                    />
+                    <small>{image.isMain ? "Əsas" : `${index + 1}`}</small>
                   </button>
                 ))}
 
-                {images.length === 0 && (
-                  <div className="rounded-[20px] bg-zinc-50 p-5 text-sm font-extrabold text-zinc-400">
-                    Şəkil yoxdur.
-                  </div>
-                )}
+                {images.length === 0 ? (
+                  <div className="nb-insight-note">Bu məhsula şəkil əlavə edilməyib.</div>
+                ) : null}
               </div>
             </div>
-          </section>
+          </article>
 
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#244989]/8 text-[#244989]">
-                <FiBox />
-              </div>
-
+          <article className="nb-insight-card">
+            <div className="nb-insight-card__heading">
+              <span><FiBox /></span>
               <div>
-                <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-                  Variantlar
-                </h2>
-                <p className="text-sm font-bold text-zinc-500">
-                  Ölçü, rəng və stok məlumatlarına baxış.
-                </p>
+                <h2>Ölçü və rəng variantları</h2>
+                <p>{variants.length} variant · {stock} ədəd ümumi stok</p>
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="nb-variant-grid">
               {variants.map((variant, index) => {
-                const broken = isBrokenVariant(variant);
-                const hex = getVariantHex(variant);
+                const hex = variant.colorHexCode || "";
+                const count = Number(variant.stockCount || 0);
 
                 return (
-                  <div
-                    key={variant.id || index}
-                    className={`rounded-[24px] border p-4 ${
-                      broken
-                        ? "border-orange-100 bg-orange-50"
-                        : "border-zinc-100 bg-zinc-50"
-                    }`}
-                  >
-                    {broken ? (
-                      <div className="mb-3 flex items-center gap-2 text-orange-700">
-                        <FiAlertTriangle />
-                        <p className="text-sm font-extrabold">
-                          Variant məlumatı tam deyil
-                        </p>
-                      </div>
-                    ) : null}
-
-                    <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-zinc-400">
-                      Variant #{index + 1}
-                    </p>
-
-                    <h3 className="mt-1 text-lg font-extrabold text-zinc-950">
-                      {getVariantSize(variant)} · {getVariantColor(variant)}
-                    </h3>
-
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-extrabold">
-                      <span className="rounded-full bg-white px-3 py-1 text-zinc-600">
-                        Ölçü: {getVariantSize(variant)}
-                      </span>
-
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-zinc-600">
-                        {hex ? (
-                          <span
-                            className="h-3 w-3 rounded-full border border-zinc-200"
-                            style={{ backgroundColor: hex }}
-                          />
-                        ) : null}
-                        Rəng: {getVariantColor(variant)}
-                      </span>
-
-                      <span
-                        className={`rounded-full px-3 py-1 ${
-                          Number(variant.stockCount || variant.stock || 0) <= 2
-                            ? "bg-red-50 text-red-600"
-                            : "bg-white text-zinc-600"
-                        }`}
-                      >
-                        Stok: {variant.stockCount ?? variant.stock ?? 0}
-                      </span>
+                  <div className="nb-variant-card" key={variant.id || index}>
+                    <div>
+                      <small>VARİANT {index + 1}</small>
+                      <strong>{variant.sizeValue || "Ölçü yoxdur"}</strong>
                     </div>
+                    <div className="nb-variant-card__color">
+                      {hex ? <i style={{ backgroundColor: hex }} /> : null}
+                      <span>{variant.colorName || "Rəng yoxdur"}</span>
+                    </div>
+                    <b className={count <= 2 ? "is-low" : ""}>{count} stok</b>
                   </div>
                 );
               })}
 
-              {variants.length === 0 && (
-                <div className="rounded-[20px] bg-zinc-50 p-5 text-sm font-extrabold text-zinc-400">
-                  Variant yoxdur.
-                </div>
-              )}
+              {variants.length === 0 ? (
+                <div className="nb-insight-note">Bu məhsulda variant yoxdur.</div>
+              ) : null}
             </div>
-          </section>
-        </main>
+          </article>
+        </section>
 
-        <aside className="space-y-5">
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
-            <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-              Əsas məlumat
-            </h2>
-
-            <div className="mt-5 space-y-3">
-              <MiniInfo
-                label="Məhsul kodu"
-                value={product.productCode || "Yoxdur"}
-              />
-              <MiniInfo label="Model" value={product.model || "Yoxdur"} />
-              <MiniInfo
-                label="Kateqoriya"
-                value={
-                  product.categoryName || product.category?.name || "Yoxdur"
-                }
-              />
-              <MiniInfo
-                label="Brend"
-                value={product.brandName || product.brand?.name || "Yoxdur"}
-              />
-              <MiniInfo
-                label="Endirim bölməsində görünsün"
-                value={yesNo(product.isDiscounted || product.discountPrice)}
-              />
-              <MiniInfo
-                label="Önə çıxan məhsuldur"
-                value={yesNo(product.isFeatured)}
-              />
-              <MiniInfo label="Yeni məhsuldur" value={yesNo(product.isNew)} />
+        <aside className="nb-insight-side">
+          <article className="nb-insight-card">
+            <h2>Məhsul məlumatı</h2>
+            <div className="nb-info-list">
+              <InfoRow label="Məhsul kodu" value={product.productCode || "—"} />
+              <InfoRow label="Model" value={product.model || "—"} />
+              <InfoRow label="Kateqoriya" value={product.categoryName || "—"} />
+              <InfoRow label="Brend" value={product.brandName || "—"} />
+              <InfoRow label="Önə çıxan" value={product.isFeatured ? "Bəli" : "Xeyr"} />
+              <InfoRow label="Şəkil sayı" value={images.length} />
+              <InfoRow label="Variant sayı" value={variants.length} />
             </div>
-          </section>
+          </article>
 
-          <section className="rounded-[28px] bg-zinc-950 p-5 text-white">
-            <div className="flex items-center gap-3">
-              <FiBarChart2 className="text-xl" />
-              <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-                Satış görünüşü
-              </h2>
-            </div>
+          <article className="nb-insight-card nb-price-card">
+            <p>Satış qiyməti</p>
+            <strong>{money(discount.valid ? discount.discountPrice : product.price)}</strong>
+            {discount.valid ? (
+              <div>
+                <s>{money(product.price)}</s>
+                <span>{money(discount.amount)} qənaət</span>
+              </div>
+            ) : (
+              <small>Bu məhsulda endirim yoxdur.</small>
+            )}
+          </article>
 
-            <div className="mt-5 space-y-3 text-sm font-bold">
-              <SideRow label="Normal qiymət" value={money(product.price)} />
-              <SideRow
-                label="Endirim qiyməti"
-                value={
-                  product.discountPrice
-                    ? money(product.discountPrice)
-                    : "Yoxdur"
-                }
-              />
-              <SideRow label="Stok" value={getTotalStock(product)} />
-              <SideRow
-                label="Baxış sayı"
-                value={
-                  product.viewCount ?? product.viewsCount ?? product.views ?? 0
-                }
-              />
-            </div>
-          </section>
-
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
-            <h2 className="text-xl font-extrabold tracking-[-0.03em]">
-              Açıqlama
-            </h2>
-
-            <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-7 text-zinc-600">
-              {product.description || "Açıqlama yoxdur."}
-            </p>
-          </section>
+          <article className="nb-insight-card">
+            <h2>Açıqlama</h2>
+            <p className="nb-description">{product.description || "Açıqlama yoxdur."}</p>
+          </article>
         </aside>
       </div>
-    </div>
+
+      <AdminFloatingActions status={refreshing ? "Məlumat yenilənir…" : "Məhsul detalları"}>
+        <button type="button" onClick={() => navigate(`${basePath}/products`)}>
+          <FiArrowLeft /> Geri
+        </button>
+        <button type="button" disabled={refreshing} onClick={() => loadProduct(true)}>
+          <FiRefreshCw /> Yenilə
+        </button>
+        <NavLink className="is-primary" to={`${basePath}/products/${id}`}>
+          <FiEdit3 /> Redaktə et
+        </NavLink>
+        <button className="is-danger" type="button" disabled={deleting} onClick={deleteProduct}>
+          <FiTrash2 /> {deleting ? "Silinir…" : "Sil"}
+        </button>
+      </AdminFloatingActions>
+    </main>
   );
 }
 
-function InfoCard({ icon, label, value }) {
+function StatCard({ icon, label, value, accent = false }) {
   return (
-    <div className="rounded-[24px] bg-white p-5 shadow-[0_14px_42px_rgba(0,0,0,0.035)] transition hover:-translate-y-1 active:scale-[0.98]">
-      <div className="mb-4 grid h-11 w-11 place-items-center rounded-[16px] bg-[#244989]/8 text-[#244989]">
-        {icon}
+    <article className={`nb-insight-stat ${accent ? "is-accent" : ""}`}>
+      <span>{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
       </div>
-
-      <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-zinc-400">
-        {label}
-      </p>
-
-      <p className="mt-1 break-words text-sm font-extrabold text-zinc-950">
-        {value}
-      </p>
-    </div>
+    </article>
   );
 }
 
-function MiniInfo({ label, value }) {
+function InfoRow({ label, value }) {
   return (
-    <div className="rounded-[18px] bg-zinc-50 p-4">
-      <p className="text-xs font-extrabold text-zinc-400">{label}</p>
-      <p className="mt-1 break-words text-sm font-extrabold text-zinc-950">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function SideRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-white/60">{label}</span>
-      <span className="text-white">{value}</span>
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   FiActivity, FiBox, FiChevronDown, FiChevronRight, FiGrid,
@@ -7,6 +7,7 @@ import {
   FiTruck, FiUsers, FiX, FiMaximize2, FiExternalLink, FiMapPin,
 } from "react-icons/fi";
 import { clearPanelAuth, getPanelFromPath, getPanelLoginPath } from "../../api/admin/adminAuth";
+import AdminToastHost from "./AdminToastHost";
 import "./adminWorkspace.css";
 
 const GROUPS = [
@@ -50,6 +51,10 @@ export default function AdminLayout({ basePath, panel: panelProp }) {
     .filter((item) => location.pathname.toLowerCase().startsWith((basePath + "/" + item.path).toLowerCase()))
     .sort((a, b) => b.path.length - a.path.length)[0];
 
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!menuOpen) return undefined;
     const oldOverflow = document.body.style.overflow;
@@ -71,6 +76,7 @@ export default function AdminLayout({ basePath, panel: panelProp }) {
 
   return (
     <div className="nb-admin">
+      <AdminToastHost />
       {menuOpen && (
         <button type="button" className="nb-admin__scrim" aria-label="Menyunu bağla"
           onClick={() => setMenuOpen(false)} />

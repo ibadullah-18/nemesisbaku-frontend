@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
-  FiCheckCircle,
-  FiImage,
   FiPlus,
   FiRefreshCw,
   FiSave,
@@ -23,6 +21,8 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import AdminFloatingActions from "../../components/admin/AdminFloatingActions";
+import AdminMediaPreview from "../../components/admin/AdminMediaPreview";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import { generateId } from "../../utils/generateId";
 import {
@@ -30,6 +30,9 @@ import {
   prepareImageFiles,
   revokeImagePreview,
 } from "../../utils/imageFile";
+import { useAdminToastState } from "../../utils/adminToast";
+import { getDiscountInfo } from "../../utils/productPricing";
+import "./adminProductForm.css";
 
 const emptyForm = {
   name: "",
@@ -324,12 +327,15 @@ export default function AdminEditProduct() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [processingImages, setProcessingImages] = useState(false);
+  const [, setError] = useAdminToastState("error");
+  const [, setSuccess] = useAdminToastState("success");
   const basePath = getPanelBasePath();
 
   useEffect(() => {
     loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -344,7 +350,7 @@ export default function AdminEditProduct() {
     };
   }, []);
 
-  async function loadAll() {
+  async function loadAll({ silent = false, notify = false } = {}) {
     if (!id || id === "undefined" || id === "null") {
       setError("Məhsul ID gəlmədi. Redaktə səhifəsi açıla bilməz.");
       setLoading(false);
@@ -354,7 +360,8 @@ export default function AdminEditProduct() {
     try {
       setError("");
       setSuccess("");
-      setLoading(true);
+      if (!silent) setLoading(true);
+      if (notify) setRefreshing(true);
 
       const [productRes, catRes, brandRes, sizeRes, colorRes] =
         await Promise.all([
@@ -421,10 +428,12 @@ export default function AdminEditProduct() {
       setVariants(
         loadedVariants.length ? loadedVariants : [{ ...emptyVariant }],
       );
+      if (notify) setSuccess("Məhsul məlumatları serverdən yeniləndi.");
     } catch (err) {
       setError(err.message || "Məhsul məlumatları yüklənmədi.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      if (notify) setRefreshing(false);
     }
   }
 
@@ -457,6 +466,7 @@ export default function AdminEditProduct() {
 
         await adminProductVariantsApi.delete(variant.id);
         setVariants((prev) => prev.filter((_, i) => i !== index));
+        setSuccess("Variant silindi.");
       } catch (err) {
         setError(err.message || "Variant silinmədi.");
       } finally {
@@ -476,6 +486,7 @@ export default function AdminEditProduct() {
 
     if (selectedFiles.length === 0) return;
 
+    setProcessingImages(true);
     try {
       setError("");
       const files = await prepareImageFiles(selectedFiles);
@@ -488,6 +499,8 @@ export default function AdminEditProduct() {
       setNewImages((prev) => [...prev, ...mapped]);
     } catch (err) {
       setError(err.message || "Şəkillər hazırlana bilmədi.");
+    } finally {
+      setProcessingImages(false);
     }
   }
 
@@ -525,6 +538,7 @@ export default function AdminEditProduct() {
         }
         return next;
       });
+      setSuccess("Şəkil silindi.");
     } catch (err) {
       setError(err.message || "Şəkil silinmədi.");
     } finally {
@@ -561,6 +575,7 @@ export default function AdminEditProduct() {
       });
 
       setSelectedImage(image.imageUrl);
+      setSuccess("Əsas şəkil dəyişdirildi.");
     } catch (err) {
       setError(err.message || "Əsas şəkil dəyişdirilmədi.");
     } finally {
@@ -649,6 +664,8 @@ export default function AdminEditProduct() {
     setError("");
     setSuccess("");
 
+    if (saving || processingImages) return;
+
     if (!form.name.trim()) return setError("Məhsul adı yazılmalıdır.");
     if (!form.productCode.trim()) return setError("Məhsul kodu yazılmalıdır.");
     if (!form.model.trim()) return setError("Model yazılmalıdır.");
@@ -658,13 +675,10 @@ export default function AdminEditProduct() {
     if (!form.categoryId) return setError("Kateqoriya seçilməlidir.");
     if (!form.brandId) return setError("Brend seçilməlidir.");
 
-    const discountPrice = form.discountPrice ? Number(form.discountPrice) : 0;
+    const discount = getDiscountInfo(form.price, form.discountPrice);
+    const discountPrice = discount.hasInput ? Number(form.discountPrice) : null;
 
-    if (
-      !Number.isFinite(discountPrice) ||
-      discountPrice < 0 ||
-      (discountPrice > 0 && discountPrice >= Number(form.price))
-    ) {
+    if (discount.hasInput && !discount.valid) {
       return setError(
         "Endirimli qiymət əsas qiymətdən aşağı və 0-dan böyük olmalıdır.",
       );
@@ -719,7 +733,7 @@ export default function AdminEditProduct() {
         model: form.model.trim(),
         price: Number(form.price),
         discountPrice,
-        isDiscounted: discountPrice > 0,
+        isDiscounted: discount.valid,
         isFeatured: Boolean(form.isFeatured),
         isActive: Boolean(form.isActive),
         categoryId: form.categoryId,
@@ -734,10 +748,10 @@ export default function AdminEditProduct() {
         await uploadNewImages();
       }
 
-      setSuccess("Məhsul uğurla yeniləndi.");
       newImages.forEach((image) => revokeImagePreview(image.preview));
       setNewImages([]);
-      await loadAll();
+      await loadAll({ silent: true });
+      setSuccess("Məhsul uğurla yeniləndi.");
     } catch (err) {
       setError(err.message || "Məhsul yenilənmədi.");
     } finally {
@@ -758,28 +772,20 @@ export default function AdminEditProduct() {
     [brands, form.brandId],
   );
 
+  const discount = getDiscountInfo(form.price, form.discountPrice);
+
   if (loading) return <AppLoader text="Məhsul redaktəyə açılır" />;
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Yadda saxlanılır" />}
+    <div className="nb-product-form px-4 py-5 pb-32 md:px-8 md:py-8 md:pb-32">
 
-      <button
-        type="button"
-        onClick={() => navigate(`${basePath}/products`)}
-        className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition hover:-translate-y-0.5 active:scale-[0.97]"
-      >
-        <FiArrowLeft />
-        Məhsullara qayıt
-      </button>
-
-      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="nb-product-form__header mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Məhsul redaktəsi
+            nemesisbaku · məhsul redaktəsi
           </p>
 
-          <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
+          <h1 className="nb-product-form__title mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
             {form.name || "Məhsulu yenilə"}
           </h1>
 
@@ -788,30 +794,10 @@ export default function AdminEditProduct() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadAll}
-          className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white"
-        >
-          <FiRefreshCw />
-          Yenilə
-        </button>
       </div>
 
-      {error && (
-        <div className="mb-5 rounded-[18px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-5 flex items-center gap-2 rounded-[18px] border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
-          <FiCheckCircle />
-          {success}
-        </div>
-      )}
-
       <form
+        id="admin-product-edit-form"
         onSubmit={handleSubmit}
         className="grid gap-5 xl:grid-cols-[1fr_430px]"
       >
@@ -849,6 +835,10 @@ export default function AdminEditProduct() {
                 value={form.discountPrice}
                 onChange={(v) => updateForm("discountPrice", v)}
               />
+              <div className={`nb-product-form__discount ${discount.valid ? "is-active" : ""}`}>
+                <span>{discount.valid ? "Endirim aktivdir" : "Endirim yoxdur"}</span>
+                <strong>{discount.valid ? `${discount.amount.toFixed(2)} ₼ · ${discount.percent}%` : "Endirim qiymətini boş saxlayın"}</strong>
+              </div>
 
               <AdminSelect
                 label="Kateqoriya"
@@ -1003,17 +993,7 @@ export default function AdminEditProduct() {
             </h2>
 
             <div className="grid gap-5 lg:grid-cols-[1fr_240px]">
-              <div className="grid min-h-[340px] place-items-center overflow-hidden rounded-[28px] bg-zinc-50">
-                {selectedImage ? (
-                  <img
-                    src={selectedImage}
-                    alt={form.name}
-                    className="h-full max-h-[520px] w-full object-contain p-4"
-                  />
-                ) : (
-                  <FiImage className="text-[44px] text-zinc-300" />
-                )}
-              </div>
+              <AdminMediaPreview className="nb-product-form__main-image min-h-[340px]" src={selectedImage} alt={form.name} imageClassName="h-full max-h-[520px] w-full object-contain p-4" />
 
               <div className="grid max-h-[520px] gap-3 overflow-y-auto pr-1">
                 {oldImages.map((image, index) => (
@@ -1030,11 +1010,7 @@ export default function AdminEditProduct() {
                       onClick={() => setSelectedImage(image.imageUrl)}
                       className="h-28 w-full overflow-hidden rounded-[18px] bg-white"
                     >
-                      <img
-                        src={image.imageUrl}
-                        alt={form.name}
-                        className="h-full w-full object-cover"
-                      />
+                      <AdminMediaPreview className="h-full w-full" src={image.imageUrl} alt={form.name} />
                     </button>
 
                     <div className="mt-2 flex gap-2">
@@ -1128,8 +1104,8 @@ export default function AdminEditProduct() {
           </section>
         </main>
 
-        <aside className="space-y-5">
-          <section className="rounded-[28px] bg-zinc-950 p-5 text-white">
+        <aside className="nb-product-form__aside space-y-5">
+          <section className="nb-product-form__summary rounded-[28px] bg-zinc-950 p-5 text-white">
             <h2 className="text-xl font-extrabold tracking-[-0.03em]">
               Məhsul xülasəsi
             </h2>
@@ -1145,7 +1121,7 @@ export default function AdminEditProduct() {
               <SideRow
                 label="Endirim"
                 value={
-                  form.discountPrice ? `${form.discountPrice} ₼` : "Yoxdur"
+                  discount.valid ? `${discount.discountPrice.toFixed(2)} ₼ (-${discount.percent}%)` : "Yoxdur"
                 }
               />
               <SideRow
@@ -1163,14 +1139,18 @@ export default function AdminEditProduct() {
             </div>
           </section>
 
-          <button
-            type="submit"
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-[18px] bg-[#244989] text-sm font-extrabold text-white transition hover:-translate-y-0.5 active:scale-[0.97]"
-          >
-            <FiSave />
-            Məhsulu yenilə
-          </button>
         </aside>
+        <AdminFloatingActions status={processingImages ? "Şəkillər hazırlanır…" : saving ? "Dəyişikliklər yadda saxlanılır…" : refreshing ? "Məhsul yenilənir…" : "Əməliyyat düymələri həmişə burada görünür"}>
+          <button type="button" onClick={() => navigate(`${basePath}/products`)} disabled={saving}>
+            <FiArrowLeft /> Geri
+          </button>
+          <button type="button" onClick={() => loadAll({ silent: true, notify: true })} disabled={saving || processingImages || refreshing}>
+            <FiRefreshCw /> {refreshing ? "Yenilənir…" : "Yenilə"}
+          </button>
+          <button className="is-primary" type="submit" disabled={saving || processingImages || refreshing}>
+            <FiSave /> {processingImages ? "Hazırlanır…" : saving ? "Saxlanılır…" : "Yadda saxla"}
+          </button>
+        </AdminFloatingActions>
       </form>
     </div>
   );

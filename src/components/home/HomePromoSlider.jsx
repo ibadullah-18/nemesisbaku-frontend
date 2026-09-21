@@ -1,7 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { NavLink } from "react-router-dom";
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import {
+  FiArrowUpRight,
+  FiChevronLeft,
+  FiChevronRight,
+} from "react-icons/fi";
 import { useLanguage } from "../../i18n/LanguageContext";
+import "./homePromoSlider.css";
+
+const ThreeUiDotMatrix = lazy(() =>
+  import("@designcodeio/threeui/components/DotMatrixBackground").then(
+    (module) => ({ default: module.DotMatrixBackground }),
+  ),
+);
 
 const AUTO_PLAY_MS = 5000;
 const RESUME_AFTER_USER_MS = 5000;
@@ -25,6 +43,7 @@ export default function HomePromoSlider({ promos = [] }) {
   const resumeRef = useRef(null);
   const resetRef = useRef(null);
   const movingRef = useRef(false);
+  const stageRef = useRef(null);
 
   const pointerStartX = useRef(0);
   const pointerCurrentX = useRef(0);
@@ -36,57 +55,37 @@ export default function HomePromoSlider({ promos = [] }) {
   const [pausedByUser, setPausedByUser] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [enableWebGl] = useState(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+
+    return window.matchMedia(
+      "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
+    ).matches;
+  });
 
   const validPromos = useMemo(
     () => promos.filter((promo) => promo?.imageUrl),
-    [promos]
+    [promos],
   );
 
   const count = validPromos.length;
 
   const sliderPromos = useMemo(() => {
     if (validPromos.length <= 1) return validPromos;
-    return [validPromos[validPromos.length - 1], ...validPromos, validPromos[0]];
+
+    return [
+      validPromos[validPromos.length - 1],
+      ...validPromos,
+      validPromos[0],
+    ];
   }, [validPromos]);
-
-  useEffect(() => {
-    if (count > 1) {
-      setActiveIndex(1);
-      setRealIndex(0);
-    } else {
-      setActiveIndex(0);
-      setRealIndex(0);
-    }
-  }, [count]);
-
-  useEffect(() => {
-    clearInterval(autoplayRef.current);
-
-    if (count <= 1 || pausedByUser) return;
-
-    autoplayRef.current = setInterval(() => {
-      goNext(false);
-    }, AUTO_PLAY_MS);
-
-    return () => clearInterval(autoplayRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count, pausedByUser, activeIndex]);
-
-  useEffect(() => {
-    return () => {
-      clearInterval(autoplayRef.current);
-      clearTimeout(resumeRef.current);
-      clearTimeout(resetRef.current);
-    };
-  }, []);
 
   function pauseAndResumeLater() {
     setPausedByUser(true);
-
     clearInterval(autoplayRef.current);
     clearTimeout(resumeRef.current);
 
-    resumeRef.current = setTimeout(() => {
+    resumeRef.current = window.setTimeout(() => {
       setPausedByUser(false);
     }, RESUME_AFTER_USER_MS);
   }
@@ -105,7 +104,6 @@ export default function HomePromoSlider({ promos = [] }) {
           movingRef.current = false;
         });
       });
-
       return;
     }
 
@@ -120,7 +118,6 @@ export default function HomePromoSlider({ promos = [] }) {
           movingRef.current = false;
         });
       });
-
       return;
     }
 
@@ -130,21 +127,20 @@ export default function HomePromoSlider({ promos = [] }) {
   function scheduleFallbackNormalize(nextIndex) {
     clearTimeout(resetRef.current);
 
-    resetRef.current = setTimeout(() => {
+    resetRef.current = window.setTimeout(() => {
       finishInfiniteMove(nextIndex);
     }, TRANSITION_MS + 80);
   }
 
   function goNext(userAction = true) {
     if (count <= 1 || movingRef.current) return;
-
     if (userAction) pauseAndResumeLater();
 
     movingRef.current = true;
     setWithTransition(true);
 
-    setActiveIndex((prev) => {
-      const next = prev + 1;
+    setActiveIndex((previous) => {
+      const next = previous + 1;
       setRealIndex(mod(next - 1, count));
       scheduleFallbackNormalize(next);
       return next;
@@ -153,14 +149,13 @@ export default function HomePromoSlider({ promos = [] }) {
 
   function goPrev(userAction = true) {
     if (count <= 1 || movingRef.current) return;
-
     if (userAction) pauseAndResumeLater();
 
     movingRef.current = true;
     setWithTransition(true);
 
-    setActiveIndex((prev) => {
-      const next = prev - 1;
+    setActiveIndex((previous) => {
+      const next = previous - 1;
       setRealIndex(mod(next - 1, count));
       scheduleFallbackNormalize(next);
       return next;
@@ -171,7 +166,6 @@ export default function HomePromoSlider({ promos = [] }) {
     if (count <= 1 || index === realIndex || movingRef.current) return;
 
     pauseAndResumeLater();
-
     movingRef.current = true;
     setWithTransition(true);
     setRealIndex(index);
@@ -179,169 +173,222 @@ export default function HomePromoSlider({ promos = [] }) {
     scheduleFallbackNormalize(index + 1);
   }
 
-function handlePointerDown(e) {
-  if (e.pointerType === "mouse") {
+  function updateStageTilt(event) {
+    if (event.pointerType !== "mouse" || !stageRef.current) return;
+
+    const bounds = stageRef.current.getBoundingClientRect();
+    const normalizedX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const normalizedY = (event.clientY - bounds.top) / bounds.height - 0.5;
+
+    stageRef.current.style.setProperty(
+      "--nemesis-hero-rotate-x",
+      `${(-normalizedY * 2.8).toFixed(2)}deg`,
+    );
+    stageRef.current.style.setProperty(
+      "--nemesis-hero-rotate-y",
+      `${(normalizedX * 3.8).toFixed(2)}deg`,
+    );
+    stageRef.current.style.setProperty(
+      "--nemesis-hero-light-x",
+      `${((normalizedX + 0.5) * 100).toFixed(1)}%`,
+    );
+    stageRef.current.style.setProperty(
+      "--nemesis-hero-light-y",
+      `${((normalizedY + 0.5) * 100).toFixed(1)}%`,
+    );
+  }
+
+  function resetStageTilt() {
+    if (!stageRef.current) return;
+
+    stageRef.current.style.setProperty("--nemesis-hero-rotate-x", "0deg");
+    stageRef.current.style.setProperty("--nemesis-hero-rotate-y", "0deg");
+    stageRef.current.style.setProperty("--nemesis-hero-light-x", "50%");
+    stageRef.current.style.setProperty("--nemesis-hero-light-y", "36%");
+  }
+
+  function handlePointerDown(event) {
+    updateStageTilt(event);
+
+    if (event.pointerType === "mouse") {
+      pauseAndResumeLater();
+      return;
+    }
+
+    if (count <= 1 || movingRef.current) return;
+
+    pointerIdRef.current = event.pointerId;
+    pointerStartX.current = event.clientX;
+    pointerCurrentX.current = event.clientX;
+    setDragging(true);
+    setDragOffset(0);
     pauseAndResumeLater();
-    return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
-  if (count <= 1 || movingRef.current) return;
+  function handlePointerMove(event) {
+    updateStageTilt(event);
 
-  pointerIdRef.current = e.pointerId;
-  pointerStartX.current = e.clientX;
-  pointerCurrentX.current = e.clientX;
+    if (event.pointerType === "mouse") return;
+    if (!dragging || pointerIdRef.current !== event.pointerId) return;
 
-  setDragging(true);
-  setDragOffset(0);
-  pauseAndResumeLater();
-
-  e.currentTarget.setPointerCapture?.(e.pointerId);
-}
-
-function handlePointerMove(e) {
-  if (e.pointerType === "mouse") return;
-  if (!dragging || pointerIdRef.current !== e.pointerId) return;
-
-  pointerCurrentX.current = e.clientX;
-
-  const diff = pointerCurrentX.current - pointerStartX.current;
-  const limited = Math.max(Math.min(diff, 120), -120);
-
-  setDragOffset(limited);
-}
-function handlePointerUp(e) {
-  if (e.pointerType === "mouse") return;
-  if (!dragging || pointerIdRef.current !== e.pointerId) return;
-
-  const diff = pointerCurrentX.current - pointerStartX.current;
-
-  setDragging(false);
-  setDragOffset(0);
-  pointerIdRef.current = null;
-
-  e.currentTarget.releasePointerCapture?.(e.pointerId);
-
-  if (Math.abs(diff) < SWIPE_LIMIT) return;
-
-  if (diff < 0) {
-    goNext(false);
-  } else {
-    goPrev(false);
+    pointerCurrentX.current = event.clientX;
+    const difference = pointerCurrentX.current - pointerStartX.current;
+    setDragOffset(Math.max(Math.min(difference, 120), -120));
   }
-}
+
+  function handlePointerUp(event) {
+    if (event.pointerType === "mouse") return;
+    if (!dragging || pointerIdRef.current !== event.pointerId) return;
+
+    const difference = pointerCurrentX.current - pointerStartX.current;
+    setDragging(false);
+    setDragOffset(0);
+    pointerIdRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (Math.abs(difference) < SWIPE_LIMIT) return;
+    if (difference < 0) goNext(false);
+    else goPrev(false);
+  }
 
   function handlePointerCancel() {
     setDragging(false);
     setDragOffset(0);
     pointerIdRef.current = null;
+    resetStageTilt();
   }
 
-  function handleTransitionEnd() {
-    finishInfiniteMove(activeIndex);
-  }
+  useEffect(() => {
+    const resetFrame = window.requestAnimationFrame(() => {
+      setActiveIndex(count > 1 ? 1 : 0);
+      setRealIndex(0);
+    });
+
+    return () => window.cancelAnimationFrame(resetFrame);
+  }, [count]);
+
+  useEffect(() => {
+    clearInterval(autoplayRef.current);
+
+    if (count <= 1 || pausedByUser) return undefined;
+
+    autoplayRef.current = window.setInterval(() => {
+      goNext(false);
+    }, AUTO_PLAY_MS);
+
+    return () => clearInterval(autoplayRef.current);
+    // `goNext` intentionally uses the current carousel state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count, pausedByUser, activeIndex]);
+
+  useEffect(() => {
+    return () => {
+      clearInterval(autoplayRef.current);
+      clearTimeout(resumeRef.current);
+      clearTimeout(resetRef.current);
+    };
+  }, []);
 
   if (count === 0) return null;
 
   const translatePercent = count > 1 ? -activeIndex * 100 : 0;
 
   return (
-    <section className="nemesis-promo-fullbleed relative overflow-hidden py-0">
-      <style>{`
-        .nemesis-promo-fullbleed {
-          width: 100vw !important;
-          max-width: none !important;
-          margin-left: calc(50% - 50vw) !important;
-          margin-right: calc(50% - 50vw) !important;
-          padding-left: 0 !important;
-          padding-right: 0 !important;
-        }
+    <section className="nemesis-home-hero" aria-label="Kampaniyalar">
+      <div className="nemesis-home-hero__ambient" aria-hidden="true">
+        {enableWebGl && (
+          <Suspense fallback={null}>
+            <ThreeUiDotMatrix
+              className="nemesis-threeui-field"
+              speed={0.34}
+              gridScale={76}
+              mouseAmount={0.028}
+              pulseSpeed={0.22}
+              radius={0.12}
+              opacity={0.22}
+              hue={338}
+            />
+          </Suspense>
+        )}
+      </div>
 
-        @supports (width: 100dvw) {
-          .nemesis-promo-fullbleed {
-            width: 100dvw !important;
-            margin-left: calc(50% - 50dvw) !important;
-            margin-right: calc(50% - 50dvw) !important;
-          }
-        }
+      <div className="nemesis-home-hero__topline">
+        <div>
+          <span className="nemesis-home-hero__eyebrow">nemesisbaku</span>
+          <p>{text.premiumDesc || "Seçilmiş sneaker kolleksiyaları"}</p>
+        </div>
 
-        .nemesis-promo-card {
-          width: 100% !important;
-          aspect-ratio: 2 / 3 !important;
-          border-radius: 0 !important;
-        }
+        <span className="nemesis-home-hero__counter">
+          {String(realIndex + 1).padStart(2, "0")}
+          <i />
+          {String(count).padStart(2, "0")}
+        </span>
+      </div>
 
-        @media (min-width: 768px) {
-          .nemesis-promo-card {
-            aspect-ratio: 2 / 1 !important;
-          }
-        }
-      `}</style>
+      <div
+        ref={stageRef}
+        className="nemesis-home-hero__stage"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerLeave={resetStageTilt}
+        onWheel={pauseAndResumeLater}
+      >
+        <div className="nemesis-home-hero__light" aria-hidden="true" />
 
-      <div className="relative">
         {count > 1 && (
-          <>
+          <div className="nemesis-home-hero__arrows">
             <button
               type="button"
               onClick={() => goPrev(true)}
-              className="absolute left-4 top-1/2 z-40 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] transition hover:-translate-x-1 lg:grid"
               aria-label="Əvvəlki kampaniya"
             >
               <FiChevronLeft />
             </button>
-
             <button
               type="button"
               onClick={() => goNext(true)}
-              className="absolute right-4 top-1/2 z-40 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] transition hover:translate-x-1 lg:grid"
               aria-label="Növbəti kampaniya"
             >
               <FiChevronRight />
             </button>
-          </>
+          </div>
         )}
 
-        <div
-          className="touch-pan-y select-none overflow-hidden"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-          onWheel={pauseAndResumeLater}
-        >
-          <div className="overflow-hidden">
-            <div
-              onTransitionEnd={handleTransitionEnd}
-              className={`flex ${
-                dragging || !withTransition
-                  ? "transition-none"
-                  : "transition-transform duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-              }`}
-              style={{
-                transform: `translate3d(calc(${translatePercent}% + ${dragOffset}px), 0, 0)`,
-              }}
-            >
-              {sliderPromos.map((promo, index) => (
-                <div key={`${promo.id}-${index}`} className="min-w-full px-0">
-                  <PromoCard promo={promo} text={text} />
-                </div>
-              ))}
-            </div>
+        <div className="nemesis-home-hero__viewport">
+          <div
+            onTransitionEnd={() => finishInfiniteMove(activeIndex)}
+            className={`nemesis-home-hero__track ${
+              dragging || !withTransition
+                ? "nemesis-home-hero__track--instant"
+                : ""
+            }`}
+            style={{
+              transform: `translate3d(calc(${translatePercent}% + ${dragOffset}px), 0, 0)`,
+            }}
+          >
+            {sliderPromos.map((promo, index) => (
+              <PromoCard
+                key={`${promo.id}-${index}`}
+                promo={promo}
+                text={text}
+              />
+            ))}
           </div>
         </div>
 
         {count > 1 && (
-          <div className="mt-4 flex items-center justify-center gap-2">
+          <div className="nemesis-home-hero__pagination">
             {validPromos.map((promo, index) => (
               <button
                 key={promo.id || index}
                 type="button"
                 onClick={() => goTo(index)}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  index === realIndex
-                    ? "w-8 bg-zinc-950"
-                    : "w-2 bg-zinc-300 hover:bg-zinc-400"
-                }`}
+                className={index === realIndex ? "is-active" : ""}
                 aria-label={`Kampaniya ${index + 1}`}
+                aria-current={index === realIndex ? "true" : undefined}
               />
             ))}
           </div>
@@ -352,30 +399,44 @@ function handlePointerUp(e) {
 }
 
 function PromoCard({ promo, text }) {
+  const title = promo?.title || text.premiumTitle || "Addımlarınızda premium stil";
+  const description =
+    promo?.description ||
+    promo?.subtitle ||
+    text.premiumDesc ||
+    "Seçilmiş sneaker kolleksiyalarını kəşf edin.";
+
   return (
     <NavLink
       to={getPromoLink(promo)}
       draggable="false"
-      className="nemesis-promo-card group relative block w-full overflow-hidden bg-[#efe7da]"
+      className="nemesis-home-hero__slide"
     >
-      <picture className="absolute inset-0 block h-full w-full">
+      <picture>
         <source
           media="(max-width: 767px)"
           srcSet={promo.mobileImageUrl || promo.imageUrl}
         />
         <img
           src={promo.imageUrl}
-          alt="Kampaniya şəkli"
+          alt={promo.title || "nemesisbaku kampaniyası"}
           draggable="false"
-          className="h-full w-full object-cover"
         />
       </picture>
 
-      <span className="absolute bottom-3 left-3 z-10 inline-flex h-8 items-center gap-2 rounded-full border border-white/60 bg-black/20 py-1 pl-3.5 pr-1.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-black/30 md:bottom-5 md:left-5 md:h-10 md:pl-4 md:pr-2 md:text-[10px]">
-        {text.discover || "Kəşf et"}
+      <span className="nemesis-home-hero__shade" aria-hidden="true" />
 
-        <span className="grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[12px] text-zinc-950 md:h-7 md:w-7 md:text-sm">
-          <FiChevronRight />
+      <span className="nemesis-home-hero__copy">
+        <span className="nemesis-home-hero__collection">
+          {text.newCollection || "Yeni kolleksiya"}
+        </span>
+        <strong>{title}</strong>
+        <small>{description}</small>
+        <span className="nemesis-home-hero__cta">
+          {text.discover || "Kəşf et"}
+          <i>
+            <FiArrowUpRight />
+          </i>
         </span>
       </span>
     </NavLink>

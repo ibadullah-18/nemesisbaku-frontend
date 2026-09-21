@@ -3,11 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheck,
-  FiImage,
   FiRefreshCw,
   FiSave,
   FiSearch,
-  FiTrash2,
   FiUploadCloud,
   FiX,
 } from "react-icons/fi";
@@ -18,6 +16,8 @@ import {
   unwrapAdmin,
 } from "../../api/admin/adminApi";
 import AppLoader from "../../components/common/AppLoader";
+import AdminMediaPreview from "../../components/admin/AdminMediaPreview";
+import AdminFloatingActions from "../../components/admin/AdminFloatingActions";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import {
   CLOUDINARY_SAFE_IMAGE_BYTES,
@@ -28,6 +28,7 @@ import {
 } from "../../utils/imageFile";
 import { localDateTimeToIso, toLocalDateTimeInput } from "../../utils/dataTime";
 import { useAdminToastState } from "../../utils/adminToast";
+import "./adminMerchandising.css";
 
 const emptyForm = {
   type: 1,
@@ -101,6 +102,8 @@ export default function AdminPromoForm({ mode }) {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processingImages, setProcessingImages] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [, setError] = useAdminToastState("error");
   const [, setSuccess] = useAdminToastState("success");
@@ -124,24 +127,25 @@ export default function AdminPromoForm({ mode }) {
     };
   }, []);
 
-  async function loadAll() {
+  async function loadAll({ silent = false, notify = false } = {}) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+      if (notify) setRefreshing(true);
       setError("");
       setSuccess("");
 
-      const productRes = await adminProductsApi.list({
-        page: 1,
-        pageSize: 500,
-        search: "",
-      });
-
-      const loadedProducts = listAdmin(productRes);
-      setProducts(loadedProducts);
+      const [productResult, promoResult] = await Promise.allSettled([
+        adminProductsApi.list(),
+        isEdit ? adminPromoPagesApi.detail(id) : Promise.resolve(null),
+      ]);
+      if (promoResult.status === "rejected") throw promoResult.reason;
+      setProducts(productResult.status === "fulfilled" ? listAdmin(productResult.value) : []);
+      if (productResult.status === "rejected") {
+        setError("Məhsul siyahısı yüklənmədi. Əvvəlki seçimlər saxlanılıb; yenidən yoxlayın.");
+      }
 
       if (isEdit) {
-        const promoRes = await adminPromoPagesApi.detail(id);
-        const promo = unwrapAdmin(promoRes);
+        const promo = unwrapAdmin(promoResult.value);
 
         revokeImagePreview(desktopPreviewRef.current);
         revokeImagePreview(mobilePreviewRef.current);
@@ -152,7 +156,7 @@ export default function AdminPromoForm({ mode }) {
           file: null,
           previewUrl: promo?.imageUrl || "",
           mobileFile: null,
-          mobilePreviewUrl: promo?.mobileImageUrl || promo?.imageUrl || "",
+          mobilePreviewUrl: promo?.mobileImageUrl || "",
           productIds: promo?.productIds || [],
         });
       } else {
@@ -160,10 +164,12 @@ export default function AdminPromoForm({ mode }) {
         revokeImagePreview(mobilePreviewRef.current);
         setForm(emptyForm);
       }
+      if (notify) setSuccess("Promo məlumatları yeniləndi.");
     } catch (err) {
       setError(err.message || "Məlumatlar yüklənmədi.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      if (notify) setRefreshing(false);
     }
   }
 
@@ -178,6 +184,7 @@ export default function AdminPromoForm({ mode }) {
 
     if (!selectedFile) return;
 
+    setProcessingImages((count) => count + 1);
     try {
       setError("");
       const file = await prepareImageFile(selectedFile, {
@@ -186,18 +193,19 @@ export default function AdminPromoForm({ mode }) {
         maxHeicInputBytes: MAX_PROMO_UPLOAD_BYTES,
       });
       const variant = PROMO_IMAGE_VARIANTS[variantName];
-
-      setForm((prev) => {
-        revokeImagePreview(prev[variant.previewKey]);
-
-        return {
-          ...prev,
-          [variant.fileKey]: file,
-          [variant.previewKey]: URL.createObjectURL(file),
-        };
-      });
+      const currentRef = variantName === "desktop" ? desktopPreviewRef : mobilePreviewRef;
+      const previewUrl = URL.createObjectURL(file);
+      revokeImagePreview(currentRef.current);
+      currentRef.current = previewUrl;
+      setForm((prev) => ({
+        ...prev,
+        [variant.fileKey]: file,
+        [variant.previewKey]: previewUrl,
+      }));
     } catch (err) {
       setError(err.message || "Şəkil hazırlana bilmədi.");
+    } finally {
+      setProcessingImages((count) => Math.max(0, count - 1));
     }
   }
 
@@ -228,6 +236,8 @@ export default function AdminPromoForm({ mode }) {
 
     setError("");
     setSuccess("");
+
+    if (saving || processingImages > 0) return;
 
     if (!form.startDate) return setError("Başlama tarixi seçilməlidir.");
     if (!form.file && !form.previewUrl) {
@@ -270,7 +280,7 @@ export default function AdminPromoForm({ mode }) {
 
       if (isEdit) {
         await adminPromoPagesApi.update(id, payload);
-        setSuccess("Promo səhifə yeniləndi.");
+        navigate(`${basePath}/campaigns`, { state: { adminNotice: { type: "success", message: "Promo yeniləndi." } } });
       } else {
         await adminPromoPagesApi.create(payload);
         navigate(`${basePath}/campaigns`, {
@@ -320,25 +330,20 @@ export default function AdminPromoForm({ mode }) {
       .filter(Boolean);
   }, [form.productIds, products]);
 
+  const unlistedIds = useMemo(() => {
+    const visibleIds = new Set(products.map(getProductId).filter(Boolean));
+    return form.productIds.filter((productId) => !visibleIds.has(productId));
+  }, [form.productIds, products]);
+
   if (loading) return <AppLoader text="Promo form hazırlanır" />;
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-8">
-      {saving && <AppLoader text="Yadda saxlanılır" />}
-
-      <button
-        type="button"
-        onClick={() => navigate(`${basePath}/campaigns`)}
-        className="mb-5 flex h-11 items-center gap-2 rounded-[15px] bg-white px-4 text-sm font-extrabold text-zinc-700 transition active:scale-[0.97]"
-      >
-        <FiArrowLeft />
-        Kampaniyalara qayıt
-      </button>
+    <div className="nb-merch nb-merch__form pb-32">
 
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#244989]">
-            Promo pages
+            nemesisbaku · təqdimat
           </p>
 
           <h1 className="mt-2 text-[34px] font-extrabold tracking-[-0.045em]">
@@ -346,21 +351,10 @@ export default function AdminPromoForm({ mode }) {
           </h1>
 
           <p className="mt-1 text-sm font-medium text-zinc-500">
-            Campaign və Banner üçün ayrı kompüter və telefon şəkilləri,
-            başlama tarixi və məhsul seçimi.
+            Kompüter və telefon şəkillərini, tarixi və məhsulları təyin edin.
           </p>
         </div>
 
-        {isEdit && (
-          <button
-            type="button"
-            onClick={loadAll}
-            className="flex h-12 items-center justify-center gap-2 rounded-[16px] bg-zinc-950 px-5 text-sm font-extrabold text-white"
-          >
-            <FiRefreshCw />
-            Yenilə
-          </button>
-        )}
       </div>
 
       <form
@@ -380,7 +374,7 @@ export default function AdminPromoForm({ mode }) {
                 onChange={(v) => updateForm("type", Number(v))}
                 disabled={isEdit}
               >
-                <option value={1}>Campaign</option>
+                <option value={1}>Kampaniya</option>
                 <option value={2}>Banner</option>
               </AdminSelect>
 
@@ -395,7 +389,7 @@ export default function AdminPromoForm({ mode }) {
             <div className="mt-4">
               <ToggleRow
                 title="Aktiv promo"
-                subtitle="Aktiv olduqda public homepage-də görünə bilər."
+                subtitle="Aktiv olduqda ana səhifədə görünə bilər. Hər növdən ən çox 5 aktiv promo ola bilər."
                 checked={form.isActive}
                 onChange={() => updateForm("isActive", !form.isActive)}
               />
@@ -410,7 +404,7 @@ export default function AdminPromoForm({ mode }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <PromoImageField
                 title="Kompüter şəkli *"
-                description="Tövsiyə olunan ölçü: 2000 × 1000 px (2:1). Campaign kompüter və planşetdə ekranın bütün enini kənar boşluqsuz, daha yığcam hündürlükdə tutacaq. Ölçü məcburi deyil."
+                description="Tövsiyə olunan ölçü: 2000 × 1000 px (2:1). Ölçü məcburi deyil."
                 previewUrl={form.previewUrl}
                 previewClassName="aspect-[2/1]"
                 onChange={(event) => handleFileChange(event, "desktop")}
@@ -486,7 +480,7 @@ export default function AdminPromoForm({ mode }) {
             </h2>
 
             <p className="mt-1 text-sm font-medium text-zinc-500">
-              {selectedProducts.length} məhsul seçilib.
+              {form.productIds.length} məhsul seçilib.
             </p>
 
             <div className="mt-5 space-y-3">
@@ -498,19 +492,7 @@ export default function AdminPromoForm({ mode }) {
                     key={productId}
                     className="flex items-center gap-3 rounded-[20px] bg-zinc-50 p-3"
                   >
-                    <div className="h-14 w-14 overflow-hidden rounded-[16px] bg-white">
-                      {getProductImage(product) ? (
-                        <img
-                          src={getProductImage(product)}
-                          alt={product.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-zinc-300">
-                          <FiImage />
-                        </div>
-                      )}
-                    </div>
+                    <AdminMediaPreview className="h-14 w-14 shrink-0" src={getProductImage(product)} alt={product.name} />
 
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-1 text-sm font-extrabold text-zinc-950">
@@ -533,22 +515,22 @@ export default function AdminPromoForm({ mode }) {
                 );
               })}
 
-              {selectedProducts.length === 0 && (
+              {unlistedIds.length > 0 && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">{unlistedIds.length} əvvəl seçilmiş məhsul cari siyahıda görünmür. Seçim saxlanılır; lazım olsa silin.</p>}
+              {unlistedIds.map((productId) => <div key={productId} className="flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-900"><span className="min-w-0 flex-1 break-all">Siyahıda olmayan məhsul: {productId}</span><button type="button" aria-label="Seçimi sil" onClick={() => removeSelectedProduct(productId)}><FiX /></button></div>)}
+              {form.productIds.length === 0 && (
                 <div className="rounded-[22px] bg-zinc-50 p-6 text-center text-sm font-bold text-zinc-400">
                   Hələ məhsul seçilməyib.
                 </div>
               )}
             </div>
 
-            <button
-              disabled={saving}
-              className="mt-5 flex h-13 w-full items-center justify-center gap-2 rounded-[16px] bg-[#244989] text-sm font-extrabold text-white transition active:scale-[0.98] disabled:opacity-60"
-            >
-              <FiSave />
-              {isEdit ? "Promo yenilə" : "Promo yarat"}
-            </button>
           </section>
         </aside>
+        <AdminFloatingActions status={processingImages > 0 ? "Şəkillər hazırlanır…" : saving ? "Promo yadda saxlanılır…" : refreshing ? "Məlumatlar yenilənir…" : "Əməliyyat düymələri həmişə burada görünür"}>
+          <button type="button" onClick={() => navigate(`${basePath}/campaigns`)} disabled={saving}><FiArrowLeft /> Geri</button>
+          <button type="button" onClick={() => loadAll({ silent: true, notify: true })} disabled={saving || processingImages > 0 || refreshing}><FiRefreshCw /> {refreshing ? "Yenilənir…" : "Yenilə"}</button>
+          <button className="is-primary" type="submit" disabled={saving || processingImages > 0 || refreshing}><FiSave /> {processingImages > 0 ? "Hazırlanır…" : saving ? "Saxlanılır…" : isEdit ? "Yadda saxla" : "Promo yarat"}</button>
+        </AdminFloatingActions>
       </form>
     </div>
   );
@@ -568,17 +550,7 @@ function ProductCard({ product, selected, onClick }) {
       }`}
     >
       <div className="relative h-40 bg-white">
-        {image ? (
-          <img
-            src={image}
-            alt={product.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-zinc-300">
-            <FiImage className="text-[32px]" />
-          </div>
-        )}
+        <AdminMediaPreview className="h-full w-full" src={image} alt={product.name} />
 
         <span
           className={`absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-sm ${
@@ -631,7 +603,7 @@ function PromoImageField({
         <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
           {description}
           <br />
-          JPG/PNG/WEBP, maksimum 10 MB.
+          Şəkil yüklənməzdən əvvəl 9 MB limitinə uyğun hazırlanır.
         </p>
 
         <input
@@ -646,11 +618,7 @@ function PromoImageField({
         <div
           className={`mt-4 overflow-hidden rounded-[20px] border border-zinc-100 bg-white ${previewClassName}`}
         >
-          <img
-            src={previewUrl}
-            alt={`${title} önizləməsi`}
-            className="h-full w-full object-cover"
-          />
+          <AdminMediaPreview className="h-full w-full" src={previewUrl} alt={`${title} önizləməsi`} />
         </div>
       )}
     </div>

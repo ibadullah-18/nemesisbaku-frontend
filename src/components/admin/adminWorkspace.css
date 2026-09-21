@@ -150,6 +150,81 @@
 .nb-admin__top-chevron { color: #9da3af; }
 .nb-admin__content { min-width: 0; }
 .nb-admin__scrim, .nb-admin__menu-button, .nb-admin__close { display: none; }
+.nb-media { display: grid; place-items: center; overflow: hidden; border: 1px solid #e7ecf2; border-radius: 10px; background: #f7f9fc; }
+.nb-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.nb-media__empty { display: grid; place-items: center; gap: 4px; padding: 8px; color: #8292a8; text-align: center; }
+.nb-media__empty svg { width: 22px; height: 22px; }
+.nb-media__empty small { font-size: 10px; font-weight: 650; }
+.nb-admin-toast-stack {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2147483000;
+  display: grid;
+  width: min(410px, calc(100vw - 32px));
+  gap: 10px;
+  pointer-events: none;
+}
+.nb-admin-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 14px;
+  padding: 14px;
+  color: #fff;
+  box-shadow: 0 22px 55px rgba(12, 19, 31, .25);
+  animation: nbAdminToastIn 260ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.nb-admin-toast.is-error { background: #a33f4a; }
+.nb-admin-toast.is-success { background: #397153; }
+.nb-admin-toast__icon { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 9px; background: rgba(255, 255, 255, .13); font-size: 18px; }
+.nb-admin-toast__copy { min-width: 0; display: grid; gap: 3px; }
+.nb-admin-toast__copy strong { font-size: 13px; }
+.nb-admin-toast__copy span { overflow-wrap: anywhere; color: rgba(255, 255, 255, .9); font-size: 12px; line-height: 1.45; }
+.nb-admin-toast button { display: grid; place-items: center; width: 28px; height: 28px; flex: none; margin-left: auto; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; cursor: pointer; }
+.nb-admin-actions {
+  position: fixed;
+  left: 294px;
+  bottom: 20px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  max-width: calc(100vw - 620px);
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  padding: 8px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 17px 44px rgba(18, 39, 70, .16);
+  backdrop-filter: blur(14px);
+}
+.nb-admin-actions__status { max-width: 240px; padding-left: 7px; color: #66758a; font-size: 11px; font-weight: 650; line-height: 1.35; }
+.nb-admin-actions__buttons { display: flex; align-items: center; gap: 7px; }
+.nb-admin-actions button, .nb-admin-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 1px solid #dde4ed;
+  border-radius: 10px;
+  padding: 0 14px;
+  background: #fff;
+  color: #244989;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.nb-admin-actions .is-primary { border-color: #244989; background: #244989; color: #fff; }
+.nb-admin-actions .is-danger { border-color: #efd3d6; background: #fff3f4; color: #a33f4a; }
+.nb-admin-actions button:disabled { opacity: .55; cursor: wait; }
+@keyframes nbAdminToastIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
 @media (max-width: 1023px) {
   .nb-admin__sidebar { transform: translateX(-100%); transition: transform 240ms ease; }
   .nb-admin__sidebar.is-open { transform: translateX(0); }
@@ -157,11 +232,20 @@
   .nb-admin__scrim { display: block; position: fixed; inset: 0; z-index: 70; border: 0; background: rgba(9, 13, 20, .56); }
   .nb-admin__menu-button, .nb-admin__close { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border: 0; border-radius: 10px; background: #f2f4f7; color: var(--nb-ink); cursor: pointer; }
   .nb-admin__close { margin-left: auto; background: #2a303b; color: #fff; }
+  .nb-admin-actions { left: 16px; max-width: calc(100vw - 32px); }
+}
+@media (max-width: 900px) {
+  .nb-admin-toast-stack { bottom: 82px; }
 }
 @media (max-width: 520px) {
   .nb-admin__topbar { min-height: 64px; }
   .nb-admin__system, .nb-admin__top-chevron { display: none; }
   .nb-admin__sidebar { width: min(290px, 88vw); }
+  .nb-admin-actions { right: 16px; bottom: 12px; justify-content: flex-end; }
+  .nb-admin-actions__status { display: none; }
+  .nb-admin-actions__buttons { width: 100%; }
+  .nb-admin-actions button, .nb-admin-actions a { flex: 1; padding-inline: 10px; }
+  .nb-admin-toast-stack { right: 16px; bottom: 78px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .nb-admin__link, .nb-admin__sidebar { transition: none; }

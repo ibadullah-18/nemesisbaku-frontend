@@ -29,6 +29,7 @@ const AdminAuditLogs = lazy(() => import("../pages/admin/AdminAuditLogs"));
 const AdminCategories = lazy(() => import("../pages/admin/AdminCategories"));
 const AdminBrands = lazy(() => import("../pages/admin/AdminBrands"));
 const AdminUsers = lazy(() => import("../pages/admin/AdminUsers"));
+const AdminUserDetails = lazy(() => import("../pages/admin/AdminUserDetails"));
 const AdminSizes = lazy(() => import("../pages/admin/AdminSizes"));
 const AdminColors = lazy(() => import("../pages/admin/AdminColors"));
 const AdminHomeSections = lazy(() => import("../pages/admin/AdminHomeSections"));
@@ -403,6 +404,7 @@ export default function AppRoutes() {
         <Route path="colors" element={<AdminColors />} />
 
         <Route path="users" element={<AdminUsers />} />
+        <Route path="users/:id" element={<AdminUserDetails />} />
 
         <Route path="promo-codes" element={<AdminPromoCodes />} />
 

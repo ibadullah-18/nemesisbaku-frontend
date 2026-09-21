@@ -4,6 +4,7 @@ import {
   FiUploadCloud,
 } from "react-icons/fi";
 import { adminStoreInfoApi, unwrapAdmin } from "../../api/admin/adminApi";
+import AdminFloatingActions from "../../components/admin/AdminFloatingActions";
 import { useAdminToastState } from "../../utils/adminToast";
 import "./adminStoreInfo.css";
 
@@ -200,17 +201,13 @@ export default function AdminStoreInfo() {
     ? `https://www.google.com/maps?q=${encodeURIComponent(form.latitude)},${encodeURIComponent(form.longitude)}`
     : "";
 
-  return <div className="nb-store">
+  return <div className="nb-store pb-32">
     <div className="nb-store__header">
       <div>
         <p className="nb-store__eyebrow">nemesisbaku / mağaza</p>
         <h1>Mağaza məlumatları</h1>
         <p>Saytda göstərilən məlumatları buradan redaktə edin.</p>
       </div>
-      <button type="button" className="nb-store__reload" disabled={loading || saving}
-        onClick={() => { if (!dirty || window.confirm("Yadda saxlanmamış dəyişikliklər silinsin?")) loadInfo(); }}>
-        <FiRefreshCw aria-hidden="true" /> Yenilə
-      </button>
     </div>
     {loading && !ready ? <div className="nb-store__loading" role="status">Mağaza məlumatları yüklənir...</div> : <>
       {error && <div className="nb-store__alert nb-store__alert--error" role="alert">{error}
@@ -256,10 +253,10 @@ export default function AdminStoreInfo() {
                 : <span>Xəritə üçün enlik və uzunluğu daxil edin.</span>}
             </div>}
           </section>)}
-          <div className="nb-store__savebar">
-            <span>{dirty ? "Yadda saxlanmamış dəyişikliklər var" : "Məlumatlar yadda saxlanılıb"}</span>
-            <button type="submit" disabled={!ready || loading || saving || !dirty}><FiSave aria-hidden="true" /> {saving ? "Saxlanılır..." : "Yadda saxla"}</button>
-          </div>
+          <AdminFloatingActions status={saving ? "Mağaza məlumatları yadda saxlanılır…" : dirty ? "Yadda saxlanmamış dəyişikliklər var" : "Məlumatlar yadda saxlanılıb"}>
+            <button type="button" disabled={loading || saving} onClick={() => { if (!dirty || window.confirm("Yadda saxlanmamış dəyişikliklər silinsin?")) loadInfo(); }}><FiRefreshCw aria-hidden="true" /> {loading ? "Yenilənir…" : "Yenilə"}</button>
+            <button className="is-primary" type="submit" disabled={!ready || loading || saving || !dirty}><FiSave aria-hidden="true" /> {saving ? "Saxlanılır…" : "Yadda saxla"}</button>
+          </AdminFloatingActions>
         </form>
         <aside className="nb-store__summary">
           <p className="nb-store__summary-label">MAĞAZA GÖRÜNÜŞÜ</p>
