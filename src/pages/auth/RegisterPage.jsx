@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { Link, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
@@ -163,7 +164,7 @@ export default function RegisterPage() {
       >
         {store?.logoUrl ? (
           <img
-            src={store.logoUrl}
+            src={cloudinaryResize(store.logoUrl, 160)}
             alt={brandName}
             className="block h-full w-full object-contain"
             draggable={false}

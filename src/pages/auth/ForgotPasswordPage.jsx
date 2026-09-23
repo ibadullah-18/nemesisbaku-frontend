@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -245,7 +246,7 @@ export default function ForgotPasswordPage() {
       <div className="flex h-[82px] w-[290px] max-w-full items-center justify-center overflow-hidden rounded-[18px] bg-white px-6">
         {store?.logoUrl ? (
           <img
-            src={store.logoUrl}
+            src={cloudinaryResize(store.logoUrl, 160)}
             alt={brandName}
             className="block h-full w-full object-contain"
             draggable={false}

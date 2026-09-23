@@ -25,11 +25,18 @@ function unwrapData(res) {
   return res?.data?.data || res?.data || res;
 }
 
+function cloudinaryResize(url, width) {
+  if (!url || typeof url !== "string" || !url.includes("res.cloudinary.com/") || !url.includes("/upload/")) {
+    return url;
+  }
+  if (/\/upload\/[^/]*w_\d/.test(url)) return url; // artıq ölçülüb
+  return url.replace("/upload/", `/upload/w_${width},q_auto,f_auto/`);
+}
 function getImageUrl(x) {
   if (!x) return null;
   if (typeof x === "string") return x;
 
-  return (
+  const raw =
     x.imageUrl ||
     x.mainImageUrl ||
     x.url ||
@@ -37,8 +44,9 @@ function getImageUrl(x) {
     x.path ||
     x.secureUrl ||
     x.src ||
-    null
-  );
+    null;
+
+  return cloudinaryResize(raw, 400);
 }
 
 function getBrandName(product) {
