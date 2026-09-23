@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
+import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLock, FiUser } from "react-icons/fi";
@@ -18,7 +19,7 @@ function BrandLogo({ logoUrl, brandName }) {
 
   return (
     <img
-      src={logoUrl}
+      src={cloudinaryResize(logoUrl, 320)}
       alt={brandName}
       draggable={false}
       className="block h-auto w-[118px] object-contain select-none sm:w-[128px] md:w-[138px]"
@@ -120,12 +121,12 @@ export default function LoginPage() {
 
     if (
       !message ||
-      message === "Əməliyyat uğursuz oldu" ||
+      message === "ÆmÉ™liyyat uÄŸursuz oldu" ||
       message === "Unauthorized" ||
       message === "Unauthorized." ||
-      message === "Serverlə əlaqə qurulmadı."
+      message === "ServerlÉ™ É™laqÉ™ qurulmadÄ±."
     ) {
-      return text.loginError || "Email, telefon və ya şifrə yanlışdır.";
+      return text.loginError || "Email, telefon vÉ™ ya ÅŸifrÉ™ yanlÄ±ÅŸdÄ±r.";
     }
 
     return message;
@@ -137,13 +138,13 @@ export default function LoginPage() {
     if (!isValidEmailOrPhone(emailOrPhone)) {
       showToast(
         text.emailOrPhoneError ||
-          "Email və ya telefon nömrəsini düzgün daxil edin.",
+          "Email vÉ™ ya telefon nÃ¶mrÉ™sini dÃ¼zgÃ¼n daxil edin.",
       );
       return;
     }
 
     if (!password.trim()) {
-      showToast(text.passwordError || "Şifrə daxil edin.");
+      showToast(text.passwordError || "ÅžifrÉ™ daxil edin.");
       return;
     }
 
@@ -172,7 +173,7 @@ export default function LoginPage() {
 
       if (!accessToken) {
         throw new Error(
-          text.loginError || "Email, telefon və ya şifrə yanlışdır.",
+          text.loginError || "Email, telefon vÉ™ ya ÅŸifrÉ™ yanlÄ±ÅŸdÄ±r.",
         );
       }
 
@@ -186,7 +187,7 @@ export default function LoginPage() {
   }
 
   const brandName = store?.storeName || "NemesisBaku";
-  const slogan = store?.slogan || "Addımlarınızda premium stil";
+  const slogan = store?.slogan || "AddÄ±mlarÄ±nÄ±zda premium stil";
 
   return (
     <main className="min-h-screen bg-[#f5f3f5] px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
@@ -237,10 +238,10 @@ export default function LoginPage() {
 
           <div className="rounded-[20px] bg-white/80 p-5 backdrop-blur">
             <p className="text-sm font-semibold text-zinc-900">
-              {store?.address || "AF Mall, Bakı"}
+              {store?.address || "AF Mall, BakÄ±"}
             </p>
             <p className="mt-2 text-sm text-zinc-500">
-              {store?.workingHours || "Hər gün | 10:00 – 21:00"}
+              {store?.workingHours || "HÉ™r gÃ¼n | 10:00 â€“ 21:00"}
             </p>
           </div>
         </div>
@@ -258,14 +259,14 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <AnimatedInput
-                label={text.emailOrPhone || "Email və ya telefon"}
+                label={text.emailOrPhone || "Email vÉ™ ya telefon"}
                 icon={<FiUser />}
                 value={emailOrPhone}
                 onChange={(e) => setEmailOrPhone(e.target.value)}
                 type="text"
                 placeholder={
                   text.emailOrPhonePlaceholder ||
-                  "Email və ya telefon daxil edin"
+                  "Email vÉ™ ya telefon daxil edin"
                 }
               />
 
@@ -282,7 +283,7 @@ export default function LoginPage() {
                       type="button"
                       onClick={() => setShowPass(!showPass)}
                       className="shrink-0 text-xl text-zinc-500 transition hover:text-zinc-950"
-                      aria-label="Şifrəni göstər"
+                      aria-label="ÅžifrÉ™ni gÃ¶stÉ™r"
                     >
                       {showPass ? <FiEyeOff /> : <FiEye />}
                     </button>

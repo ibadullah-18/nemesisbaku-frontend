@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { Link } from "react-router-dom";
 import {
   FiFacebook,
@@ -11,20 +12,20 @@ import { FaTiktok, FaWhatsapp } from "react-icons/fa";
 import { API_BASE_URL } from "../../api/config";
 const footerText = {
   az: {
-    customer: "MÜŞTƏRİ",
-    company: "ŞİRKƏT",
-    subscribeTitle: "Yeniliklərdən Xəbərdar Ol",
-    subscribeText: "Ən son kolleksiya və endirimlər üçün abunə olun.",
-    emailPlaceholder: "E-mail ünvanınız",
-    subscribe: "ABUNƏ OL",
-    contact: "Əlaqə & Ünvanlar",
-    delivery: "Çatdırılma",
-    returns: "Qaytarılma",
-    about: "Haqqımızda",
+    customer: "MÃœÅžTÆRÄ°",
+    company: "ÅžÄ°RKÆT",
+    subscribeTitle: "YeniliklÉ™rdÉ™n XÉ™bÉ™rdar Ol",
+    subscribeText: "Æn son kolleksiya vÉ™ endirimlÉ™r Ã¼Ã§Ã¼n abunÉ™ olun.",
+    emailPlaceholder: "E-mail Ã¼nvanÄ±nÄ±z",
+    subscribe: "ABUNÆ OL",
+    contact: "ÆlaqÉ™ & Ãœnvanlar",
+    delivery: "Ã‡atdÄ±rÄ±lma",
+    returns: "QaytarÄ±lma",
+    about: "HaqqÄ±mÄ±zda",
     career: "Karyera",
-    stores: "Mağazalarımız",
-    rights: "Bütün hüquqlar qorunur.",
-    siteBy: "SITE BY HÜSEYNZADƏ",
+    stores: "MaÄŸazalarÄ±mÄ±z",
+    rights: "BÃ¼tÃ¼n hÃ¼quqlar qorunur.",
+    siteBy: "SITE BY HÃœSEYNZADÆ",
   },
   en: {
     customer: "CUSTOMER",
@@ -43,19 +44,19 @@ const footerText = {
     siteBy: "SITE BY HUSEYNZADE",
   },
   ru: {
-    customer: "КЛИЕНТ",
-    company: "КОМПАНИЯ",
-    subscribeTitle: "Будьте в курсе новостей",
-    subscribeText: "Подпишитесь на новые коллекции и скидки.",
-    emailPlaceholder: "Ваш e-mail",
-    subscribe: "ПОДПИСАТЬСЯ",
-    contact: "Контакты и адреса",
-    delivery: "Доставка",
-    returns: "Возврат",
-    about: "О нас",
-    career: "Карьера",
-    stores: "Наши магазины",
-    rights: "Все права защищены.",
+    customer: "ÐšÐ›Ð˜Ð•ÐÐ¢",
+    company: "ÐšÐžÐœÐŸÐÐÐ˜Ð¯",
+    subscribeTitle: "Ð‘ÑƒÐ´ÑŒÑ‚Ðµ Ð² ÐºÑƒÑ€ÑÐµ Ð½Ð¾Ð²Ð¾ÑÑ‚ÐµÐ¹",
+    subscribeText: "ÐŸÐ¾Ð´Ð¿Ð¸ÑˆÐ¸Ñ‚ÐµÑÑŒ Ð½Ð° Ð½Ð¾Ð²Ñ‹Ðµ ÐºÐ¾Ð»Ð»ÐµÐºÑ†Ð¸Ð¸ Ð¸ ÑÐºÐ¸Ð´ÐºÐ¸.",
+    emailPlaceholder: "Ð’Ð°Ñˆ e-mail",
+    subscribe: "ÐŸÐžÐ”ÐŸÐ˜Ð¡ÐÐ¢Ð¬Ð¡Ð¯",
+    contact: "ÐšÐ¾Ð½Ñ‚Ð°ÐºÑ‚Ñ‹ Ð¸ Ð°Ð´Ñ€ÐµÑÐ°",
+    delivery: "Ð”Ð¾ÑÑ‚Ð°Ð²ÐºÐ°",
+    returns: "Ð’Ð¾Ð·Ð²Ñ€Ð°Ñ‚",
+    about: "Ðž Ð½Ð°Ñ",
+    career: "ÐšÐ°Ñ€ÑŒÐµÑ€Ð°",
+    stores: "ÐÐ°ÑˆÐ¸ Ð¼Ð°Ð³Ð°Ð·Ð¸Ð½Ñ‹",
+    rights: "Ð’ÑÐµ Ð¿Ñ€Ð°Ð²Ð° Ð·Ð°Ñ‰Ð¸Ñ‰ÐµÐ½Ñ‹.",
     siteBy: "SITE BY HUSEYNZADE",
   },
 };
@@ -183,7 +184,7 @@ export default function Footer() {
             >
               {store?.logoUrl ? (
               <img
-                src={store.logoUrl}
+                src={cloudinaryResize(store.logoUrl, 500)}
                 alt={storeName}
                 draggable={false}
                 className="
@@ -210,7 +211,7 @@ export default function Footer() {
 
             <p className="mx-auto mt-5 max-w-[360px] text-[13px] leading-6 text-zinc-300 md:mx-0">
               {store?.aboutContent ||
-                "Premium sneaker kolleksiyaları və minimalist seçim təcrübəsi."}
+                "Premium sneaker kolleksiyalarÄ± vÉ™ minimalist seÃ§im tÉ™crÃ¼bÉ™si."}
             </p>
 
             <div className="mt-6 flex items-center justify-center gap-5 text-[19px] text-white md:justify-start">
@@ -316,7 +317,7 @@ export default function Footer() {
 
         <div className="mt-9 border-t border-white/10 pt-6 text-center">
           <p className="text-[12px] text-zinc-300">
-            © 2026 {storeName}. {t.rights}
+            Â© 2026 {storeName}. {t.rights}
           </p>
 
           <a

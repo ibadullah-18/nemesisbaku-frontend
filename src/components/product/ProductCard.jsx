@@ -19,17 +19,23 @@ import "./productCard.css";
 
 const RESET_IMAGE_DELAY = 5000;
 const SWIPE_LIMIT = 45;
-const RUBBER_LIMIT = 42;
 
 function unwrapData(res) {
   return res?.data?.data || res?.data || res;
 }
 
+function cloudinaryResize(url, width) {
+  if (!url || typeof url !== "string" || !url.includes("res.cloudinary.com/") || !url.includes("/upload/")) {
+    return url;
+  }
+  if (/\/upload\/[^/]*w_\d/.test(url)) return url; // artıq ölçülüb
+  return url.replace("/upload/", `/upload/w_${width},q_auto,f_auto/`);
+}
 function getImageUrl(x) {
   if (!x) return null;
   if (typeof x === "string") return x;
 
-  return (
+  const raw =
     x.imageUrl ||
     x.mainImageUrl ||
     x.url ||
@@ -37,8 +43,9 @@ function getImageUrl(x) {
     x.path ||
     x.secureUrl ||
     x.src ||
-    null
-  );
+    null;
+
+  return cloudinaryResize(raw, 400);
 }
 
 function getBrandName(product) {
@@ -54,7 +61,6 @@ export default function ProductCard({ product }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const cardRef = useRef(null);
   const resetTimerRef = useRef(null);
   const pointerStartXRef = useRef(null);
   const pointerStartYRef = useRef(null);
@@ -169,36 +175,6 @@ export default function ProductCard({ product }) {
     }
   }, [productId]);
 
-  useEffect(() => {
-    const card = cardRef.current;
-
-    if (!card || !productId) return undefined;
-
-    if (!("IntersectionObserver" in window)) {
-      let cancelled = false;
-      queueMicrotask(() => {
-        if (!cancelled) loadDetailOnce();
-      });
-      return () => { cancelled = true; };
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
-
-        loadDetailOnce();
-        observer.disconnect();
-      },
-      {
-        rootMargin: "240px 0px",
-        threshold: 0.01,
-      },
-    );
-
-    observer.observe(card);
-
-    return () => observer.disconnect();
-  }, [loadDetailOnce, productId]);
 
   useEffect(() => {
     if (activeImage < images.length) return undefined;
@@ -265,6 +241,8 @@ export default function ProductCard({ product }) {
   function handlePointerDown(e) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
 
+    void loadDetailOnce();
+
     pointerStartXRef.current = e.clientX;
     pointerStartYRef.current = e.clientY;
 
@@ -288,14 +266,7 @@ export default function ProductCard({ product }) {
       setDidSwipe(true);
     }
 
-    const isFirst = activeImage === 0;
-    const isLast = activeImage === images.length - 1;
-
-    if ((isFirst && diffX > 0) || (isLast && diffX < 0)) {
-      setDragX(Math.max(-RUBBER_LIMIT, Math.min(RUBBER_LIMIT, diffX * 0.28)));
-    } else {
-      setDragX(Math.max(-95, Math.min(95, diffX)));
-    }
+    setDragX(Math.max(-95, Math.min(95, diffX)));
   }
 
   function handlePointerUp(e) {
@@ -391,7 +362,6 @@ export default function ProductCard({ product }) {
 
   return (
     <NavLink
-      ref={cardRef}
       to={productId ? `/products/${productId}` : "#"}
       state={{
         fromProductList: true,
@@ -401,6 +371,8 @@ export default function ProductCard({ product }) {
       }}
       onClick={handleCardClick}
       onMouseLeave={handleMouseLeave}
+      onPointerEnter={() => void loadDetailOnce()}
+      onFocus={() => void loadDetailOnce()}
       className="nemesis-product-card group block overflow-hidden rounded-[18px] border border-zinc-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.035)]"
     >
       <div
@@ -415,8 +387,6 @@ export default function ProductCard({ product }) {
           setDragX(0);
         }}
       >
-        <div className="nemesis-product-card__media-frame" aria-hidden="true" />
-
         {hasDiscount && (
           <span className="nemesis-product-card__discount absolute left-3 top-3 z-30 inline-flex min-h-8 items-center rounded-full border border-red-100 bg-red-50 px-3 text-[11px] font-semibold text-red-600 shadow-[0_8px_22px_rgba(127,29,29,0.10)]">
             -{discountPercent}%
@@ -450,31 +420,29 @@ export default function ProductCard({ product }) {
         <div className="nemesis-product-card__viewport h-full w-full overflow-hidden">
           {images.length ? (
             <div
-              className="flex h-full transition-transform duration-300 ease-out"
+              className="nemesis-product-card__slide h-full w-full"
               style={{
-                transform: `translateX(calc(${-activeImage * 100}% + ${dragX}px))`,
-                transitionDuration: isDragging ? "0ms" : "300ms",
+                transform: `translate3d(${dragX}px, 0, 0)`,
+                transitionDuration: isDragging ? "0ms" : "220ms",
               }}
             >
-              {images.map((img, index) => (
-                <div
-                  key={`${img}-${index}`}
-                  className="h-full min-w-full overflow-hidden"
-                >
-                  <img
-                    src={img}
-                    alt={mergedProduct?.name || mergedProduct?.productName}
-                    draggable="false"
-                    onDragStart={(e) => e.preventDefault()}
-                    onError={() =>
-                      setFailedImages((current) =>
-                        current.includes(img) ? current : [...current, img],
-                      )
-                    }
-                    className="nemesis-product-card__image h-full w-full select-none object-cover"
-                  />
-                </div>
-              ))}
+              <img
+                key={images[activeImage] || images[0]}
+                src={images[activeImage] || images[0]}
+                alt={mergedProduct?.name || mergedProduct?.productName}
+                draggable="false"
+                onDragStart={(e) => e.preventDefault()}
+                onError={() => {
+                  const failedUrl = images[activeImage] || images[0];
+
+                  setFailedImages((current) =>
+                    current.includes(failedUrl)
+                      ? current
+                      : [...current, failedUrl],
+                  );
+                }}
+                className="nemesis-product-card__image h-full w-full select-none object-cover"
+              />
             </div>
           ) : (
             <div className="grid h-full min-w-full place-items-center text-sm font-bold text-zinc-400">
@@ -482,7 +450,6 @@ export default function ProductCard({ product }) {
             </div>
           )}
         </div>
-
         {images.length > 1 && (
           <>
             <button

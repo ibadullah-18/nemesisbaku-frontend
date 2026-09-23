@@ -1,4 +1,4 @@
-import heic2any from "heic2any";
+
 
 export const IMAGE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
@@ -177,6 +177,7 @@ export async function prepareImageFile(file, options = {}) {
   let converted;
 
   try {
+    const { default: heic2any } = await import("heic2any");
     converted = await heic2any({
       blob: file,
       toType: "image/jpeg",

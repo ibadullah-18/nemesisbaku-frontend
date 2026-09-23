@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   FiHeart,
@@ -28,7 +29,7 @@ function BrandLogo({ logoUrl, brandName, className = "" }) {
 
   return (
     <img
-      src={logoUrl}
+      src={cloudinaryResize(logoUrl, 160)}
       alt={brandName}
       draggable={false}
       className={`block h-auto object-contain select-none ${className}`}
@@ -375,8 +376,8 @@ export default function Navbar() {
             />
             <span className="text-center">
               {pullDistance >= 74
-                ? "Burax, yenilə"
-                : "Yeniləmək üçün aşağı dart"}
+                ? "Burax, yenilÉ™"
+                : "YenilÉ™mÉ™k Ã¼Ã§Ã¼n aÅŸaÄŸÄ± dart"}
             </span>
           </div>
         </div>
@@ -638,8 +639,8 @@ export default function Navbar() {
                     onChange={(e) => setLang(e.target.value)}
                     className="h-12 w-full appearance-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 pr-10 text-sm font-bold text-zinc-800 outline-none transition focus:border-zinc-300"
                   >
-                    <option value="az">Azərbaycan</option>
-                    <option value="ru">Русский</option>
+                    <option value="az">AzÉ™rbaycan</option>
+                    <option value="ru">Ð ÑƒÑÑÐºÐ¸Ð¹</option>
                     <option value="en">English</option>
                   </select>
 

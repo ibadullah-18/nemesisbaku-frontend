@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { createPortal } from "react-dom";
 import {
   FiChevronDown,
@@ -34,13 +35,13 @@ let filterOptionsRequest = null;
 const preloadedBrandImages = new Set();
 
 function getBrandImageUrl(brand) {
-  return (
+  const raw =
     brand?.logoUrl ||
     brand?.imageUrl ||
     brand?.iconUrl ||
     brand?.photoUrl ||
-    ""
-  );
+    "";
+  return cloudinaryResize(raw, 80);
 }
 
 function preloadBrandImages(brands) {
