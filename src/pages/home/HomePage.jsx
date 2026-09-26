@@ -53,112 +53,6 @@ const noProductsFallback = {
 };
 
 let homeViewMemoryCache = null;
-const homeImagePreloadQueue = [];
-const queuedHomeImageUrls = new Set();
-const preloadedHomeImageUrls = new Set();
-let homeImagePreloadHandle = null;
-
-function collectHomeImageUrls(value, urls = [], seen = new WeakSet()) {
-  if (!value) return urls;
-
-  if (Array.isArray(value)) {
-    value.forEach((item) => collectHomeImageUrls(item, urls, seen));
-    return urls;
-  }
-
-  if (typeof value !== "object" || seen.has(value)) return urls;
-  seen.add(value);
-
-  Object.entries(value).forEach(([key, child]) => {
-    if (
-      typeof child === "string" &&
-      /^https?:\/\//i.test(child) &&
-      /(image|logo|photo|thumbnail|picture|banner)/i.test(key)
-    ) {
-      urls.push(child);
-      return;
-    }
-
-    if (child && typeof child === "object") {
-      collectHomeImageUrls(child, urls, seen);
-    }
-  });
-
-  return urls;
-}
-
-function scheduleNextHomeImageBatch() {
-  if (
-    homeImagePreloadHandle !== null ||
-    homeImagePreloadQueue.length === 0 ||
-    typeof window === "undefined"
-  ) {
-    return;
-  }
-
-  const runBatch = (deadline) => {
-    homeImagePreloadHandle = null;
-    let loadedInBatch = 0;
-
-    while (
-      homeImagePreloadQueue.length > 0 &&
-      loadedInBatch < 4 &&
-      (deadline?.didTimeout || deadline?.timeRemaining?.() > 2 || !deadline)
-    ) {
-      const url = homeImagePreloadQueue.shift();
-      queuedHomeImageUrls.delete(url);
-
-      if (!url || preloadedHomeImageUrls.has(url)) continue;
-
-      preloadedHomeImageUrls.add(url);
-      const image = new Image();
-      image.decoding = "async";
-      image.fetchPriority = "low";
-      image.src = url;
-      image.decode?.().catch(() => {});
-      loadedInBatch += 1;
-    }
-
-    scheduleNextHomeImageBatch();
-  };
-
-  if ("requestIdleCallback" in window) {
-    homeImagePreloadHandle = window.requestIdleCallback(runBatch, {
-      timeout: 650,
-    });
-  } else {
-    homeImagePreloadHandle = window.setTimeout(() => runBatch(null), 16);
-  }
-}
-
-function preloadHomeAssets(...groups) {
-  if (typeof window === "undefined" || typeof Image === "undefined") return;
-
-  const urls = collectHomeImageUrls(groups);
-  const prefersMobile = window.matchMedia?.("(max-width: 639px)")?.matches;
-
-  const orderedUrls = [...new Set(urls)].sort((left, right) => {
-    const leftMobile = /mobile/i.test(left);
-    const rightMobile = /mobile/i.test(right);
-
-    if (leftMobile === rightMobile) return 0;
-    return prefersMobile
-      ? Number(rightMobile) - Number(leftMobile)
-      : Number(leftMobile) - Number(rightMobile);
-  });
-
-  orderedUrls.forEach((url) => {
-    if (preloadedHomeImageUrls.has(url) || queuedHomeImageUrls.has(url)) {
-      return;
-    }
-
-    queuedHomeImageUrls.add(url);
-    homeImagePreloadQueue.push(url);
-  });
-
-  scheduleNextHomeImageBatch();
-}
-
 function normalizeDiscoveryFilters(filters) {
   return {
     ...defaultDiscoveryFilters,
@@ -362,8 +256,6 @@ export default function HomePage() {
 
     if (!restoredFromDetails) {
       loadHome();
-    } else {
-      preloadHomeAssets(campaigns, banners, homeSections, products);
     }
 
     trackVisit("/").catch(() => {});
@@ -608,23 +500,6 @@ export default function HomePage() {
         );
         setHasMore(initialProducts.length >= initialPageSize);
       }
-
-      // API cavablarında gələn bütün görünən şəkillər əsas renderi saxlamadan,
-      // brauzer boş qalan kimi kiçik qruplarla cache/decode edilir.
-      preloadHomeAssets(
-        campaignResult.status === "fulfilled"
-          ? normalizeList(campaignResult.value)
-          : [],
-        bannerResult.status === "fulfilled"
-          ? normalizeList(bannerResult.value)
-          : [],
-        homeSectionsResult.status === "fulfilled"
-          ? normalizeList(homeSectionsResult.value)
-          : [],
-        productsResult.status === "fulfilled"
-          ? normalizeList(productsResult.value)
-          : [],
-      );
 
       const failedResult = [
         campaignResult,
@@ -954,10 +829,6 @@ export default function HomePage() {
               }}
             >
               <div className="w-full">
-                <p className="text-[16px] font-extrabold tracking-[0.22em] text-zinc-500">
-                  nemesisbaku
-                </p>
-
                 <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-zinc-950 md:text-3xl">
                   {text.allProducts}
                 </h2>
@@ -1037,31 +908,14 @@ export default function HomePage() {
             )}
 
             {showScrollTop && (
-              <div className="mt-9 flex justify-center pb-2">
+              <div className="nb-back-top-wrap">
                 <button
                   type="button"
+                  className="nb-back-top"
                   onClick={scrollToTop}
-                  className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-zinc-200 bg-white p-2 pr-5 text-left text-zinc-950 shadow-[0_16px_45px_rgba(0,0,0,0.08)] transition duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_22px_55px_rgba(0,0,0,0.12)] active:scale-[0.97]"
-                  style={{
-                    animation:
-                      "scrollTopIn 0.42s cubic-bezier(0.22,1,0.36,1) both",
-                  }}
                   aria-label={text.backToTop || "Yuxarı qalx"}
                 >
-                  <span className="pointer-events-none absolute inset-0 translate-y-full bg-gradient-to-t from-zinc-100 to-transparent transition-transform duration-500 group-hover:translate-y-0" />
-
-                  <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-zinc-950 text-white shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
-                    <FiArrowUp className="text-xl animate-[scrollTopArrow_1.7s_ease-in-out_infinite]" />
-                  </span>
-
-                  <span className="relative flex flex-col">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[0.22em] text-zinc-400">
-                      nemesisbaku
-                    </span>
-                    <span className="mt-0.5 text-sm font-extrabold">
-                      {text.backToTop || "Yuxarı qalx"}
-                    </span>
-                  </span>
+                  <FiArrowUp aria-hidden="true" />
                 </button>
               </div>
             )}

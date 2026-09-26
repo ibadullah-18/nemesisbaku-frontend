@@ -94,11 +94,11 @@ function PageShell({ children }) {
 
 function Layout({ children }) {
   return (
-    <>
+    <div className="nb-storefront">
       <Navbar />
       <PageShell>{children}</PageShell>
       <Footer />
-    </>
+    </div>
   );
 }
 

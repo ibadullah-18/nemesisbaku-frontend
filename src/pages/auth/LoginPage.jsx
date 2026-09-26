@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
@@ -121,12 +121,12 @@ export default function LoginPage() {
 
     if (
       !message ||
-      message === "ÆmÉ™liyyat uÄŸursuz oldu" ||
+      message === "Əməliyyat uğursuz oldu" ||
       message === "Unauthorized" ||
       message === "Unauthorized." ||
-      message === "ServerlÉ™ É™laqÉ™ qurulmadÄ±."
+      message === "Serverlə əlaqə qurulmadı."
     ) {
-      return text.loginError || "Email, telefon vÉ™ ya ÅŸifrÉ™ yanlÄ±ÅŸdÄ±r.";
+      return text.loginError || "Email, telefon və ya şifrə yanlışdır.";
     }
 
     return message;
@@ -138,13 +138,13 @@ export default function LoginPage() {
     if (!isValidEmailOrPhone(emailOrPhone)) {
       showToast(
         text.emailOrPhoneError ||
-          "Email vÉ™ ya telefon nÃ¶mrÉ™sini dÃ¼zgÃ¼n daxil edin.",
+          "Email və ya telefon nömrəsini düzgün daxil edin.",
       );
       return;
     }
 
     if (!password.trim()) {
-      showToast(text.passwordError || "ÅžifrÉ™ daxil edin.");
+      showToast(text.passwordError || "Şifrə daxil edin.");
       return;
     }
 
@@ -173,7 +173,7 @@ export default function LoginPage() {
 
       if (!accessToken) {
         throw new Error(
-          text.loginError || "Email, telefon vÉ™ ya ÅŸifrÉ™ yanlÄ±ÅŸdÄ±r.",
+          text.loginError || "Email, telefon və ya şifrə yanlışdır.",
         );
       }
 
@@ -187,7 +187,7 @@ export default function LoginPage() {
   }
 
   const brandName = store?.storeName || "NemesisBaku";
-  const slogan = store?.slogan || "AddÄ±mlarÄ±nÄ±zda premium stil";
+  const slogan = store?.slogan || "Addımlarınızda premium stil";
 
   return (
     <main className="min-h-screen bg-[#f5f3f5] px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
@@ -198,7 +198,7 @@ export default function LoginPage() {
       {toastError &&
         createPortal(
           <div
-            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
+            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] bg-red-600 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(220,38,38,0.28)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-auto md:right-6 md:w-auto md:min-w-[300px] ${
               toastVisible
                 ? "translate-y-0 scale-100 opacity-100"
                 : "translate-y-5 scale-95 opacity-0"
@@ -238,10 +238,10 @@ export default function LoginPage() {
 
           <div className="rounded-[20px] bg-white/80 p-5 backdrop-blur">
             <p className="text-sm font-semibold text-zinc-900">
-              {store?.address || "AF Mall, BakÄ±"}
+              {store?.address || "AF Mall, Bakı"}
             </p>
             <p className="mt-2 text-sm text-zinc-500">
-              {store?.workingHours || "HÉ™r gÃ¼n | 10:00 â€“ 21:00"}
+              {store?.workingHours || "Hər gün | 10:00 – 21:00"}
             </p>
           </div>
         </div>
@@ -259,14 +259,14 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <AnimatedInput
-                label={text.emailOrPhone || "Email vÉ™ ya telefon"}
+                label={text.emailOrPhone || "Email və ya telefon"}
                 icon={<FiUser />}
                 value={emailOrPhone}
                 onChange={(e) => setEmailOrPhone(e.target.value)}
                 type="text"
                 placeholder={
                   text.emailOrPhonePlaceholder ||
-                  "Email vÉ™ ya telefon daxil edin"
+                  "Email və ya telefon daxil edin"
                 }
               />
 
@@ -283,7 +283,7 @@ export default function LoginPage() {
                       type="button"
                       onClick={() => setShowPass(!showPass)}
                       className="shrink-0 text-xl text-zinc-500 transition hover:text-zinc-950"
-                      aria-label="ÅžifrÉ™ni gÃ¶stÉ™r"
+                      aria-label="Şifrəni göstər"
                     >
                       {showPass ? <FiEyeOff /> : <FiEye />}
                     </button>

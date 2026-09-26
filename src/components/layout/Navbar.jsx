@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
@@ -310,9 +310,9 @@ export default function Navbar() {
       return [
         {
           to: "/login",
-          label: "Login",
-          emptyIcon: <FiLogIn />,
-          filledIcon: <FiLogIn />,
+          label: text.login || "Daxil ol",
+          emptyIcon: <FiUser />,
+          filledIcon: <FiUser />,
         },
       ];
     }
@@ -339,7 +339,7 @@ export default function Navbar() {
         desktopOnly: true,
       },
     ];
-  }, [isLoggedIn, basketCount]);
+  }, [isLoggedIn, basketCount, text.login]);
   function resetHomeFromLogo() {
     closeMenu();
 
@@ -376,8 +376,8 @@ export default function Navbar() {
             />
             <span className="text-center">
               {pullDistance >= 74
-                ? "Burax, yenilÉ™"
-                : "YenilÉ™mÉ™k Ã¼Ã§Ã¼n aÅŸaÄŸÄ± dart"}
+                ? "Burax, yenilə"
+                : "Yeniləmək üçün aşağı dart"}
             </span>
           </div>
         </div>
@@ -514,6 +514,7 @@ export default function Navbar() {
                 key={item.to}
                 to={item.to}
                 aria-label={item.label}
+                data-login={item.to === "/login" ? "true" : undefined}
                 className={({ isActive }) =>
                   `relative h-9 w-9 place-items-center rounded-full text-[18px] transition-all duration-300 active:scale-95 md:h-10 md:w-10 md:text-[17px] ${
                     item.desktopOnly ? "hidden md:grid" : "grid"
@@ -530,6 +531,7 @@ export default function Navbar() {
                       {isActive ? item.filledIcon : item.emptyIcon}
                     </span>
 
+                    {item.to === "/login" && <span className="nb-login-label">{text.login || "Daxil ol"}</span>}
                     {item.count > 0 && (
                       <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-black px-1 text-[10px] font-extrabold leading-none text-white">
                         {item.count > 99 ? "99+" : item.count}
@@ -639,7 +641,7 @@ export default function Navbar() {
                     onChange={(e) => setLang(e.target.value)}
                     className="h-12 w-full appearance-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 pr-10 text-sm font-bold text-zinc-800 outline-none transition focus:border-zinc-300"
                   >
-                    <option value="az">AzÉ™rbaycan</option>
+                    <option value="az">Azərbaycan</option>
                     <option value="ru">Ð ÑƒÑÑÐºÐ¸Ð¹</option>
                     <option value="en">English</option>
                   </select>

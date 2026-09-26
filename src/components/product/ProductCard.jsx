@@ -8,17 +8,14 @@ import {
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   FiArrowUpRight,
-  FiChevronLeft,
-  FiChevronRight,
   FiHeart,
 } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { favoritesApi } from "../../api/favoritesApi";
 import "./productCard.css";
-
-const RESET_IMAGE_DELAY = 5000;
-const SWIPE_LIMIT = 45;
+import StoreCarousel from "../common/StoreCarousel";
+import { showUserToast } from "../../utils/userToast";
 
 function unwrapData(res) {
   return res?.data?.data || res?.data || res;
@@ -33,7 +30,7 @@ function cloudinaryResize(url, width) {
 }
 function getImageUrl(x) {
   if (!x) return null;
-  if (typeof x === "string") return x;
+  if (typeof x === "string") return cloudinaryResize(x, 480);
 
   const raw =
     x.imageUrl ||
@@ -45,7 +42,7 @@ function getImageUrl(x) {
     x.src ||
     null;
 
-  return cloudinaryResize(raw, 400);
+  return cloudinaryResize(raw, 480);
 }
 
 function getBrandName(product) {
@@ -61,61 +58,19 @@ export default function ProductCard({ product }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const resetTimerRef = useRef(null);
-  const pointerStartXRef = useRef(null);
-  const pointerStartYRef = useRef(null);
   const detailLoadedRef = useRef(false);
-
   const [detailProduct, setDetailProduct] = useState(null);
-  const [failedImages, setFailedImages] = useState([]);
-
-  const [activeImage, setActiveImage] = useState(0);
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [didSwipe, setDidSwipe] = useState(false);
-
   const [favorite, setFavorite] = useState(Boolean(product?.isFavorite));
   const [actionLoading, setActionLoading] = useState(false);
 
   const productId = product?.id;
-  const mergedProduct = detailProduct || product;
+  const mergedProduct = { ...product, ...detailProduct };
 
   const images = useMemo(() => {
-    const rawImages = mergedProduct?.images || [];
-    const list = rawImages.map(getImageUrl).filter(Boolean);
-
-    if (
-      mergedProduct?.mainImageUrl &&
-      !list.includes(mergedProduct.mainImageUrl)
-    ) {
-      list.unshift(mergedProduct.mainImageUrl);
-    }
-
-    if (mergedProduct?.imageUrl && !list.includes(mergedProduct.imageUrl)) {
-      list.unshift(mergedProduct.imageUrl);
-    }
-
-    return [...new Set(list)].filter((url) => !failedImages.includes(url));
-  }, [mergedProduct, failedImages]);
-
-  const visibleDotIndexes = useMemo(() => {
-    const maximumDots = 6;
-
-    if (images.length <= maximumDots) {
-      return images.map((_, index) => index);
-    }
-
-    const start = Math.min(
-      Math.max(activeImage - 2, 0),
-      images.length - maximumDots,
-    );
-
-    return Array.from(
-      { length: maximumDots },
-      (_, index) => start + index,
-    );
-  }, [activeImage, images]);
-
+    const list = [product?.mainImageUrl, product?.imageUrl, ...(product?.images || []),
+      ...(detailProduct?.images || [])].map(getImageUrl).filter(Boolean);
+    return [...new Set(list)];
+  }, [product, detailProduct]);
   const price = Number(mergedProduct?.price || 0);
   const discountPrice = Number(mergedProduct?.discountPrice || 0);
   const hasDiscount = discountPrice > 0 && discountPrice < price;
@@ -125,11 +80,6 @@ export default function ProductCard({ product }) {
     : 0;
   const brandName = getBrandName(mergedProduct);
 
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(resetTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     async function checkFavoriteStatus() {
@@ -163,7 +113,7 @@ export default function ProductCard({ product }) {
   }, [productId, product?.isFavorite]);
 
   const loadDetailOnce = useCallback(async () => {
-    if (detailLoadedRef.current || !productId) return;
+    if (detailLoadedRef.current || !productId || images.length > 1) return;
 
     try {
       detailLoadedRef.current = true;
@@ -173,131 +123,11 @@ export default function ProductCard({ product }) {
     } catch {
       detailLoadedRef.current = false;
     }
-  }, [productId]);
+  }, [productId, images.length]);
 
-
-  useEffect(() => {
-    if (activeImage < images.length) return undefined;
-    const timer = window.setTimeout(() => {
-      setActiveImage(0);
-      setDragX(0);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [activeImage, images.length]);
-
-  function startResetTimer(nextIndex) {
-    window.clearTimeout(resetTimerRef.current);
-
-    if (nextIndex === 0) return;
-
-    resetTimerRef.current = window.setTimeout(() => {
-      setActiveImage(0);
-      setDragX(0);
-    }, RESET_IMAGE_DELAY);
-  }
-
-  function changeImage(direction) {
-    if (images.length <= 1) return;
-
-    setActiveImage((prev) => {
-      const next = direction === "next"
-        ? (prev + 1) % images.length
-        : (prev - 1 + images.length) % images.length;
-
-      startResetTimer(next);
-      return next;
-    });
-  }
-
-  function goToImage(index) {
-    if (index < 0 || index >= images.length || index === activeImage) return;
-
-    setActiveImage(index);
-    setDragX(0);
-    startResetTimer(index);
-  }
-
-  function stopImageControlEvent(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  function handleImageControlClick(e, action) {
-    stopImageControlEvent(e);
-
-    if (typeof action === "number") {
-      goToImage(action);
-      return;
-    }
-
-    changeImage(action);
-  }
-
-  function handleMouseLeave() {
-    setDragX(0);
-    setIsDragging(false);
-  }
-
-  function handlePointerDown(e) {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-
-    void loadDetailOnce();
-
-    pointerStartXRef.current = e.clientX;
-    pointerStartYRef.current = e.clientY;
-
-    setIsDragging(true);
-    setDidSwipe(false);
-
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  }
-
-  function handlePointerMove(e) {
-    if (!isDragging || pointerStartXRef.current === null) return;
-
-    const diffX = e.clientX - pointerStartXRef.current;
-    const diffY = e.clientY - pointerStartYRef.current;
-
-    if (Math.abs(diffY) > Math.abs(diffX)) return;
-
-    e.preventDefault();
-
-    if (Math.abs(diffX) > 8) {
-      setDidSwipe(true);
-    }
-
-    setDragX(Math.max(-95, Math.min(95, diffX)));
-  }
-
-  function handlePointerUp(e) {
-    if (!isDragging) return;
-
-    const startX = pointerStartXRef.current;
-    if (startX === null) return;
-
-    const endX = e.clientX;
-    const diffX = endX - startX;
-
-    pointerStartXRef.current = null;
-    pointerStartYRef.current = null;
-    setIsDragging(false);
-
-    if (Math.abs(diffX) > SWIPE_LIMIT) {
-      if (diffX < 0) changeImage("next");
-      if (diffX > 0) changeImage("prev");
-    }
-
-    setDragX(0);
-  }
 
   function handleCardClick(event) {
-    if (!productId || didSwipe) {
-      event.preventDefault();
-      event.stopPropagation();
-      window.setTimeout(() => setDidSwipe(false), 80);
-      return;
-    }
-
+    if (!productId) { event.preventDefault(); return; }
     if (location.pathname === "/") {
       sessionStorage.setItem(
         "nemesis_return_product_id",
@@ -316,14 +146,13 @@ export default function ProductCard({ product }) {
       );
     }
 
-    window.setTimeout(() => setDidSwipe(false), 80);
   }
 
   async function handleFavorite(e) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!productId) return;
+    if (!productId || actionLoading) return;
 
     if (!getAccessToken()) {
       navigate("/login", {
@@ -355,6 +184,8 @@ export default function ProductCard({ product }) {
           },
         }),
       );
+    } catch {
+      showUserToast("Əməliyyat alınmadı. Yenidən yoxlayın.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -370,23 +201,9 @@ export default function ProductCard({ product }) {
         returnTo: `${location.pathname}${location.search}`,
       }}
       onClick={handleCardClick}
-      onMouseLeave={handleMouseLeave}
-      onPointerEnter={() => void loadDetailOnce()}
-      onFocus={() => void loadDetailOnce()}
       className="nemesis-product-card group block overflow-hidden rounded-[18px] border border-zinc-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.035)]"
     >
-      <div
-        className="nemesis-product-card__media relative aspect-[5/6] touch-pan-y overflow-hidden bg-[#f5f5f5]"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={() => {
-          pointerStartXRef.current = null;
-          pointerStartYRef.current = null;
-          setIsDragging(false);
-          setDragX(0);
-        }}
-      >
+      <div className="nemesis-product-card__media relative aspect-[5/6] overflow-hidden bg-[#f5f5f5]">
         {hasDiscount && (
           <span className="nemesis-product-card__discount absolute left-3 top-3 z-30 inline-flex min-h-8 items-center rounded-full border border-red-100 bg-red-50 px-3 text-[11px] font-semibold text-red-600 shadow-[0_8px_22px_rgba(127,29,29,0.10)]">
             -{discountPercent}%
@@ -417,88 +234,9 @@ export default function ProductCard({ product }) {
           {favorite ? <FaHeart className="text-red-500" /> : <FiHeart />}
         </button>
 
-        <div className="nemesis-product-card__viewport h-full w-full overflow-hidden">
-          {images.length ? (
-            <div
-              className="nemesis-product-card__slide h-full w-full"
-              style={{
-                transform: `translate3d(${dragX}px, 0, 0)`,
-                transitionDuration: isDragging ? "0ms" : "220ms",
-              }}
-            >
-              <img
-                key={images[activeImage] || images[0]}
-                src={images[activeImage] || images[0]}
-                alt={mergedProduct?.name || mergedProduct?.productName}
-                draggable="false"
-                onDragStart={(e) => e.preventDefault()}
-                onError={() => {
-                  const failedUrl = images[activeImage] || images[0];
-
-                  setFailedImages((current) =>
-                    current.includes(failedUrl)
-                      ? current
-                      : [...current, failedUrl],
-                  );
-                }}
-                className="nemesis-product-card__image h-full w-full select-none object-cover"
-              />
-            </div>
-          ) : (
-            <div className="grid h-full min-w-full place-items-center text-sm font-bold text-zinc-400">
-              Şəkil əlçatan deyil
-            </div>
-          )}
-        </div>
-        {images.length > 1 && (
-          <>
-            <button
-              type="button"
-              onPointerDown={stopImageControlEvent}
-              onClick={(e) => handleImageControlClick(e, "prev")}
-              className="nemesis-product-card__arrow absolute left-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
-              aria-label="Əvvəlki şəkil"
-            >
-              <FiChevronLeft />
-            </button>
-
-            <button
-              type="button"
-              onPointerDown={stopImageControlEvent}
-              onClick={(e) => handleImageControlClick(e, "next")}
-              className="nemesis-product-card__arrow absolute right-2.5 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/5 bg-white/90 text-xl text-zinc-950 opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition duration-200 hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
-              aria-label="Növbəti şəkil"
-            >
-              <FiChevronRight />
-            </button>
-
-          </>
-        )}
-
-        {images.length > 1 && (
-          <div
-            className="nemesis-product-card__dots absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white/70 px-1.5 py-0.5 shadow-sm backdrop-blur"
-            onPointerDown={stopImageControlEvent}
-          >
-            {visibleDotIndexes.map((imageIndex) => (
-              <button
-                type="button"
-                aria-label={`${imageIndex + 1}-ci şəkli göstər`}
-                onClick={(e) => handleImageControlClick(e, imageIndex)}
-                key={imageIndex}
-                className="relative grid h-3 w-3 place-items-center"
-              >
-                <span
-                  className={`h-1 rounded-full bg-zinc-950 transition-all duration-300 ${
-                    activeImage === imageIndex
-                      ? "w-2.5 opacity-100"
-                      : "w-1 opacity-55"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-        )}
+        {images.length ? <StoreCarousel key={productId} onIntent={loadDetailOnce}
+          items={images.map(src => ({ src, alt: mergedProduct?.name || mergedProduct?.productName }))} />
+          : <div className="nb-image__error">Şəkil əlçatan deyil</div>}
       </div>
 
       <div className="nemesis-product-card__body p-3 pt-3.5 sm:p-4 sm:pt-3.5">

@@ -124,7 +124,7 @@ export default function UserToastHost() {
   return createPortal(
     <div
       aria-live="polite"
-      className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+18px)] left-4 right-4 z-[2147483000] flex flex-col gap-2.5 md:bottom-6 md:left-6 md:right-auto md:w-[390px]"
+      className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+18px)] left-4 right-4 z-[2147483000] flex flex-col gap-2.5 md:bottom-6 md:left-auto md:right-6 md:w-[390px]"
     >
       {toasts.map((toast) => (
         <ToastItem

@@ -18,7 +18,7 @@ export default function ProductSection({ title, subtitle, products }) {
 
     row.scrollBy({
       left: direction === "right" ? cardWidth + gap : -(cardWidth + gap),
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
     });
   }
 
@@ -38,7 +38,7 @@ export default function ProductSection({ title, subtitle, products }) {
         <button
           type="button"
           onClick={() => scrollProducts("left")}
-          className="absolute -left-10 top-1/2 z-20 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-zinc-900 transition hover:-translate-x-1 md:grid"
+          className="nb-section-arrow nb-section-arrow--prev"
           aria-label="Sola sürüşdür"
         >
           <FiChevronLeft />
@@ -47,7 +47,7 @@ export default function ProductSection({ title, subtitle, products }) {
         <button
           type="button"
           onClick={() => scrollProducts("right")}
-          className="absolute -right-10 top-1/2 z-20 hidden h-[150px] w-9 -translate-y-1/2 place-items-center text-3xl font-light text-zinc-900 transition hover:translate-x-1 md:grid"
+          className="nb-section-arrow nb-section-arrow--next"
           aria-label="Sağa sürüşdür"
         >
           <FiChevronRight />

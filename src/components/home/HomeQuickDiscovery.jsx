@@ -1,156 +1,97 @@
 import { useEffect, useState } from "react";
-import {
-  FiArrowDown,
-  FiArrowUp,
-  FiBox,
-  FiChevronRight,
-} from "react-icons/fi";
+import { FiChevronDown, FiFilter } from "react-icons/fi";
 import { preloadProductDiscoveryData } from "../product/ProductDiscoveryBar";
 
-const copy = {
+const labels = {
   az: {
-    eyebrow: "Sürətli seçim",
-    title: "Axtardığını daha tez tap",
-    cheap: "Ən ucuz",
-    cheapNote: "Qiymət artan sıra ilə",
-    expensive: "Ən baha",
-    expensiveNote: "Qiymət azalan sıra ilə",
-    stock: "Stokda olanlar",
-    stockNote: "Hazır məhsulları göstər",
-    types: "Ayaqqabı növləri",
+    all:"Hamısı", sort:"Sıralama", normal:"Standart",
+    cheap:"Ən ucuz", expensive:"Ən baha",
+    stock:"Stokda olanlar", filter:"Filter", title:"Məhsul seçimləri"
   },
   ru: {
-    eyebrow: "Быстрый выбор",
-    title: "Найдите нужное быстрее",
-    cheap: "Сначала дешевле",
-    cheapNote: "По возрастанию цены",
-    expensive: "Сначала дороже",
-    expensiveNote: "По убыванию цены",
-    stock: "В наличии",
-    stockNote: "Показать доступные товары",
-    types: "Типы обуви",
+    all:"Все", sort:"Сортировка", normal:"По умолчанию",
+    cheap:"Сначала дешевле", expensive:"Сначала дороже",
+    stock:"В наличии", filter:"Фильтр", title:"Выбор товаров"
   },
   en: {
-    eyebrow: "Quick discovery",
-    title: "Find the right pair faster",
-    cheap: "Lowest price",
-    cheapNote: "Price low to high",
-    expensive: "Highest price",
-    expensiveNote: "Price high to low",
-    stock: "In stock",
-    stockNote: "Show available products",
-    types: "Shoe types",
-  },
+    all:"All", sort:"Sort by", normal:"Default",
+    cheap:"Lowest price", expensive:"Highest price",
+    stock:"In stock", filter:"Filter", title:"Product options"
+  }
 };
 
-function sendPreset(detail) {
+function change(detail) {
   window.dispatchEvent(
-    new CustomEvent("nemesis_quick_discovery", { detail }),
+    new CustomEvent("nemesis_quick_discovery", { detail })
   );
 }
 
 export default function HomeQuickDiscovery({
-  lang = "az",
-  activeFilters = {},
+  lang="az",
+  activeFilters={}
 }) {
-  const text = copy[lang] || copy.az;
-  const [categories, setCategories] = useState([]);
+  const t = labels[lang] || labels.az;
+  const [categories,setCategories] = useState([]);
 
   useEffect(() => {
-    let active = true;
-
-    preloadProductDiscoveryData()
-      .then((options) => {
-        if (active) setCategories((options?.categories || []).slice(0, 8));
-      })
-      .catch(() => {});
-
-    return () => {
-      active = false;
-    };
+    let alive=true;
+    preloadProductDiscoveryData().then(options => {
+      if (alive) setCategories(options?.categories || []);
+    }).catch(() => {});
+    return () => { alive=false; };
   }, []);
 
-  const actions = [
-    {
-      icon: <FiArrowDown />,
-      title: text.cheap,
-      note: text.cheapNote,
-      preset: { sortOrder: "price-asc" },
-    },
-    {
-      icon: <FiArrowUp />,
-      title: text.expensive,
-      note: text.expensiveNote,
-      preset: { sortOrder: "price-desc" },
-    },
-    {
-      icon: <FiBox />,
-      title: text.stock,
-      note: text.stockNote,
-      preset: { stockOnly: true },
-    },
-  ];
-
-  return (
-    <section className="nemesis-home-quick" aria-labelledby="quick-discovery-title">
-      <div className="nemesis-home-quick__heading">
-        <p>{text.eyebrow}</p>
-        <h2 id="quick-discovery-title">{text.title}</h2>
-      </div>
-
-      <div className="nemesis-home-quick__actions">
-        {actions.map((action) => (
-          <button
-            key={action.title}
-            type="button"
-            onClick={() => sendPreset(action.preset)}
-            aria-pressed={
-              (action.preset.sortOrder &&
-                activeFilters.sortOrder === action.preset.sortOrder) ||
-              (action.preset.stockOnly && activeFilters.stockOnly === true)
-            }
-            className={`nemesis-home-quick__action ${
-              (action.preset.sortOrder &&
-                activeFilters.sortOrder === action.preset.sortOrder) ||
-              (action.preset.stockOnly && activeFilters.stockOnly === true)
-                ? "is-active"
-                : ""
-            }`}
-          >
-            <i aria-hidden="true">{action.icon}</i>
-            <span>
-              <strong>{action.title}</strong>
-              <small>{action.note}</small>
-            </span>
-            <FiChevronRight aria-hidden="true" />
-          </button>
-        ))}
-      </div>
-
-      {categories.length > 0 && (
-        <div className="nemesis-home-quick__types">
-          <span>{text.types}</span>
-          <div>
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => sendPreset({ categoryId: category.id })}
-                aria-pressed={
-                  String(activeFilters.categoryId || "") === String(category.id)
-                }
-                className={
-                  String(activeFilters.categoryId || "") === String(category.id)
-                    ? "is-active"
-                    : ""
-                }
-              >
-                {category.name}
-              </button>
-            ))}
-          </div>
-        </div>
+  return <section className="nb-catalog-tools" aria-label={t.title}>
+    <div className="nb-catalog-tools__categories">
+      {[{id:"",name:t.all}, ...categories].map(category =>
+        <button
+          type="button"
+          key={category.id}
+          className="nb-category-choice"
+          aria-pressed={
+            String(activeFilters.categoryId || "") === String(category.id)
+          }
+          onClick={() => change({categoryId:category.id})}
+        >
+          {category.name}
+        </button>
       )}
-    </section>
-  );
+    </div>
+
+    <div className="nb-catalog-tools__actions">
+      <label className="nb-stock-choice">
+        <input
+          type="checkbox"
+          checked={activeFilters.stockOnly === true}
+          onChange={e => change({stockOnly:e.target.checked})}
+        />
+        <span>{t.stock}</span>
+      </label>
+
+      <div className="nb-sort-choice">
+        <select
+          aria-label={t.sort}
+          value={activeFilters.sortOrder || ""}
+          onChange={e => change({sortOrder:e.target.value})}
+        >
+          <option value="">{t.sort}: {t.normal}</option>
+          <option value="price-asc">{t.cheap}</option>
+          <option value="price-desc">{t.expensive}</option>
+        </select>
+        <FiChevronDown aria-hidden="true" />
+      </div>
+
+      <button
+        type="button"
+        className="nb-catalog-filter"
+        aria-haspopup="dialog"
+        onClick={() => window.dispatchEvent(
+          new CustomEvent("nemesis_open_filter")
+        )}
+      >
+        <FiFilter aria-hidden="true" />
+        <span>{t.filter}</span>
+      </button>
+    </div>
+  </section>;
 }

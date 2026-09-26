@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { cloudinaryResize } from "../../utils/cloudinaryUrl";
+import { showUserToast } from "../../utils/userToast";
 import { createPortal } from "react-dom";
 import {
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
-  FiChevronUp,
-  FiSliders,
   FiX,
   FiCheck,
 } from "react-icons/fi";
@@ -27,7 +26,7 @@ const emptyFilters = {
   stockOnly: false,
 };
 
-const FILTER_POSITION_KEY = "nemesis_filter_button_position";
+
 
 let filterOptionsMemoryCache = null;
 let filterOptionsCachedAt = 0;
@@ -136,41 +135,6 @@ function normalizeSavedFilters(filters) {
       : "",
     stockOnly: filters?.stockOnly === true,
   };
-}
-
-function getInitialFilterPosition() {
-  const fallback = {
-    x: window.innerWidth - (window.innerWidth < 768 ? 58 : 63),
-    y: 90,
-  };
-
-  try {
-    const stored = JSON.parse(
-      sessionStorage.getItem(FILTER_POSITION_KEY) || "null",
-    );
-    const filterSize = getFilterSize();
-
-    if (!Number.isFinite(stored?.x) || !Number.isFinite(stored?.y)) {
-      return fallback;
-    }
-
-    return {
-      x: Math.min(
-        Math.max(stored.x, 12),
-        window.innerWidth - filterSize - 12,
-      ),
-      y: Math.min(
-        Math.max(stored.y, 82),
-        window.innerHeight - filterSize - 14,
-      ),
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-function getFilterSize() {
-  return window.innerWidth < 768 ? 46 : 54;
 }
 
 function normalizeProducts(res) {
@@ -445,20 +409,10 @@ export default function ProductDiscoveryBar({
 }) {
   const { text } = useLanguage();
 
-  const filterButtonRef = useRef(null);
   const brandRowRef = useRef(null);
   const openedAtRef = useRef(0);
   const productsRequestIdRef = useRef(0);
   const filterCloseTimerRef = useRef(null);
-
-  const dragData = useRef({
-    pointerId: null,
-    startX: 0,
-    startY: 0,
-    startLeft: 0,
-    startTop: 0,
-    moved: false,
-  });
 
   const [navVisible, setNavVisible] = useState(true);
 
@@ -469,7 +423,6 @@ export default function ProductDiscoveryBar({
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterClosing, setFilterClosing] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -494,7 +447,7 @@ export default function ProductDiscoveryBar({
     normalizeSavedFilters(initialFilters),
   );
 
-  const [filterPos, setFilterPos] = useState(getInitialFilterPosition);
+
 
   useEffect(() => {
     releaseStaleFilterPageLock();
@@ -506,10 +459,8 @@ export default function ProductDiscoveryBar({
     function applyQuickDiscovery(event) {
       const preset = event.detail || {};
       const nextFilters = normalizeSavedFilters({
-        ...emptyFilters,
-        categoryId: preset.categoryId || "",
-        sortOrder: preset.sortOrder || "",
-        stockOnly: preset.stockOnly === true,
+        ...filters,
+        ...preset,
       });
 
       setFilters(nextFilters);
@@ -524,15 +475,7 @@ export default function ProductDiscoveryBar({
         "nemesis_quick_discovery",
         applyQuickDiscovery,
       );
-  }, []);
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(FILTER_POSITION_KEY, JSON.stringify(filterPos));
-    } catch {
-      // Mövqe yadda saxlanmasa filter düyməsi standart yerdə açılacaq.
-    }
-  }, [filterPos]);
+  }, [filters]);
 
   useEffect(() => {
     function resetDiscoveryFromLogo() {
@@ -543,7 +486,6 @@ export default function ProductDiscoveryBar({
       setBrandsOpen(false);
       setFilterOpen(false);
       setFilterClosing(false);
-      setIsDragging(false);
       setLoading(false);
       onLoadingChange?.(false);
     }
@@ -620,26 +562,6 @@ export default function ProductDiscoveryBar({
         refreshWhenPageBecomesActive,
       );
     };
-  }, []);
-
-  useEffect(() => {
-    function keepInsideScreen() {
-      const filterSize = getFilterSize();
-
-      setFilterPos((prev) => ({
-        x: Math.min(
-          Math.max(prev.x, 12),
-          window.innerWidth - filterSize - 12,
-        ),
-        y: Math.min(
-          Math.max(prev.y, 82),
-          window.innerHeight - filterSize - 14,
-        ),
-      }));
-    }
-
-    window.addEventListener("resize", keepInsideScreen);
-    return () => window.removeEventListener("resize", keepInsideScreen);
   }, []);
 
   useEffect(() => {
@@ -761,6 +683,7 @@ export default function ProductDiscoveryBar({
     } catch (err) {
       if (requestId === productsRequestIdRef.current) {
         console.error("Məhsullar filterlə yüklənmədi:", err);
+        showUserToast("Məhsullar yüklənmədi. Yenidən yoxlayın.", "error");
       }
     } finally {
       if (requestId === productsRequestIdRef.current) {
@@ -835,9 +758,16 @@ export default function ProductDiscoveryBar({
     closeBrands();
   }
 
+  useEffect(() => {
+    function handleOpen() { openFilter(); }
+    window.addEventListener("nemesis_open_filter", handleOpen);
+    return () => window.removeEventListener("nemesis_open_filter", handleOpen);
+    // Re-register so the modal receives the current filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
   function openFilter() {
     window.clearTimeout(filterCloseTimerRef.current);
-    setIsDragging(false);
     refreshFilterOptions().catch(() => {});
     openedAtRef.current = Date.now();
     // Seçilmiş brendi saxla: modal filterləri həmin brend daxilində işləyəcək.
@@ -904,159 +834,12 @@ export default function ProductDiscoveryBar({
     forceCloseFilter();
   }
 
-  function handleFilterPointerDown(e) {
-    if (filterOpen || (e.pointerType === "mouse" && e.button !== 0)) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    const button = filterButtonRef.current;
-    if (!button) return;
-
-    dragData.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startY: e.clientY,
-      startLeft: filterPos.x,
-      startTop: filterPos.y,
-      moved: false,
-    };
-
-    setIsDragging(true);
-
-    try {
-      button.setPointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-  }
-
-  function handleFilterPointerMove(e) {
-    const data = dragData.current;
-    if (data.pointerId !== e.pointerId) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    const diffX = e.clientX - data.startX;
-    const diffY = e.clientY - data.startY;
-    const distance = Math.sqrt(diffX * diffX + diffY * diffY);
-
-    if (distance < 8 && !data.moved) return;
-
-    data.moved = true;
-    const filterSize = getFilterSize();
-
-    const nextX = Math.min(
-      Math.max(data.startLeft + diffX, 12),
-      window.innerWidth - filterSize - 12,
-    );
-
-    const nextY = Math.min(
-      Math.max(data.startTop + diffY, 82),
-      window.innerHeight - filterSize - 14,
-    );
-
-    setFilterPos({ x: nextX, y: nextY });
-  }
-
-  function handleFilterPointerUp(e) {
-    const data = dragData.current;
-    if (data.pointerId !== e.pointerId) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      filterButtonRef.current?.releasePointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-
-    const shouldOpen = !data.moved;
-
-    setIsDragging(false);
-
-    dragData.current = {
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      startLeft: 0,
-      startTop: 0,
-      moved: false,
-    };
-
-    if (shouldOpen) {
-      window.setTimeout(openFilter, 80);
-    }
-  }
-
-  function handleFilterPointerCancel(e) {
-    const data = dragData.current;
-    if (data.pointerId !== e.pointerId) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      filterButtonRef.current?.releasePointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-
-    setIsDragging(false);
-
-    dragData.current = {
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      startLeft: 0,
-      startTop: 0,
-      moved: false,
-    };
-  }
-
   const filterPortal =
     portalReady &&
     createPortal(
       <>
-        <button
-          ref={filterButtonRef}
-          type="button"
-          onPointerDown={handleFilterPointerDown}
-          onPointerMove={handleFilterPointerMove}
-          onPointerUp={handleFilterPointerUp}
-          onPointerCancel={handleFilterPointerCancel}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onContextMenu={(e) => e.preventDefault()}
-          onDragStart={(e) => e.preventDefault()}
-          style={{
-            position: "fixed",
-            left: `${filterPos.x}px`,
-            top: `${filterPos.y}px`,
-            touchAction: "none",
-            WebkitUserSelect: "none",
-            userSelect: "none",
-          }}
-          className={`z-[70] grid h-[46px] w-[46px] place-items-center rounded-full border border-zinc-100 bg-white text-[21px] text-zinc-950 shadow-[0_12px_30px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,background-color,color,border-color] duration-200 md:h-[54px] md:w-[54px] md:text-[25px] md:shadow-[0_14px_38px_rgba(0,0,0,0.16)] ${
-            filterOpen
-              ? "scale-[1.14] bg-black text-white shadow-[0_18px_48px_rgba(36,73,137,0.28)]"
-              : ""
-          } ${
-            isDragging
-              ? "cursor-grabbing scale-105 ring-4 ring-zinc-950/10"
-              : "cursor-grab"
-          }`}
-          aria-label="Filter"
-        >
-          <FiSliders className="pointer-events-none" />
-        </button>
-
         {filterOpen && (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-5">
+          <div role="dialog" aria-modal="true" aria-label={text.filters || "Filter"} className="nb-filter-dialog fixed inset-0 z-[90] flex items-center justify-center px-4 py-5">
             <button
               type="button"
               onPointerDown={(e) => {
@@ -1220,7 +1003,13 @@ export default function ProductDiscoveryBar({
         {`
           .nemesis-brand-shelf {
             --brand-shelf-height: 79px;
-            height: 0;
+            position: absolute;
+            left: 0; right: 0; top: 100%;
+            height: var(--brand-shelf-height);
+            background: #fff;
+            visibility: hidden;
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px #00000008;
             margin-top: 0;
             overflow: hidden;
             opacity: 0;
@@ -1228,18 +1017,16 @@ export default function ProductDiscoveryBar({
             border-top: 1px solid transparent;
             contain: paint;
             backface-visibility: hidden;
-            transform: translateZ(0);
-            will-change: height, opacity, margin-top;
-            transition:
-              height 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-              opacity 170ms ease-out,
-              margin-top 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-              border-color 170ms ease-out;
+
+            will-change: auto;
+            transition: opacity 180ms ease, transform 220ms ease, visibility 220ms;
           }
 
           .nemesis-brand-shelf[data-open="true"] {
             height: var(--brand-shelf-height);
-            margin-top: 12px;
+            margin-top: 0;
+            visibility: visible;
+            transform: translateY(0);
             opacity: 1;
             pointer-events: auto;
             border-color: rgb(244 244 245);
@@ -1287,19 +1074,19 @@ export default function ProductDiscoveryBar({
             0% {
               opacity: 0;
               transform: translateY(-18px) scale(0.94);
-              filter: blur(5px);
+
             }
 
             65% {
               opacity: 1;
               transform: translateY(5px) scale(1.015);
-              filter: blur(0);
+
             }
 
             100% {
               opacity: 1;
               transform: translateY(0) scale(1);
-              filter: blur(0);
+
             }
           }
 
@@ -1307,13 +1094,13 @@ export default function ProductDiscoveryBar({
             from {
               opacity: 1;
               transform: translateY(0) scale(1);
-              filter: blur(0);
+
             }
 
             to {
               opacity: 0;
               transform: translateY(-18px) scale(0.94);
-              filter: blur(5px);
+
             }
           }
 
@@ -1343,9 +1130,10 @@ export default function ProductDiscoveryBar({
         style={{
           top: navVisible ? (window.innerWidth >= 768 ? 72 : 62) : 0,
         }}
-        className="sticky z-30 border-b border-zinc-100 bg-white transition-all duration-500"
+        className="nb-discovery sticky z-30 border-b border-zinc-100 bg-white"
       >
         <div className="relative mx-auto max-w-[1180px] px-4 py-1.5 md:px-6 md:py-2">
+
           <button
             type="button"
             onClick={toggleBrands}
@@ -1367,13 +1155,14 @@ export default function ProductDiscoveryBar({
                 brandsOpen ? "rotate-180" : "rotate-0"
               }`}
             >
-              {brandsOpen ? <FiChevronUp /> : <FiChevronDown />}
+              <FiChevronDown />
             </span>
           </button>
 
           <div
             data-open={brandsOpen}
             aria-hidden={!brandsOpen}
+            inert={!brandsOpen}
             className="nemesis-brand-shelf"
           >
             <div className="nemesis-brand-shelf-content relative py-3">

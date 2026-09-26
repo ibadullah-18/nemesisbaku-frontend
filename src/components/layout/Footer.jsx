@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { Link } from "react-router-dom";
 import {
@@ -12,20 +12,20 @@ import { FaTiktok, FaWhatsapp } from "react-icons/fa";
 import { API_BASE_URL } from "../../api/config";
 const footerText = {
   az: {
-    customer: "MÃœÅžTÆRÄ°",
-    company: "ÅžÄ°RKÆT",
-    subscribeTitle: "YeniliklÉ™rdÉ™n XÉ™bÉ™rdar Ol",
-    subscribeText: "Æn son kolleksiya vÉ™ endirimlÉ™r Ã¼Ã§Ã¼n abunÉ™ olun.",
-    emailPlaceholder: "E-mail Ã¼nvanÄ±nÄ±z",
-    subscribe: "ABUNÆ OL",
-    contact: "ÆlaqÉ™ & Ãœnvanlar",
-    delivery: "Ã‡atdÄ±rÄ±lma",
-    returns: "QaytarÄ±lma",
-    about: "HaqqÄ±mÄ±zda",
+    customer: "MÜŞTƏRİ",
+    company: "ŞİRKƏT",
+    subscribeTitle: "Yeniliklərdən Xəbərdar Ol",
+    subscribeText: "Ən son kolleksiya və endirimlər üçün abunə olun.",
+    emailPlaceholder: "E-mail ünvanınız",
+    subscribe: "ABUNƏ OL",
+    contact: "Əlaqə & Ünvanlar",
+    delivery: "Çatdırılma",
+    returns: "Qaytarılma",
+    about: "Haqqımızda",
     career: "Karyera",
-    stores: "MaÄŸazalarÄ±mÄ±z",
-    rights: "BÃ¼tÃ¼n hÃ¼quqlar qorunur.",
-    siteBy: "SITE BY HÃœSEYNZADÆ",
+    stores: "Mağazalarımız",
+    rights: "Bütün hüquqlar qorunur.",
+    siteBy: "SITE BY HÜSEYNZADƏ",
   },
   en: {
     customer: "CUSTOMER",
@@ -211,7 +211,7 @@ export default function Footer() {
 
             <p className="mx-auto mt-5 max-w-[360px] text-[13px] leading-6 text-zinc-300 md:mx-0">
               {store?.aboutContent ||
-                "Premium sneaker kolleksiyalarÄ± vÉ™ minimalist seÃ§im tÉ™crÃ¼bÉ™si."}
+                "Premium sneaker kolleksiyaları və minimalist seçim təcrübəsi."}
             </p>
 
             <div className="mt-6 flex items-center justify-center gap-5 text-[19px] text-white md:justify-start">
@@ -317,7 +317,7 @@ export default function Footer() {
 
         <div className="mt-9 border-t border-white/10 pt-6 text-center">
           <p className="text-[12px] text-zinc-300">
-            Â© 2026 {storeName}. {t.rights}
+            2026 {storeName}. {t.rights}
           </p>
 
           <a

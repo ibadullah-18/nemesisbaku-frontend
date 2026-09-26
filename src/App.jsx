@@ -15,7 +15,8 @@ export default function App() {
             margin: 0;
             background: #fafafa;
             color: #111111;
-            font-family: "Nunito Sans", Inter, Arial, sans-serif;
+            font-family: "Nunito Sans", Arial, sans-serif;
+            font-weight: 500;
           }
 
           input[type="password"]::-ms-reveal,
