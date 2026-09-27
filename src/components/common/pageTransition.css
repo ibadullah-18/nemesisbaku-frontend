@@ -1,0 +1,14 @@
+
+/* Keep fixed controls attached to the viewport. */
+.nb-page-transition {
+  min-width: 0;
+}
+
+/* Search uses the shared page animation. */
+#root .nb-page-transition .nb-top-search__panel,
+#root .nb-page-transition .nb-top-search[data-closing=true] .nb-top-search__panel {
+  animation: none !important;
+  transform: none !important;
+  filter: none !important;
+  will-change: auto !important;
+}

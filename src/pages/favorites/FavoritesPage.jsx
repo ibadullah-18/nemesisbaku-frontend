@@ -1,3 +1,4 @@
+import "../../components/search/smartSearch.css";
 import { useEffect, useMemo, useState } from "react";
 import { FiHeart } from "react-icons/fi";
 import ProductCard from "../../components/product/ProductCard";
@@ -104,11 +105,7 @@ export default function FavoritesPage() {
             {text.favorites}
           </h1>
 
-          {products.length > 0 && (
-            <span className="nemesis-favorites-count">
-              <FiHeart aria-hidden="true" /> {products.length}
-            </span>
-          )}
+          
         </div>
 
         {products.length === 0 ? (

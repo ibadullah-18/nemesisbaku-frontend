@@ -406,6 +406,7 @@ export default function ProductDiscoveryBar({
   onProductsChange,
   onLoadingChange,
   initialFilters,
+  productLoader,
 }) {
   const { text } = useLanguage();
 
@@ -665,7 +666,7 @@ export default function ProductDiscoveryBar({
     try {
       setLoading(true);
       onLoadingChange?.(true);
-      const res = await getProducts(buildServerFilters(nextFilters));
+      const res = await (productLoader || getProducts)(buildServerFilters(nextFilters));
 
       if (requestId !== productsRequestIdRef.current) return;
 
@@ -677,6 +678,7 @@ export default function ProductDiscoveryBar({
 
       onProductsChange?.(products, {
         active,
+        searchPartial: Boolean(res?.searchPartial),
         filters: nextFilters,
         ...requestMeta,
       });

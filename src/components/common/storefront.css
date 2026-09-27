@@ -512,3 +512,297 @@
 body:has(.nb-product-buy-dock.is-floating[data-visible="true"]) .nb-user-toast-host {
   bottom:calc(env(safe-area-inset-bottom) + 112px);
 }
+
+
+/* Top search and carousel continuation. */
+.nb-top-search {
+  background:#fafafa;
+  min-height:65svh;
+  padding:16px 20px 40px;
+  perspective:1100px;
+}
+
+.nb-top-search__panel {
+  max-width:1000px;
+  margin:auto;
+  transform-origin:top center;
+  animation:nbTopSearchIn 260ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+.nb-top-search[data-closing=true] .nb-top-search__panel {
+  animation:nbTopSearchOut 180ms ease both;
+  pointer-events:none;
+}
+
+.nb-top-search header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:16px;
+}
+
+.nb-top-search h1 {
+  font-size:26px;
+  font-weight:600;
+  letter-spacing:-.03em;
+}
+
+.nb-top-search form {display:flex;gap:10px}
+
+.nb-top-search button {
+  font:inherit;
+  border-radius:8px;
+  transition:background-color 180ms ease;
+}
+
+.nb-top-search button:disabled {opacity:.5;cursor:not-allowed}
+
+.nb-top-search__icon {
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  background:#fff;
+  border:1px solid #e4e4e7;
+}
+
+.nb-top-search__brands {margin-top:24px}
+
+.nb-top-search h2,
+.nb-top-search__results>p {
+  font-size:13px;
+  color:#71717a;
+}
+
+.nb-top-search__results {margin-top:20px}
+
+.nb-top-search__result {
+  width:100%;
+  display:grid;
+  grid-template-columns:68px minmax(0,1fr) 20px;
+  align-items:center;
+  gap:14px;
+  padding:12px;
+  margin-top:8px;
+  text-align:left;
+  background:white;
+  border:1px solid #e4e4e7;
+}
+
+.nb-top-search__photo {
+  height:76px;
+  background:#fff;
+  display:grid;
+  place-items:center;
+}
+
+.nb-top-search__photo img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+.nb-top-search__result>span:nth-child(2) {
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+
+.nb-top-search__result small {font-size:11px;color:#71717a}
+
+.nb-top-search__result strong {
+  font-size:14px;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+
+.nb-top-search__result>span>span {font-size:13px}
+
+.nb-top-search__all {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  width:100%;
+  margin-top:14px;
+  padding:14px;
+  background:#fff;
+  border:1px solid #dedee2;
+}
+
+#root .nb-section-more {
+  align-self:stretch;
+  display:flex;
+}
+
+#root .nb-section-more button {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  width:100%;
+  min-height:260px;
+  padding:20px;
+  border:1px solid #dedee2;
+  border-radius:8px;
+  background:#fff;
+  color:#27272a;
+  font:inherit;
+  transition:background-color 180ms ease;
+}
+
+#root .nb-section-more svg {width:24px;height:24px}
+#root .nb-section-more button:disabled {opacity:.55;cursor:wait}
+
+#root .nemesis-product-card :is(
+  .nemesis-product-card__media,
+  .nemesis-product-card__image,
+  .nb-carousel,
+  .nb-carousel__rail,
+  .nb-carousel__slide,
+  .nb-image
+) {
+  background:#fff!important;
+}
+
+#root .nemesis-product-card .nb-image img {
+  background:#fff;
+  object-fit:contain;
+}
+
+@media(hover:hover) {
+  .nb-top-search__result:hover,
+  .nb-top-search__icon:hover,
+  .nb-top-search__all:hover,
+  #root .nb-section-more button:hover:not(:disabled) {
+    background:#e9e9eb;
+  }
+}
+
+.nb-top-search :is(button,input):focus-visible,
+#root .nb-section-more button:focus-visible {
+  outline:2px solid #71717a;
+  outline-offset:3px;
+}
+
+@media(max-width:600px) {
+  .nb-top-search {padding:12px 14px 30px}
+  .nb-top-search form {flex-wrap:wrap}
+  .nb-top-search .nb-search-input {flex-basis:100%}
+  .nb-top-search .nb-search-submit {width:100%}
+}
+
+@keyframes nbTopSearchIn {
+  from {opacity:0;transform:translateY(-10px) rotateX(-5deg)}
+  to {opacity:1;transform:none}
+}
+
+@keyframes nbTopSearchOut {
+  to {opacity:0;transform:translateY(-8px) rotateX(-3deg)}
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .nb-top-search__panel {animation:none!important}
+  .nb-top-search * {transition:none!important}
+}
+
+/* NB_SEARCH_CRISP_START */
+
+#root .nb-top-search {
+  perspective: none;
+}
+
+#root .nb-top-search .nb-search-input {
+  border: 1px solid #e4e4e7;
+  box-shadow: none;
+}
+
+#root .nb-top-search .nb-search-input:focus-within {
+  border-color: #b8b8c0;
+  box-shadow: 0 0 0 2px rgb(113 113 122 / 7%);
+}
+
+#root .nb-top-search .nb-search-input input,
+#root .nb-top-search .nb-search-input input:focus,
+#root .nb-top-search .nb-search-input input:focus-visible {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 44px;
+}
+
+#root .nb-top-search button:focus-visible {
+  outline: 2px solid #a1a1aa;
+  outline-offset: 3px;
+}
+
+#root .nb-top-search__panel {
+  transform: none;
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
+  animation: nbSearchCrispIn 240ms ease-out backwards;
+}
+
+#root .nb-top-search[data-closing=true] .nb-top-search__panel {
+  animation: nbSearchCrispOut 180ms ease forwards;
+}
+
+@keyframes nbSearchCrispIn {
+  from {
+    opacity: 0;
+    transform: perspective(1100px) translateY(-8px) rotateX(-3deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nbSearchCrispOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (max-width: 767px) {
+  #root .nb-top-search__panel {
+    animation: nbSearchMobileIn 180ms ease-out backwards;
+    transform: none !important;
+  }
+
+  #root .nb-top-search[data-closing=true] .nb-top-search__panel {
+    animation: nbSearchMobileOut 140ms ease forwards;
+  }
+}
+
+@keyframes nbSearchMobileIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes nbSearchMobileOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #root .nb-top-search__panel,
+  #root .nb-top-search[data-closing=true] .nb-top-search__panel {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* NB_SEARCH_CRISP_END */

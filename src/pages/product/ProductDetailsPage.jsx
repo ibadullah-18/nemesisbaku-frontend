@@ -473,19 +473,33 @@ export default function ProductDetailsPage() {
   }, [id, loading]);
 
   function handleBack() {
-    const returnTo = location.state?.returnTo;
-    const cameFromWebsite =
-      location.state?.fromProductList ||
-      location.state?.fromHome ||
-      location.state?.fromSearch;
+ const state = location.state || {};
+ const returnTo = state.returnTo;
 
-    if (cameFromWebsite) {
-      navigate(-1);
-      return;
-    }
+ const safeReturn =
+  typeof returnTo === "string" &&
+  returnTo.startsWith("/") &&
+  !returnTo.startsWith("//");
 
-    navigate(returnTo || "/", { replace: true });
+ if (state.fromSearch && safeReturn) {
+  if (state.searchHistoryEntry) {
+   navigate(-1);
+  } else {
+   navigate(returnTo, {
+    replace: true,
+    state: state.searchReturnState
+   });
   }
+  return;
+ }
+
+ if (state.fromProductList || state.fromHome) {
+  navigate(-1);
+  return;
+ }
+
+ navigate(safeReturn ? returnTo : "/", { replace: true });
+}
 
   function openImageModal() {
     if (!images.length) return;
@@ -1074,19 +1088,13 @@ export default function ProductDetailsPage() {
               <ProductSection
                 title={text.selectedForYou}
                 products={relatedProducts}
+                hasMore={relatedHasMore}
+                moreLoading={relatedLoading}
+                onLoadMore={() => loadRelated(product, relatedPage + 1)}
+                moreLabel={text.loadMore || text.more}
+                loadingLabel={text.loading}
               />
-              {relatedHasMore && (
-                <div className="nb-detail-related__more">
-                  <button
-                    type="button"
-                    className="nemesis-home-load-more"
-                    onClick={() => loadRelated(product, relatedPage + 1)}
-                    disabled={relatedLoading}
-                  >
-                    {relatedLoading ? text.loading : (text.loadMore || text.more)}
-                  </button>
-                </div>
-              )}
+              
             </div>
           )}
         </div>

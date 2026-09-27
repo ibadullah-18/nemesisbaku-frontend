@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import HomeSearchResults from "../../components/search/HomeSearchResults";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -176,6 +178,15 @@ async function requestWithRetry(request, attempts = 3) {
 }
 
 export default function HomePage() {
+  const [params] = useSearchParams();
+  const query = (params.get("q") || "").trim().slice(0, 80);
+
+  return query
+    ? <HomeSearchResults key={query} query={query} />
+    : <HomeLandingPage />;
+}
+
+function HomeLandingPage() {
   const { text, lang } = useLanguage();
   const [restoredHomeState] = useState(readRestorableHomeState);
   const restoredFromDetails = Boolean(restoredHomeState);
@@ -906,7 +917,7 @@ export default function HomePage() {
               </div>
             )}
 
-            {showScrollTop && (
+            {showScrollTop && page >= 3 && !filterActive && (
               <div className="nb-back-top-wrap">
                 <button
                   type="button"

@@ -1,3 +1,4 @@
+import PageTransition from "../components/common/PageTransition";
 import { lazy, Suspense, useLayoutEffect } from "react";
 import {
   Navigate,
@@ -80,17 +81,25 @@ function PageShell({ children }) {
   const navigationType = useNavigationType();
 
   useLayoutEffect(() => {
-    if (navigationType === "POP") return;
+    if (
+      navigationType === "POP" ||
+      Number.isFinite(location.state?.restoreSearchY)
+    ) return;
 
     window.scrollTo({
       top: 0,
       left: 0,
-      behavior: "auto",
+      behavior: "instant"
     });
-  }, [location.key, navigationType]);
+  }, [location.key, navigationType, location.state]);
 
-  return <div>{children}</div>;
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <PageTransition>{children}</PageTransition>
+    </Suspense>
+  );
 }
+
 
 function Layout({ children }) {
   return (

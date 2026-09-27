@@ -1,9 +1,33 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import ProductCard from "../product/ProductCard";
 
-export default function ProductSection({ title, products }) {
+export default function ProductSection({ title, products, hasMore = false, moreLoading = false, onLoadMore, moreLabel = "Daha çox", loadingLabel = "Yüklənir..." }) {
   const rowRef = useRef(null);
+  const pending = useRef(null);
+
+  useEffect(() => {
+    if (pending.current === null || products.length <= pending.current) {
+      return;
+    }
+
+    const row = rowRef.current;
+    const first = row?.querySelectorAll("[data-product-item]")[pending.current];
+
+    pending.current = null;
+
+    if (first) {
+      row.scrollTo({
+        left:
+          row.scrollLeft +
+          first.getBoundingClientRect().left -
+          row.getBoundingClientRect().left,
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth"
+      });
+    }
+  }, [products.length]);
 
   if (!products || products.length === 0) return null;
 
@@ -68,6 +92,22 @@ export default function ProductSection({ title, products }) {
                 <ProductCard product={product} />
               </div>
             ))}
+
+            {hasMore && (
+              <div className="nb-section-more nemesis-home-product-section__card w-[47%] min-w-[47%] shrink-0 sm:w-[210px] sm:min-w-[210px] md:w-[240px] md:min-w-[240px]">
+                <button
+                  type="button"
+                  disabled={moreLoading}
+                  onClick={() => {
+                    pending.current = products.length;
+                    onLoadMore?.();
+                  }}
+                >
+                  <FiChevronRight aria-hidden="true" />
+                  <span>{moreLoading ? loadingLabel : moreLabel}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

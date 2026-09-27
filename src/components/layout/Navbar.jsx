@@ -453,6 +453,7 @@ export default function Navbar() {
 
             <NavLink
               to="/search"
+              state={{searchReturnTo: window.location.pathname + window.location.search}}
               className={({ isActive }) =>
                 `grid h-9 w-9 place-items-center rounded-full text-[18px] transition hover:bg-zinc-50 active:scale-95 md:hidden ${
                   isActive ? "bg-black/5 text-black" : "text-zinc-800"
@@ -499,6 +500,7 @@ export default function Navbar() {
           <div className="flex items-center gap-1.5 md:gap-2.5">
             <NavLink
               to="/search"
+              state={{searchReturnTo: window.location.pathname + window.location.search}}
               className={({ isActive }) =>
                 `hidden h-9 w-9 place-items-center rounded-full text-[18px] transition hover:bg-zinc-50 active:scale-95 md:grid md:h-10 md:w-10 md:text-[17px] ${
                   isActive ? "bg-black/5 text-black" : "text-zinc-800"
