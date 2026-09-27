@@ -1,0 +1,142 @@
+
+.nb-mobile-order-dock {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .nemesis-basket-page,
+  .nemesis-checkout-page {
+    padding-bottom: 150px !important;
+  }
+
+  .nb-mobile-order-dock {
+    position: fixed;
+    z-index: 9000;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(140px, .95fr);
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 1px solid #e4e4e7;
+    box-shadow: 0 -4px 20px #18181b08;
+    font-family: "Nunito Sans", sans-serif;
+    color: #27272a;
+    transform: translateY(110%);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      transform 180ms ease,
+      opacity 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .nb-mobile-order-dock[data-open="true"] {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .nb-mobile-order-dock__price > span {
+    font-size: 11px;
+    color: #71717a;
+  }
+
+  .nb-mobile-order-dock__price > div {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nb-mobile-order-dock strong {
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .nb-mobile-order-dock del {
+    font-size: 12px;
+    color: #a1a1aa;
+  }
+
+  .nb-mobile-order-dock small {
+    display: block;
+    font-size: 11px;
+    color: #be3545;
+  }
+
+  .nb-mobile-order-dock button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #18181b;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    transition: background-color 180ms ease;
+  }
+
+  .nb-mobile-order-dock button:active {
+    background: #343438;
+  }
+
+  .nb-mobile-order-dock button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+
+  .nb-mobile-order-dock button:focus-visible {
+    outline: 2px solid #71717a;
+    outline-offset: 3px;
+  }
+
+  .nb-mobile-order-dock svg {
+    flex-shrink: 0;
+  }
+
+  body:has(.nb-mobile-order-dock[data-open="true"]) .nb-user-toast-host {
+    bottom: calc(var(--nb-order-dock-height, 110px) + 12px) !important;
+  }
+}
+
+.nb-address-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 15px;
+  background: #fff;
+  border: 1px solid #dedee2;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: #27272a;
+  font-size: 14px;
+  transition: background-color 180ms ease;
+}
+
+.nb-address-toggle:hover {
+  background: #e9e9eb;
+}
+
+.nb-address-edit-hint {
+  font-size: 12px;
+  color: #71717a;
+  margin-bottom: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-mobile-order-dock {
+    animation: none;
+    transition: none;
+  }
+}

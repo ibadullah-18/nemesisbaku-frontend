@@ -1,3 +1,4 @@
+import "../profile/accountUI.css";
 import { useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -14,7 +15,7 @@ export default function ProfileSettingsPage() {
   const { text } = useLanguage();
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
+    <main className="nb-account min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[980px]">
         <header className="grid grid-cols-[44px_1fr_44px] items-center">
           <button
@@ -27,9 +28,7 @@ export default function ProfileSettingsPage() {
           </button>
 
           <div className="text-center">
-            <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
-              nemesisbaku
-            </p>
+            
             <h1 className="mt-1 text-lg font-medium tracking-[-0.025em] text-zinc-950">
               {text.profileSettings}
             </h1>
@@ -37,10 +36,8 @@ export default function ProfileSettingsPage() {
           <div />
         </header>
 
-        <section className="mt-7 animate-[settingsUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[24px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/45">
-            Account
-          </p>
+        <section className="mt-7 animate-[settingsUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[8px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
+          
           <h2 className="mt-3 text-[34px] font-medium tracking-[-0.055em] md:text-[52px]">
             {text.profileSettings}
           </h2>
@@ -49,7 +46,17 @@ export default function ProfileSettingsPage() {
           </p>
         </section>
 
-        <section className="mt-5 overflow-hidden rounded-[22px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.045)]">
+        <button
+          type="button"
+          className="nb-link-card"
+          onClick={() => navigate("/profile/settings/account#loyalty-card")}
+        >
+          <FiUser aria-hidden="true" />
+          {text.loyaltyCard}
+          <FiChevronRight aria-hidden="true" />
+        </button>
+
+        <section className="mt-5 overflow-hidden rounded-[8px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.045)]">
           <SettingsRow
             icon={<FiUser />}
             title={text.accountInfo}
@@ -95,7 +102,7 @@ function SettingsRow({ icon, title, desc, onClick }) {
       className="group flex w-full items-center justify-between gap-4 border-b border-zinc-100 px-5 py-5 text-left transition hover:bg-zinc-50 last:border-b-0 active:scale-[0.995] md:px-6"
     >
       <div className="flex min-w-0 items-center gap-4">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950 transition group-hover:bg-white">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[8px] bg-zinc-50 text-xl text-zinc-950 transition group-hover:bg-white">
           {icon}
         </div>
         <div className="min-w-0">

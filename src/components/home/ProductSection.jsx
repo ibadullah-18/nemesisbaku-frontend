@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import ProductCard from "../product/ProductCard";
 
-export default function ProductSection({ title, subtitle, products }) {
+export default function ProductSection({ title, products }) {
   const rowRef = useRef(null);
 
   if (!products || products.length === 0) return null;
@@ -30,9 +30,6 @@ export default function ProductSection({ title, subtitle, products }) {
             {title}
           </h2>
 
-          <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">
-            {subtitle || "SÜRÜŞDÜR"}
-          </p>
         </div>
 
         <button

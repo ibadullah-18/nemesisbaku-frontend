@@ -34,7 +34,16 @@ export function clearTokens() {
   window.dispatchEvent(new Event("nemesis_auth_changed"));
 }
 
-async function refreshAccessToken() {
+let refreshRequest = null;
+function refreshAccessToken() {
+  if (!refreshRequest) {
+    refreshRequest = performTokenRefresh().finally(() => {
+      refreshRequest = null;
+    });
+  }
+  return refreshRequest;
+}
+async function performTokenRefresh() {
   const refreshToken = getRefreshToken();
 
   if (!refreshToken) {
@@ -103,23 +112,20 @@ export async function apiFetch(endpoint, options = {}, retry = true) {
     throw new Error("Serverlə əlaqə qurulmadı.");
   }
 
-  if (res.status === 401 && retry) {
-    const newToken = await refreshAccessToken();
+  if (res.status === 401 && retry && (token || getRefreshToken())) {
+    const currentToken = getAccessToken();
+    const newToken = currentToken && currentToken !== token
+      ? currentToken : await refreshAccessToken();
 
-    if (!newToken) {
-      clearTokens();
+    if (newToken) return apiFetch(endpoint, options, false);
 
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
-
-      return null;
+    // Public GET requests may work without the expired session.
+    if (token && (options.method || "GET").toUpperCase() === "GET") {
+      return apiFetch(endpoint, options, false);
     }
-
-    return apiFetch(endpoint, options, false);
   }
 
-  let result = null;
+  let result;
 
   try {
     result = await res.json();
@@ -128,14 +134,24 @@ export async function apiFetch(endpoint, options = {}, retry = true) {
   }
 
   if (!res.ok) {
-    const message =
-      result?.message ||
-      result?.error ||
-      result?.errors?.[0] ||
-      result?.title ||
-      "Əməliyyat uğursuz oldu";
+    const validationMessages =
+      result?.errors && typeof result.errors === "object"
+        ? Object.values(result.errors)
+            .flat()
+            .filter(value => typeof value === "string")
+        : [];
 
-    throw new Error(message);
+    const message = [
+      result?.message,
+      result?.error,
+      validationMessages.join(" "),
+      result?.title
+    ].find(value => typeof value === "string" && value.trim())
+      || "Əməliyyat uğursuz oldu";
+
+    const error = new Error(message);
+    error.status = res.status;
+    throw error;
   }
 
   return result;

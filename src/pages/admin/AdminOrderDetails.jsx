@@ -1,3 +1,4 @@
+import { orderCard, customerNote } from "../../utils/loyaltyOrder";
 import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import {
@@ -168,6 +169,7 @@ export default function AdminOrderDetails() {
           <div className="nb-orders__key-values">
             <DetailValue label="Müştəri">{order.customerFullName || "—"}</DetailValue>
             <DetailValue label="Telefon">{order.customerPhoneNumber || "—"}</DetailValue>
+            <DetailValue label="Loyallıq kartı">{orderCard(order) || "—"}</DetailValue>
             <DetailValue label="Çatdırılma növü">{orderDeliveryType(order.deliveryType)}</DetailValue>
             <DetailValue label="Ödəniş üsulu">{paymentMethodText(order.paymentMethod)}</DetailValue>
           </div>
@@ -198,12 +200,12 @@ export default function AdminOrderDetails() {
             <DetailValue label="Saat aralığı">{order.deliveryTimeRange || "—"}</DetailValue>
             <DetailValue label="Məsafə">{order.deliveryDistanceKm == null ? "—" : `${order.deliveryDistanceKm} km`}</DetailValue>
           </div>
-          {order.note && <p className="nb-orders__note nb-orders__note--box">Qeyd: {order.note}</p>}
+          {customerNote(order.note) && <p className="nb-orders__note nb-orders__note--box">Qeyd: {customerNote(order.note)}</p>}
           {order.latitude != null && order.longitude != null && <a className="nb-orders__back" style={{ margin: "18px 0 0" }}
             href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`} target="_blank" rel="noreferrer">Ünvanı xəritədə aç</a>}
         </section>}
-        {!isDelivery && order.note && <section className="nb-orders__detail-card">
-          <h2>Sifariş qeydi</h2><p className="nb-orders__note">{order.note}</p>
+        {!isDelivery && customerNote(order.note) && <section className="nb-orders__detail-card">
+          <h2>Sifariş qeydi</h2><p className="nb-orders__note">{customerNote(order.note)}</p>
         </section>}
       </main>
       <aside className="nb-orders__detail-side">

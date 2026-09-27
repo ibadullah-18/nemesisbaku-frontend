@@ -1,6 +1,5 @@
+import MobileOrderAction from "../../components/common/MobileOrderAction";
 import {
-  lazy,
-  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -9,13 +8,16 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
   FiCheck,
-  FiChevronRight,
   FiHeart,
   FiMinus,
   FiPlus,
-  FiShoppingBag,
-  FiTrash2,
 } from "react-icons/fi";
+import {
+  HiOutlineShoppingBag as FiShoppingBag,
+  HiOutlineTrash as FiTrash2,
+  HiOutlineReceiptPercent
+} from "react-icons/hi2";
+import "../checkout/orderPolish.css";
 import { FaHeart, FaWhatsapp } from "react-icons/fa";
 import BasketPageSkeleton from "../../components/basket/BasketPageSkeleton";
 import { basketApi } from "../../api/basketApi";
@@ -27,11 +29,6 @@ import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
 import "./basketPage.css";
 
-const ThreeUIDotMatrix = lazy(() =>
-  import("@designcodeio/threeui/components/DotMatrixBackground").then(
-    (module) => ({ default: module.DotMatrixBackground }),
-  ),
-);
 
 const STORE_WHATSAPP_NUMBER = "994514349829";
 const SWIPE_LIMIT = 45;
@@ -94,17 +91,6 @@ function getProductSizes(product) {
   ];
 }
 
-function canUseThreeUiEffect() {
-  if (typeof window === "undefined") return false;
-
-  const wideScreen = window.matchMedia("(min-width: 768px)").matches;
-  const reducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
-  const enoughCpu = (navigator.hardwareConcurrency || 4) >= 4;
-
-  return wideScreen && !reducedMotion && enoughCpu;
-}
 
 export default function BasketPage() {
   const navigate = useNavigate();
@@ -133,7 +119,6 @@ export default function BasketPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
-  const [showThreeUi, setShowThreeUi] = useState(canUseThreeUiEffect);
 
   const items = useMemo(() => basket.items || [], [basket.items]);
 
@@ -176,22 +161,7 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
-  useEffect(() => {
-    const screenQuery = window.matchMedia("(min-width: 768px)");
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    function syncThreeUiAvailability() {
-      setShowThreeUi(canUseThreeUiEffect());
-    }
-
-    screenQuery.addEventListener("change", syncThreeUiAvailability);
-    motionQuery.addEventListener("change", syncThreeUiAvailability);
-
-    return () => {
-      screenQuery.removeEventListener("change", syncThreeUiAvailability);
-      motionQuery.removeEventListener("change", syncThreeUiAvailability);
-    };
-  }, []);
 
 function showError(message) {
   showUserToast(message, "error");
@@ -652,33 +622,9 @@ if (loading) {
             </section>
 
             <aside className="nemesis-basket-summary order-2 h-max overflow-hidden rounded-[18px] bg-white shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
-              <div className="nemesis-basket-summary__visual">
-                <div className="nemesis-basket-summary__fallback" />
-                {showThreeUi && (
-                  <Suspense fallback={null}>
-                    <ThreeUIDotMatrix
-                      className="nemesis-basket-threeui"
-                      speed={0.38}
-                      gridScale={74}
-                      mouseAmount={0.025}
-                      pulseSpeed={0.24}
-                      radius={0.12}
-                      opacity={0.22}
-                      hue={338}
-                    />
-                  </Suspense>
-                )}
-                <div className="nemesis-basket-summary__brand">
-                  <span>nemesisbaku</span>
-                  <strong>
-                    {selectedItems.length}/{items.length}
-                  </strong>
-                </div>
-              </div>
-
               <div className="nemesis-basket-summary__body">
                 <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
-                  {text.orderSummary}
+                  <HiOutlineReceiptPercent aria-hidden="true" /> {text.orderSummary}
                 </h2>
 
               <div className="mt-5 space-y-3">
@@ -758,14 +704,14 @@ if (loading) {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={goCheckout}
-                className="nemesis-basket-checkout mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition active:scale-[0.98]"
-              >
-                {text.completeOrder}
-                <FiChevronRight />
-              </button>
+              <MobileOrderAction
+      total={payableTotal}
+      original={selectedOriginalTotal}
+      label={text.completeOrder}
+      onClick={goCheckout}
+      disabled={Boolean(actionId) || promoLoading}
+      className="nemesis-basket-checkout mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-zinc-950 text-sm font-medium text-white"
+    />
 
               <button
                 type="button"
@@ -799,7 +745,7 @@ if (loading) {
                         loadRelatedProducts(relatedPage + 1, false)
                       }
                       disabled={relatedLoading}
-                      className="h-12 rounded-[14px] bg-zinc-950 px-7 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
+                      className="nemesis-home-load-more h-12 rounded-[14px] bg-zinc-950 px-7 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60"
                     >
                       {relatedLoading ? text.loading : text.more}
                     </button>

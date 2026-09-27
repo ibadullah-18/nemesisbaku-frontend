@@ -317,7 +317,7 @@ export default function Footer() {
 
         <div className="mt-9 border-t border-white/10 pt-6 text-center">
           <p className="text-[12px] text-zinc-300">
-            2026 {storeName}. {t.rights}
+            @2026 {storeName}. {t.rights}
           </p>
 
           <a

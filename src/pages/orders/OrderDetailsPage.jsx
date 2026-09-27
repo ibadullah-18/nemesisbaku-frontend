@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { orderCard, customerNote } from "../../utils/loyaltyOrder";
+import "../profile/accountUI.css";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -36,6 +38,7 @@ export default function OrderDetailsPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
 
+  const requestRef = useRef(0);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,16 +49,18 @@ export default function OrderDetailsPage() {
   );
 
   async function loadOrder() {
+    const ticket = ++requestRef.current;
     try {
       setLoading(true);
       setError("");
+      setOrder(null);
 
       const res = await ordersApi.detail(id);
-      setOrder(unwrap(res));
+      if (ticket === requestRef.current) setOrder(unwrap(res));
     } catch (err) {
-      setError(err.message || text.orderDetailLoadError);
+      if (ticket === requestRef.current) setError(err.message || text.orderDetailLoadError);
     } finally {
-      setLoading(false);
+      if (ticket === requestRef.current) setLoading(false);
     }
   }
 
@@ -63,13 +68,14 @@ export default function OrderDetailsPage() {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOrder();
+    return () => { requestRef.current += 1; };
     // The request is keyed by the route id; language changes must not refetch it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <main className="nb-account min-h-[calc(100dvh-72px)] bg-[#fafafa]">
         <AppLoader text={text.loading} />
       </main>
     );
@@ -77,7 +83,7 @@ export default function OrderDetailsPage() {
 
   if (!order) {
     return (
-      <main className="min-h-screen bg-[#fafafa] px-5 py-10 text-center">
+      <main className="nb-account min-h-screen bg-[#fafafa] px-5 py-10 text-center">
         <p className="font-medium text-red-600">
           {error || text.orderNotFound}
         </p>
@@ -88,7 +94,7 @@ export default function OrderDetailsPage() {
   const isBadStatus = Number(order.status) === 6 || Number(order.status) === 7;
 
   return (
-    <main className="order-details-page min-h-screen bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
+    <main className="nb-account order-details-page min-h-screen bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
       <div className="order-details-page__shell mx-auto max-w-[1180px]">
         <button
           type="button"
@@ -101,7 +107,7 @@ export default function OrderDetailsPage() {
 
         <section className="order-details-page__grid grid gap-5 lg:grid-cols-[1fr_370px]">
           <div className="space-y-5">
-            <div className="order-details-card order-details-card--overview rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+            <div className="order-details-card order-details-card--overview rounded-[8px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
@@ -126,7 +132,7 @@ export default function OrderDetailsPage() {
 
               <div className="mt-7">
                 {isBadStatus ? (
-                  <div className="flex items-center gap-3 rounded-[16px] bg-red-50 px-4 py-4 text-red-700">
+                  <div className="flex items-center gap-3 rounded-[8px] bg-red-50 px-4 py-4 text-red-700">
                     <span className="grid h-10 w-10 place-items-center rounded-full bg-red-600 text-white">
                       <FiX />
                     </span>
@@ -152,7 +158,7 @@ export default function OrderDetailsPage() {
                             className="order-timeline__group flex flex-1 items-center"
                           >
                             <div
-                              className={`order-timeline__step flex min-h-[112px] flex-1 flex-col items-center justify-center rounded-[16px] border px-3 py-4 text-center transition-all duration-300 ${
+                              className={`order-timeline__step flex min-h-[112px] flex-1 flex-col items-center justify-center rounded-[8px] border px-3 py-4 text-center transition-all duration-300 ${
                                 active
                                   ? "border-zinc-950 bg-zinc-950 text-white shadow-[0_16px_35px_rgba(0,0,0,0.12)]"
                                   : "border-zinc-100 bg-zinc-50 text-zinc-400"
@@ -220,7 +226,7 @@ export default function OrderDetailsPage() {
                             </div>
 
                             <div
-                              className={`flex-1 rounded-[14px] border px-4 py-3 transition ${
+                              className={`flex-1 rounded-[8px] border px-4 py-3 transition ${
                                 current
                                   ? "border-zinc-950 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.06)]"
                                   : "border-zinc-100 bg-white/70"
@@ -249,7 +255,7 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            <div className="order-details-card order-details-card--products rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+            <div className="order-details-card order-details-card--products rounded-[8px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
               <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
                 {text.orderedProducts}
               </h2>
@@ -258,13 +264,18 @@ export default function OrderDetailsPage() {
                 {(order.items || []).map((item, index) => (
                   <article
                     key={`${item.productId}-${item.productVariantId}-${index}`}
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={event => {
+                      if (event.key === "Enter") navigate(`/products/${item.productId}`);
+                    }}
                     onClick={() => navigate(`/products/${item.productId}`)}
-                    className="order-product grid cursor-pointer grid-cols-[86px_1fr] gap-3 rounded-[16px] py-4 transition md:grid-cols-[104px_1fr_auto]"
+                    className="order-product grid cursor-pointer grid-cols-[86px_1fr] gap-3 rounded-[8px] py-4 transition md:grid-cols-[104px_1fr_auto]"
                   >
                     <img
                       src={item.productImageUrl}
                       alt={item.productName}
-                      className="order-product__image h-[104px] w-[86px] rounded-[16px] object-cover md:h-[124px] md:w-[104px]"
+                      className="order-product__image h-[104px] w-[86px] rounded-[8px] object-contain md:h-[124px] md:w-[104px]"
                       draggable="false"
                     />
 
@@ -301,7 +312,7 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            <div className="order-details-card order-details-card--delivery rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+            <div className="order-details-card order-details-card--delivery rounded-[8px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
               <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
                 {text.deliveryInfo}
               </h2>
@@ -330,12 +341,13 @@ export default function OrderDetailsPage() {
                 />
                 <Info label={text.floor} value={order.floor} />
                 <Info label={text.apartment} value={order.apartment} />
-                <Info label={text.note} value={order.note || "-"} wide />
+                <Info label={text.loyaltyCard} value={orderCard(order)} wide />
+                <Info label={text.note} value={customerNote(order.note) || "-"} wide />
               </div>
             </div>
           </div>
 
-          <aside className="order-receipt h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
+          <aside className="order-receipt h-max rounded-[8px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
             <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
               {text.receipt}
             </h2>
@@ -380,7 +392,7 @@ export default function OrderDetailsPage() {
             <button
               type="button"
               onClick={() => navigate("/orders")}
-              className="order-receipt__button mt-5 h-13 w-full rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98]"
+              className="order-receipt__button mt-5 h-13 w-full rounded-[8px] bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-800 active:scale-[0.98]"
             >
               {text.close}
             </button>
@@ -395,7 +407,7 @@ export default function OrderDetailsPage() {
 function Info({ label, value, wide }) {
   return (
     <div
-      className={`order-info rounded-[14px] bg-zinc-50 px-4 py-3 ${
+      className={`order-info rounded-[8px] bg-zinc-50 px-4 py-3 ${
         wide ? "md:col-span-2" : ""
       }`}
     >

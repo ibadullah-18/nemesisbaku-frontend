@@ -1,0 +1,408 @@
+
+#root .nb-account {
+  background:#fafafa;
+  color:#27272a;
+  font-family:"Nunito Sans",sans-serif;
+  min-height:75svh;
+}
+
+#root .nb-account :is(button,input,textarea,select) {
+  font:inherit;
+  border-radius:8px;
+  transition:background-color 180ms ease,border-color 180ms ease,color 180ms ease;
+}
+
+#root .nb-account :is(button,input,textarea,select):focus-visible {
+  outline:2px solid #71717a;
+  outline-offset:3px;
+}
+
+#root .nb-account button:disabled {
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+#root .nb-account :is([class*="shadow"],.order-card,.order-receipt) {
+  box-shadow:none;
+}
+
+#root .nb-account :is(section,article,aside,[class*="rounded-"]) {
+  border-radius:8px;
+}
+
+#root .nb-account :is(
+  .order-card,.order-receipt,.order-details-card,.orders-page__empty
+) {
+  border:1px solid #e4e4e7;
+  background:#fff;
+}
+
+#root .nb-account :is(
+  .order-card,.order-product,.order-product__image,.order-receipt,
+  .order-receipt__button,.orders-page__back,.order-timeline__step
+) {
+  transform:none;
+  will-change:auto;
+  animation:none;
+}
+
+#root .nb-account :is(.order-card::before,.order-receipt::before) {
+  display:none;
+}
+
+#root .nb-account :is(
+  .orders-page__shell,.orders-page__list,.order-details-page__shell
+) {
+  perspective:none;
+}
+
+#root .nb-account h1 {
+  font-size:clamp(26px,4vw,36px);
+  line-height:1.2;
+  letter-spacing:-.035em;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+
+#root .nb-account h2 {
+  font-weight:600;
+  letter-spacing:-.025em;
+}
+
+#root .nb-account :is(p,small,strong) {
+  overflow-wrap:anywhere;
+}
+
+#root .nb-account :is(section,div)[class*="bg-zinc-950"][class*="p-6"],
+#root .nb-account div[class*="bg-zinc-950"][class*="md:p-7"] {
+  background:#fff;
+  color:#27272a;
+  border:1px solid #e4e4e7;
+}
+
+#root .nb-account :is(section,div)[class*="bg-zinc-950"][class*="p-6"] p,
+#root .nb-account div[class*="bg-zinc-950"][class*="md:p-7"] p {
+  color:#71717a;
+}
+
+#root .nb-account :is(input,textarea,select) {
+  border:1px solid #dedee2;
+  background:#fafafa;
+  box-shadow:none;
+}
+
+#root .nb-account :is(input,textarea,select):focus {
+  background:#fff;
+  border-color:#a1a1aa;
+}
+
+#root .nb-account input:disabled {color:#71717a}
+#root .nb-account button {transform:none}
+
+#root .nb-account button[class*="rounded-full"] {
+  border:1px solid #e4e4e7;
+}
+
+#root .nb-account :is(.order-card,.order-details-card,.order-receipt) {
+  padding:20px;
+}
+
+#root .nb-account :is(.order-card img,.order-product__image) {
+  object-fit:contain;
+  transform:none;
+  background:#fafafa;
+}
+
+#root .nb-account .order-card__images {gap:6px}
+
+#root .nb-account .order-receipt {
+  font-variant-numeric:tabular-nums;
+}
+
+#root .nb-account .order-receipt h2 {
+  padding-bottom:16px;
+  border-bottom:1px solid #ededf0;
+}
+
+#root .nb-account .orders-page__header {text-align:left}
+#root .nb-account .orders-page__header>p {margin-left:0}
+
+#root .nb-account .nb-card-field {
+  scroll-margin-top:110px;
+  background:#fff;
+  border:1px solid #d4d4d8;
+}
+
+#root .nb-account .nb-card-field input {
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.08em;
+}
+
+#root .nb-account .nb-link-card {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  margin-top:20px;
+  padding:18px;
+  background:white;
+  border:1px solid #e4e4e7;
+  text-align:left;
+}
+
+#root .nb-account .nb-link-card svg:last-child {margin-left:auto}
+#root .nb-dashboard {padding:32px 20px}
+#root .nb-account-shell {max-width:1120px;margin:auto}
+
+#root .nb-profile-head {
+  display:flex;
+  align-items:center;
+  gap:24px;
+  padding:28px;
+  background:#fff;
+  border:1px solid #e4e4e7;
+  border-radius:8px;
+}
+
+#root .nb-profile-photo {
+  width:88px;
+  height:88px;
+  flex-shrink:0;
+  display:grid;
+  place-items:center;
+  background:#f4f4f5;
+  border-radius:8px;
+  overflow:hidden;
+  font-size:32px;
+  color:#71717a;
+}
+
+#root .nb-profile-photo img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+#root .nb-profile-title {flex:1;min-width:0}
+
+#root .nb-profile-title>p {
+  font-size:13px;
+  color:#71717a;
+  margin-bottom:8px;
+}
+
+#root .nb-profile-contact {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:12px;
+  font-size:13px;
+  color:#71717a;
+}
+
+#root .nb-profile-contact span {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  overflow-wrap:anywhere;
+  min-width:0;
+}
+
+#root .nb-profile-contact svg {flex-shrink:0}
+
+#root .nb-account-grid {
+  display:grid;
+  grid-template-columns:1.1fr 1fr;
+  gap:20px;
+  margin-top:20px;
+  align-items:start;
+}
+
+#root .nb-account-menu {
+  overflow:hidden;
+  border:1px solid #e4e4e7;
+  border-radius:8px;
+  background:white;
+}
+
+#root .nb-account-menu button {
+  width:100%;
+  display:flex;
+  gap:16px;
+  align-items:center;
+  padding:22px;
+  text-align:left;
+  border-bottom:1px solid #ededf0;
+  border-radius:0;
+  background:white;
+}
+
+#root .nb-account-menu button:last-child {
+  border-bottom:0;
+  color:#b42336;
+}
+
+#root .nb-account-menu button>svg {
+  width:21px;
+  height:21px;
+  flex-shrink:0;
+}
+
+#root .nb-account-menu button>svg:last-child {
+  margin-left:auto;
+  width:17px;
+  color:#71717a;
+}
+
+#root .nb-account-menu strong {
+  display:block;
+  font-size:15px;
+  font-weight:600;
+}
+
+#root .nb-account-menu small {
+  display:block;
+  margin-top:5px;
+  font-size:12px;
+  color:#71717a;
+  line-height:1.6;
+}
+
+#root .nb-account-panels {display:grid;gap:16px}
+
+#root .nb-account-panel {
+  padding:22px;
+  background:#fff;
+  border:1px solid #e4e4e7;
+}
+
+#root .nb-account-panel h2 {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:16px;
+}
+
+#root .nb-account-panel>p {
+  margin:16px 0;
+  color:#71717a;
+  font-size:14px;
+  line-height:1.7;
+}
+
+#root .nb-account-panel .nb-card-code {
+  font-size:22px;
+  letter-spacing:.06em;
+  color:#27272a;
+  font-variant-numeric:tabular-nums;
+}
+
+#root .nb-panel-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px;
+}
+
+#root .nb-account .nb-neutral {
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  gap:9px;
+  min-height:42px;
+  padding:10px 16px;
+  background:#fff;
+  color:#27272a;
+  border:1px solid #dedee2;
+  font-size:13px;
+}
+
+#root .nb-account .nb-text-link {
+  padding:10px 0;
+  color:#71717a;
+  text-decoration:underline;
+  text-underline-offset:4px;
+  font-size:12px;
+}
+
+#root .nb-account-birthday {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  font-size:13px;
+  color:#71717a;
+}
+
+#root .nb-account-birthday strong {
+  color:#27272a;
+  font-weight:500;
+}
+
+#root .nb-address-dialog {backdrop-filter:none}
+
+#root .nb-account :is(
+  .order-details-card,.order-details-page__back,
+  .order-info,.order-timeline__step>span
+) {
+  transform:none;
+  transform-style:flat;
+  animation:none;
+  box-shadow:none;
+}
+
+#root .nb-account .order-details-page__grid {perspective:none}
+
+#root .nb-account [role="link"]:focus-visible {
+  outline:2px solid #71717a;
+  outline-offset:3px;
+}
+
+@media(hover:hover) {
+  #root .nb-account button:hover:not(:disabled) {
+    background-color:#e9e9eb;
+  }
+
+  #root .nb-account button[class*="bg-zinc-950"]:hover:not(:disabled) {
+    background-color:#343438;
+    color:#fff;
+  }
+
+  #root .nb-account .order-card:hover {
+    border-color:#bfc0c5;
+    box-shadow:none;
+    transform:none;
+  }
+}
+
+@media(min-width:1024px) {
+  #root .nb-account .order-receipt {
+    position:sticky;
+    top:96px;
+  }
+}
+
+@media(max-width:767px) {
+  #root .nb-dashboard {padding:20px 14px}
+  #root .nb-profile-head {padding:20px;gap:14px;flex-wrap:wrap}
+  #root .nb-profile-photo {width:64px;height:64px}
+  #root .nb-profile-title {flex-basis:calc(100% - 80px)}
+  #root .nb-profile-head>button {width:100%}
+  #root .nb-profile-contact {display:grid;gap:8px;font-size:12px}
+  #root .nb-account-grid {grid-template-columns:1fr;gap:16px;margin-top:16px}
+  #root .nb-account-menu button {padding:18px}
+  #root .nb-account-panel {padding:18px}
+
+  #root .nb-account :is(
+    .order-details-card,.order-receipt,.order-card
+  ) {
+    padding:16px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  #root .nb-account * {
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}

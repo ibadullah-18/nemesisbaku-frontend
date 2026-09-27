@@ -549,7 +549,7 @@ export default function Navbar() {
                 className="h-10 appearance-none rounded-full border border-zinc-100 bg-white px-3.5 pr-8 text-xs font-bold text-zinc-700 outline-none transition hover:bg-zinc-50 focus:border-zinc-300"
               >
                 <option value="az">AZ</option>
-                <option value="ru">RU</option>
+                <option value="ru">Русский</option>
                 <option value="en">EN</option>
               </select>
 
@@ -642,7 +642,7 @@ export default function Navbar() {
                     className="h-12 w-full appearance-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 pr-10 text-sm font-bold text-zinc-800 outline-none transition focus:border-zinc-300"
                   >
                     <option value="az">Azərbaycan</option>
-                    <option value="ru">Ð ÑƒÑÑÐºÐ¸Ð¹</option>
+                    <option value="ru">Русский</option>
                     <option value="en">English</option>
                   </select>
 

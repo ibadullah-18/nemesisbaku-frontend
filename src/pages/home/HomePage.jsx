@@ -801,7 +801,6 @@ export default function HomePage() {
                   >
                     <ProductSection
                       title={section.title}
-                      subtitle={section.subtitle}
                       products={uniqueById(section.products || [])}
                     />
                   </div>

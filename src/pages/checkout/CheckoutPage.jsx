@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import MobileOrderAction from "../../components/common/MobileOrderAction";
+import { showUserToast } from "../../utils/userToast";
+import { cleanCard, noteWithCard } from "../../utils/loyaltyOrder";
+import {
+  HiOutlineShoppingBag as FiSave,
+  HiOutlineReceiptPercent
+} from "react-icons/hi2";
+import "./orderPolish.css";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiCheck, FiNavigation, FiSave } from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiNavigation } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import {
   MapContainer,
@@ -55,7 +63,32 @@ function validCoordinate(value, fallback) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { text } = useLanguage();
+  const { text, lang } = useLanguage();
+
+  const ui = {
+    az: [
+      "Sifarişi təsdiqlə",
+      "Ünvan məlumatları",
+      "Bu dəyişiklik yalnız bu sifarişə aiddir."
+    ],
+    ru: [
+      "Подтвердить заказ",
+      "Данные адреса",
+      "Изменения действуют только для этого заказа."
+    ],
+    en: [
+      "Confirm order",
+      "Address details",
+      "Changes apply to this order only."
+    ]
+  }[lang] || [
+    "Sifarişi təsdiqlə",
+    "Ünvan məlumatları",
+    "Bu dəyişiklik yalnız bu sifarişə aiddir."
+  ];
+
+  const [addressExpanded, setAddressExpanded] = useState(false);
+  const orderLock = useRef(false);
 
   const [items, setItems] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -77,6 +110,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [loyaltyCard, setLoyaltyCard] = useState("");
   const [form, setForm] = useState({
     customerFullName: "",
     customerPhoneNumber: "",
@@ -94,7 +128,7 @@ export default function CheckoutPage() {
     note: "",
   });
 
-  const [error, setError] = useState("");
+  function setError(message) { if (message) showUserToast(message, "error"); }
 
   const originalTotal = useMemo(() => {
     return items.reduce((sum, item) => {
@@ -154,6 +188,7 @@ export default function CheckoutPage() {
 
       const basket = unwrap(basketRes);
       const profile = profileRes ? unwrap(profileRes) : null;
+      setLoyaltyCard(cleanCard(profile?.loyaltyCardCode));
       const addressList = addressesRes ? unwrap(addressesRes) : [];
 
       const checkoutItems = (basket?.items || []).filter((item) =>
@@ -258,10 +293,19 @@ export default function CheckoutPage() {
   }, [form.latitude, form.longitude, form.deliveryType]);
 
   function update(key, value) {
+    if (
+      ["addressText", "latitude", "longitude", "buildingNumber", "floor", "apartment"].includes(key)
+      && selectedAddressId
+    ) {
+      setAddressExpanded(true);
+      setSelectedAddressId("");
+      setSaveNewAddress(false);
+    }
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function selectSavedAddress(address) {
+    setAddressExpanded(false);
     setSelectedAddressId(address.id);
     setSaveNewAddress(false);
 
@@ -279,6 +323,7 @@ export default function CheckoutPage() {
   }
 
   function useNewAddress() {
+    setAddressExpanded(true);
     setSelectedAddressId("");
     setSaveNewAddress(true);
 
@@ -335,17 +380,25 @@ export default function CheckoutPage() {
   }
 
   async function completeOrder() {
+    if (saving || orderLock.current) return;
     const validation = validate();
 
     if (validation) {
       setError(validation);
+
+      if (validation === text.deliveryDateRequired) {
+        document.getElementById("nb-order-date")?.focus();
+      }
       return;
     }
 
     try {
+      orderLock.current = true;
       setSaving(true);
       setError("");
 
+      const currentProfile = unwrap(await profileApi.get());
+      const cardSnapshot = cleanCard(currentProfile?.loyaltyCardCode);
       const body = {
         items: items.map((item) => ({
           basketItemId: item.id,
@@ -369,7 +422,7 @@ export default function CheckoutPage() {
 
         deliveryDate: new Date(form.deliveryDate).toISOString(),
         deliveryTimeRange: form.deliveryTimeRange,
-        note: form.note.trim(),
+        note: noteWithCard(form.note, cardSnapshot),
         promoCode: promo.code || "",
 
         savedAddressId: selectedAddressId || null,
@@ -403,20 +456,8 @@ export default function CheckoutPage() {
 
       window.dispatchEvent(new Event("nemesis_auth_changed"));
       navigate("/order-success");
-    } catch (err) {
-      localStorage.setItem(
-        "nemesis_order_failed",
-        JSON.stringify({
-          reason: err.message || text.orderCreateError,
-        }),
-      );
-
-      navigate("/order-failed", {
-        state: {
-          reason: err.message || text.orderCreateError,
-        },
-      });
-    } finally {
+    } catch (err) { setError(err.message || text.orderCreateError); } finally {
+      orderLock.current = false;
       setSaving(false);
     }
   }
@@ -439,7 +480,7 @@ export default function CheckoutPage() {
 
     window.open(
       `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(
-        message,
+        message + (loyaltyCard ? "\n" + text.loyaltyCard + ": " + loyaltyCard : ""),
       )}`,
       "_blank",
       "noopener,noreferrer",
@@ -488,14 +529,7 @@ export default function CheckoutPage() {
           </div>
         </section>
 
-        {error && (
-          <div
-            role="alert"
-            className="nemesis-checkout-error mt-5 rounded-[16px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
-          >
-            {error}
-          </div>
-        )}
+        
 
         <div className="nemesis-checkout-grid mt-5 grid gap-5 lg:grid-cols-[1fr_370px]">
           <section className="nemesis-checkout-form space-y-5">
@@ -557,6 +591,11 @@ export default function CheckoutPage() {
             </Card>
 
             <Card title={text.customerInfo} step="02">
+              {loyaltyCard && (
+                <p className="mb-4 rounded-[8px] border border-zinc-200 bg-zinc-50 p-3 text-sm">
+                  {text.loyaltyCard}: <strong className="font-medium">{loyaltyCard}</strong>
+                </p>
+              )}
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label={text.customerFullName}
@@ -594,6 +633,7 @@ export default function CheckoutPage() {
 
                 <Input
                   label={text.deliveryDate}
+                  id="nb-order-date"
                   type="date"
                   value={form.deliveryDate}
                   onChange={(value) => update("deliveryDate", value)}
@@ -675,7 +715,25 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="nemesis-checkout-address-layout grid gap-5 lg:grid-cols-[1fr_360px]">
+                {selectedAddressId && (
+                  <button
+                    type="button"
+                    className="nb-address-toggle"
+                    aria-expanded={addressExpanded}
+                    aria-controls="nb-address-editor"
+                    onClick={() => setAddressExpanded(value => !value)}
+                  >
+                    {ui[1]}
+                    <span aria-hidden="true">
+                      {addressExpanded ? "−" : "+"}
+                    </span>
+                  </button>
+                )}
+
+                {(!selectedAddressId || addressExpanded) && (
+                  <div id="nb-address-editor">
+                    <p className="nb-address-edit-hint">{ui[2]}</p>
+                    <div className="nemesis-checkout-address-layout grid gap-5 lg:grid-cols-[1fr_360px]">
                   <div className="space-y-4">
                     {saveNewAddress && (
                       <Input
@@ -802,13 +860,15 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </div>
+                  </div>
+                )}
               </Card>
             )}
           </section>
 
           <aside className="nemesis-checkout-summary h-max rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] lg:sticky lg:top-24">
             <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
-              {text.receipt}
+              <HiOutlineReceiptPercent aria-hidden="true" /> {text.receipt}
             </h2>
 
             <div className="mt-5 space-y-3">
@@ -880,17 +940,14 @@ export default function CheckoutPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={completeOrder}
-              disabled={
-                Number(form.deliveryType) === 1 && !deliveryCalc.available
-              }
-              className="nemesis-checkout-submit mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-zinc-950 text-sm font-medium text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <FiSave />
-              {text.completeOrder}
-            </button>
+            <MobileOrderAction
+      total={finalTotal}
+      original={originalTotal + deliveryPrice}
+      label={saving ? text.orderSaving : ui[0]}
+      onClick={completeOrder}
+      disabled={saving}
+      className="nemesis-checkout-submit mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-zinc-950 text-sm font-medium text-white"
+    />
 
             <button
               type="button"
@@ -967,7 +1024,7 @@ function Card({ title, step, children }) {
   );
 }
 
-function Input({ label, value, onChange, type = "text", placeholder = "" }) {
+function Input({ label, value, onChange, type = "text", placeholder = "", id }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-zinc-800">
@@ -975,6 +1032,7 @@ function Input({ label, value, onChange, type = "text", placeholder = "" }) {
       </span>
 
       <input
+        id={id}
         type={type}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}

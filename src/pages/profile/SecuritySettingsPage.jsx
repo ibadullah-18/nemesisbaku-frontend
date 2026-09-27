@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { showUserToast as showToast } from "../../utils/userToast";
+import "../profile/accountUI.css";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -48,21 +50,12 @@ export default function SecuritySettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [toast, setToast] = useState("");
-  const [toastType, setToastType] = useState("error");
-  const [toastVisible, setToastVisible] = useState(false);
 
-  const toastTimer = useRef(null);
-  const toastCloseTimer = useRef(null);
-  const toastStartTimer = useRef(null);
 
   useEffect(() => {
     loadProfile();
 
     return () => {
-      clearTimeout(toastTimer.current);
-      clearTimeout(toastCloseTimer.current);
-      clearTimeout(toastStartTimer.current);
     };
   }, []);
 
@@ -86,22 +79,7 @@ export default function SecuritySettingsPage() {
     return () => clearInterval(timer);
   }, [passResendSeconds]);
 
-  function showToast(message, type = "error") {
-    clearTimeout(toastTimer.current);
-    clearTimeout(toastCloseTimer.current);
-    clearTimeout(toastStartTimer.current);
-
-    setToastVisible(false);
-    setToastType(type);
-    setToast(message);
-
-    toastStartTimer.current = setTimeout(() => setToastVisible(true), 20);
-
-    toastTimer.current = setTimeout(() => {
-      setToastVisible(false);
-      toastCloseTimer.current = setTimeout(() => setToast(""), 300);
-    }, 5000);
-  }
+  
 
   function getCleanError(err, fallback) {
     const message = err?.message;
@@ -295,31 +273,15 @@ export default function SecuritySettingsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <main className="nb-account min-h-[calc(100dvh-72px)] bg-[#fafafa]">
         <AppLoader text={text.loading} />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
+    <main className="nb-account min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       {saving && <AppLoader text={text.saving} />}
-
-      {toast &&
-        createPortal(
-          <div
-            className={`fixed bottom-5 left-5 z-[999999] w-[calc(100vw-40px)] max-w-[380px] rounded-[14px] px-4 py-3 text-sm font-medium text-white shadow-[0_16px_50px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] md:bottom-6 md:left-6 md:w-auto md:min-w-[300px] ${
-              toastType === "success" ? "bg-green-600" : "bg-red-600"
-            } ${
-              toastVisible
-                ? "translate-y-0 scale-100 opacity-100"
-                : "translate-y-5 scale-95 opacity-0"
-            }`}
-          >
-            {toast}
-          </div>,
-          document.body,
-        )}
 
       <div className="mx-auto max-w-[920px]">
         <TopBar
@@ -327,10 +289,8 @@ export default function SecuritySettingsPage() {
           onBack={() => navigate("/profile/settings")}
         />
 
-        <section className="mt-7 animate-[securityUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[24px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
-          <p className="text-[15px] font-medium tracking-[0.17em] text-white/45">
-            nemesisbaku
-          </p>
+        <section className="mt-7 animate-[securityUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[8px] bg-zinc-950 p-6 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-8">
+          
           <h1 className="mt-3 text-[34px] font-medium tracking-[-0.055em] md:text-[52px]">
             {text.security}
           </h1>
@@ -341,7 +301,7 @@ export default function SecuritySettingsPage() {
 
         <section className="mt-5 grid gap-5">
           <Card icon={<FiMail />} title={text.changeEmail || "Email dəyiş"}>
-            <div className="mb-4 rounded-[16px] border border-zinc-100 bg-zinc-50 p-4 text-sm leading-6 text-zinc-500">
+            <div className="mb-4 rounded-[8px] border border-zinc-100 bg-zinc-50 p-4 text-sm leading-6 text-zinc-500">
               {text.currentEmail || "Hazırki email"}:{" "}
               <span className="font-bold text-zinc-950">
                 {profile?.email || "-"}
@@ -360,7 +320,7 @@ export default function SecuritySettingsPage() {
                 <button
                   type="button"
                   onClick={sendChangeEmailOtp}
-                  className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98]"
+                  className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98]"
                 >
                   <FiSend />
                   {text.sendOtp || "OTP göndər"}
@@ -384,7 +344,7 @@ export default function SecuritySettingsPage() {
                     type="button"
                     onClick={resendEmailOtp}
                     disabled={emailResendSeconds > 0 || saving}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-950 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-950 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <FiRefreshCw />
                     {emailResendSeconds > 0
@@ -395,7 +355,7 @@ export default function SecuritySettingsPage() {
                   <button
                     type="button"
                     onClick={verifyChangeEmail}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98]"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98]"
                   >
                     <FiCheck />
                     {text.confirm || "Təsdiqlə"}
@@ -406,7 +366,7 @@ export default function SecuritySettingsPage() {
           </Card>
 
           <Card icon={<FiKey />} title={text.changePassword}>
-            <div className="mb-4 rounded-[16px] border border-zinc-100 bg-zinc-50 p-4 text-sm leading-6 text-zinc-500">
+            <div className="mb-4 rounded-[8px] border border-zinc-100 bg-zinc-50 p-4 text-sm leading-6 text-zinc-500">
               {text.passwordOtpInfo ||
                 "Şifrəni dəyişmək üçün profil emailinizə OTP kod göndəriləcək."}{" "}
               <span className="font-bold text-zinc-950">
@@ -418,7 +378,7 @@ export default function SecuritySettingsPage() {
               <button
                 type="button"
                 onClick={sendPasswordOtp}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98]"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98]"
               >
                 <FiSend />
                 {text.sendOtp || "OTP göndər"}
@@ -443,7 +403,7 @@ export default function SecuritySettingsPage() {
                   type="button"
                   onClick={resendPasswordOtp}
                   disabled={passResendSeconds > 0 || saving}
-                  className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-[14px] border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-950 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-[8px] border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-950 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <FiRefreshCw />
                   {passResendSeconds > 0
@@ -474,7 +434,7 @@ export default function SecuritySettingsPage() {
                   onToggle={() => setShowConfirmPass((p) => !p)}
                 />
 
-                <button className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98] md:col-span-2 md:w-max">
+                <button className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-zinc-950 px-5 text-sm font-medium text-white transition active:scale-[0.98] md:col-span-2 md:w-max">
                   <FiShield />
                   {text.changePassword}
                 </button>
@@ -505,9 +465,7 @@ function TopBar({ title, onBack }) {
         <FiArrowLeft />
       </button>
       <div className="text-center">
-        <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
-          nemesisbaku
-        </p>
+        
         <h1 className="mt-1 text-lg font-medium tracking-[-0.025em] text-zinc-950">
           {title}
         </h1>
@@ -519,9 +477,9 @@ function TopBar({ title, onBack }) {
 
 function Card({ icon, title, children }) {
   return (
-    <section className="rounded-[22px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
+    <section className="rounded-[8px] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.04)] md:p-6">
       <div className="mb-5 flex items-center gap-3">
-        <div className="grid h-12 w-12 place-items-center rounded-[15px] bg-zinc-50 text-xl text-zinc-950">
+        <div className="grid h-12 w-12 place-items-center rounded-[8px] bg-zinc-50 text-xl text-zinc-950">
           {icon}
         </div>
         <h2 className="text-xl font-medium tracking-[-0.03em] text-zinc-950">
@@ -543,7 +501,7 @@ function Input({ label, value, onChange, type = "text" }) {
         type={type}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
+        className="h-12 w-full rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
       />
     </label>
   );
@@ -556,7 +514,7 @@ function PasswordInput({ label, value, onChange, show, onToggle }) {
         {label}
       </span>
 
-      <div className="flex h-12 items-center rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 transition focus-within:border-zinc-400">
+      <div className="flex h-12 items-center rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 transition focus-within:border-zinc-400">
         <FiLock className="mr-3 shrink-0 text-zinc-400" />
         <input
           type={show ? "text" : "password"}

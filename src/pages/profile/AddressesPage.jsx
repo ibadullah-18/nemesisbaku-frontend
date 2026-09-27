@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { showUserToast } from "../../utils/userToast";
+import "../profile/accountUI.css";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -60,8 +62,8 @@ export default function AddressesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const setError = message => { if (message) showUserToast(message, "error"); };
+  const setMessage = message => { if (message) showUserToast(message, "success"); };
 
   useEffect(() => {
     loadAddresses();
@@ -112,6 +114,7 @@ export default function AddressesPage() {
 
   async function saveAddress(e) {
     e.preventDefault();
+    if (saving) return;
 
     if (!form.title.trim()) return setError(text.addressTitleRequired);
     if (!form.addressText.trim()) return setError(text.addressTextRequired);
@@ -119,7 +122,7 @@ export default function AddressesPage() {
     const latitude = Number(form.latitude);
     const longitude = Number(form.longitude);
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
       setError(text.mapPointRequired || "Xəritədə düzgün nöqtə seçin.");
       return;
     }
@@ -159,6 +162,7 @@ export default function AddressesPage() {
   }
 
   async function deleteAddress(id) {
+    if (saving) return;
     const ok = window.confirm(text.confirmAddressDelete);
     if (!ok) return;
 
@@ -174,6 +178,7 @@ export default function AddressesPage() {
   }
 
   async function setDefaultAddress(id) {
+    if (saving) return;
     try {
       setSaving(true);
       await profileApi.setDefaultAddress(id);
@@ -187,13 +192,13 @@ export default function AddressesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100dvh-72px)] bg-[#fafafa]">
+      <main className="nb-account min-h-[calc(100dvh-72px)] bg-[#fafafa]">
         <AppLoader text={text.loading} />
       </main>
     );
   }
   return (
-    <main className="min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
+    <main className="nb-account min-h-screen bg-[#fafafa] px-5 py-6 md:px-8 md:py-8">
       {saving && <AppLoader text={text.saving} />}
 
       <div className="mx-auto max-w-[1080px]">
@@ -202,10 +207,8 @@ export default function AddressesPage() {
           onBack={() => navigate("/profile")}
         />
 
-        <div className="mt-7 animate-[addressUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[22px] bg-zinc-950 p-5 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-7">
-          <p className="text-[15px] font-medium tracking-[0.17em] text-white/45">
-            nemesisbaku
-          </p>
+        <div className="mt-7 animate-[addressUp_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[8px] bg-zinc-950 p-5 text-white shadow-[0_22px_70px_rgba(0,0,0,0.12)] md:p-7">
+          
 
           <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -220,7 +223,7 @@ export default function AddressesPage() {
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-white px-5 text-sm font-medium text-zinc-950 transition hover:bg-white/90 active:scale-[0.98]"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-white px-5 text-sm font-medium text-zinc-950 transition hover:bg-white/90 active:scale-[0.98]"
             >
               <FiPlus />
               {text.addAddress}
@@ -228,22 +231,14 @@ export default function AddressesPage() {
           </div>
         </div>
 
-        {message && (
-          <div className="mt-5 rounded-[16px] bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-            {message}
-          </div>
-        )}
+        
 
-        {error && (
-          <div className="mt-5 rounded-[16px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
-          </div>
-        )}
+        
 
         {addresses.length === 0 ? (
-          <section className="mt-5 grid min-h-[320px] place-items-center rounded-[20px] bg-white p-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+          <section className="mt-5 grid min-h-[320px] place-items-center rounded-[8px] bg-white p-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
             <div>
-              <div className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-zinc-50 text-3xl text-zinc-400">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-[8px] bg-zinc-50 text-3xl text-zinc-400">
                 <FiMapPin />
               </div>
 
@@ -258,7 +253,7 @@ export default function AddressesPage() {
               <button
                 type="button"
                 onClick={openCreate}
-                className="mt-5 h-12 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition active:scale-[0.98]"
+                className="mt-5 h-12 rounded-[8px] bg-zinc-950 px-6 text-sm font-medium text-white transition active:scale-[0.98]"
               >
                 {text.addAddress}
               </button>
@@ -269,7 +264,7 @@ export default function AddressesPage() {
             {addresses.map((address, index) => (
               <article
                 key={address.id}
-                className="animate-[addressCard_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[20px] bg-white p-4 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] md:p-5"
+                className="animate-[addressCard_.42s_cubic-bezier(.22,1,.36,1)_both] rounded-[8px] bg-white p-4 shadow-[0_14px_40px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.07)] md:p-5"
                 style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -313,7 +308,7 @@ export default function AddressesPage() {
                       <button
                         type="button"
                         onClick={() => setDefaultAddress(address.id)}
-                        className="grid h-10 w-10 place-items-center rounded-[13px] bg-zinc-50 text-zinc-950 transition hover:bg-zinc-100 active:scale-95"
+                        className="grid h-10 w-10 place-items-center rounded-[8px] bg-zinc-50 text-zinc-950 transition hover:bg-zinc-100 active:scale-95"
                       >
                         <FiCheck />
                       </button>
@@ -322,7 +317,7 @@ export default function AddressesPage() {
                     <button
                       type="button"
                       onClick={() => openEdit(address)}
-                      className="grid h-10 w-10 place-items-center rounded-[13px] bg-zinc-50 text-zinc-950 transition hover:bg-zinc-100 active:scale-95"
+                      className="grid h-10 w-10 place-items-center rounded-[8px] bg-zinc-50 text-zinc-950 transition hover:bg-zinc-100 active:scale-95"
                     >
                       <FiEdit3 />
                     </button>
@@ -330,7 +325,7 @@ export default function AddressesPage() {
                     <button
                       type="button"
                       onClick={() => deleteAddress(address.id)}
-                      className="grid h-10 w-10 place-items-center rounded-[13px] bg-red-50 text-red-500 transition hover:bg-red-100 active:scale-95"
+                      className="grid h-10 w-10 place-items-center rounded-[8px] bg-red-50 text-red-500 transition hover:bg-red-100 active:scale-95"
                     >
                       <FiTrash2 />
                     </button>
@@ -349,7 +344,7 @@ export default function AddressesPage() {
           saving={saving}
           updateForm={updateForm}
           saveAddress={saveAddress}
-          close={() => setModalOpen(false)}
+          close={() => { if (!saving) setModalOpen(false); }}
         />
       )}
 
@@ -374,17 +369,63 @@ export default function AddressesPage() {
 }
 
 function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
+  const dialogRef = useRef(null);
+  const live = useRef({ saving, close });
+
+  useEffect(() => {
+    live.current = { saving, close };
+  }, [saving, close]);
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const box = dialogRef.current;
+    box?.querySelector("input")?.focus();
+
+    function onKey(event) {
+      if (event.key === "Escape" && !live.current.saving) {
+        live.current.close();
+      }
+
+      if (event.key !== "Tab") return;
+
+      const elements = [...box.querySelectorAll(
+        'button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href],[tabindex="0"]'
+      )].filter(node => node.getClientRects().length);
+
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      }
+
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+
+    box?.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = overflow;
+      box?.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, []);
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/55 p-3 backdrop-blur-sm md:items-center md:p-6">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={form.id ? text.editAddress : text.addAddress} className="nb-address-dialog fixed inset-0 z-[9999] flex items-end justify-center bg-black/55 p-3 backdrop-blur-sm md:items-center md:p-6">
       <form
         onSubmit={saveAddress}
-        className="max-h-[94dvh] w-full max-w-[920px] animate-[modalIn_.32s_cubic-bezier(.22,1,.36,1)_both] overflow-y-auto rounded-[24px] bg-white p-5 shadow-[0_26px_90px_rgba(0,0,0,0.25)] md:p-6"
+        className="max-h-[94dvh] w-full max-w-[920px] animate-[modalIn_.32s_cubic-bezier(.22,1,.36,1)_both] overflow-y-auto rounded-[8px] bg-white p-5 shadow-[0_26px_90px_rgba(0,0,0,0.25)] md:p-6"
       >
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <p className="text-[15px] font-medium uppercase tracking-[0.17em] text-zinc-400">
-              nemesisbaku
-            </p>
+            
             <h2 className="mt-1 text-[28px] font-medium tracking-[-0.045em] text-zinc-950">
               {form.id ? text.editAddress : text.addAddress}
             </h2>
@@ -448,14 +489,14 @@ function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
                 onChange={(e) => updateForm("note", e.target.value)}
                 rows={4}
                 placeholder={text.addressNotePlaceholder}
-                className="w-full resize-none rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
+                className="w-full resize-none rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
               />
             </label>
 
             <button
               type="button"
               onClick={() => updateForm("isDefault", !form.isDefault)}
-              className={`inline-flex h-11 items-center gap-2 rounded-[14px] px-4 text-sm font-medium transition ${
+              className={`inline-flex h-11 items-center gap-2 rounded-[8px] px-4 text-sm font-medium transition ${
                 form.isDefault
                   ? "bg-zinc-950 text-white"
                   : "bg-zinc-50 text-zinc-950"
@@ -471,7 +512,7 @@ function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
               {text.chooseFromMap}
             </p>
 
-            <div className="aspect-square overflow-hidden rounded-[18px] border border-zinc-100 bg-zinc-100">
+            <div className="aspect-square overflow-hidden rounded-[8px] border border-zinc-100 bg-zinc-100">
               <MapContainer
                 center={[
                   form.latitude || BAKU_CENTER[0],
@@ -497,7 +538,7 @@ function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
               </MapContainer>
             </div>
 
-            <div className="mt-3 rounded-[15px] bg-zinc-50 px-4 py-3">
+            <div className="mt-3 rounded-[8px] bg-zinc-50 px-4 py-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
                 {text.selectedMapPoint}
               </p>
@@ -518,14 +559,14 @@ function AddressModal({ form, text, saving, updateForm, saveAddress, close }) {
           <button
             type="button"
             onClick={close}
-            className="h-12 rounded-[14px] bg-zinc-50 px-6 text-sm font-medium text-zinc-950 transition active:scale-[0.98]"
+            className="h-12 rounded-[8px] bg-zinc-50 px-6 text-sm font-medium text-zinc-950 transition active:scale-[0.98]"
           >
             {text.cancel}
           </button>
 
           <button
             disabled={saving}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-zinc-950 px-6 text-sm font-medium text-white transition active:scale-[0.98] disabled:opacity-60"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-zinc-950 px-6 text-sm font-medium text-white transition active:scale-[0.98] disabled:opacity-60"
           >
             <FiSave />
             {text.saveAddress}
@@ -558,9 +599,7 @@ function ProfileTopBar({ title, onBack }) {
       </button>
 
       <div className="text-center">
-        <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
-          nemesisbaku
-        </p>
+        
         <h1 className="mt-1 text-lg font-medium tracking-[-0.025em] text-zinc-950">
           {title}
         </h1>
@@ -582,7 +621,7 @@ function Input({ label, value, onChange, placeholder }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
+        className="h-12 w-full rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
       />
     </label>
   );

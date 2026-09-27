@@ -1,6 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCheck, FiHome, FiPackage } from "react-icons/fi";
+import {
+  HiOutlineCheckCircle as FiCheck,
+  HiOutlineHome as FiHome,
+  HiOutlineShoppingBag as FiPackage
+} from "react-icons/hi2";
+import "./orderPolish.css";
 import { useLanguage } from "../../i18n/LanguageContext";
 
 function money(value) {
@@ -26,7 +31,7 @@ export default function OrderSuccessPage() {
   }, []);
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#fafafa] px-5 py-8 md:px-8">
+    <main className="nb-order-success grid min-h-screen place-items-center bg-[#fafafa] px-5 py-8 md:px-8">
       <section className="w-full max-w-[680px] animate-[successIn_.45s_cubic-bezier(.22,1,.36,1)_both] rounded-[26px] bg-white p-6 text-center shadow-[0_26px_90px_rgba(0,0,0,0.08)] md:p-8">
         <div className="mx-auto grid h-24 w-24 animate-[successPop_.75s_cubic-bezier(.22,1,.36,1)_both] place-items-center rounded-full bg-green-50 text-[50px] text-green-600">
           <FiCheck />
@@ -49,7 +54,7 @@ export default function OrderSuccessPage() {
             <Row label={text.orderNumber} value={order.orderNumber || "-"} />
             <Row
               label={text.productsTotal}
-              value={`${money(order.originalTotalPrice || order.totalProductPrice)} ₼`}
+              value={`${money(order.originalTotalPrice ?? order.totalProductPrice)} ₼`}
             />
 
             {Number(order.productDiscount || 0) > 0 && (
@@ -105,7 +110,7 @@ export default function OrderSuccessPage() {
             className="inline-flex h-13 items-center justify-center gap-2 rounded-[14px] bg-zinc-50 text-sm font-medium text-zinc-950 transition active:scale-[0.98]"
           >
             <FiHome />
-            {text.close}
+            {text.home || text.close}
           </button>
         </div>
       </section>

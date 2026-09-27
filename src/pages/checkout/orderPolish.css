@@ -1,0 +1,409 @@
+
+/* Shared basket, checkout and receipt finish. */
+
+#root :is(
+  .nemesis-basket-page,
+  .nemesis-checkout-page,
+  .nb-order-success
+) {
+  background: #fafafa;
+  font-family: "Nunito Sans", sans-serif;
+  color: #27272a;
+}
+
+#root :is(
+  .nemesis-basket-page,
+  .nemesis-checkout-page,
+  .nb-order-success
+) :is(button, input, textarea) {
+  border-radius: 8px;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+#root :is(
+  .nemesis-basket-page,
+  .nemesis-checkout-page,
+  .nb-order-success
+) button:focus-visible {
+  outline: 2px solid #71717a;
+  outline-offset: 3px;
+}
+
+#root :is(
+  .nemesis-basket-page,
+  .nemesis-checkout-page,
+  .nb-order-success
+) button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+#root :is(
+  .nemesis-basket-card,
+  .nemesis-basket-summary,
+  .nemesis-basket-empty,
+  .nemesis-basket-select-all,
+  .nemesis-checkout-card,
+  .nemesis-checkout-summary,
+  .nemesis-checkout-hero,
+  .nemesis-checkout-address,
+  .nemesis-checkout-map,
+  .nb-order-success > section
+) {
+  border-radius: 8px;
+  border: 1px solid #e6e6e9;
+  box-shadow: none;
+  transform: none;
+  transform-style: flat;
+}
+
+#root :is(
+  .nemesis-basket-page::before,
+  .nemesis-basket-card::after,
+  .nemesis-basket-empty::after,
+  .nemesis-checkout-hero::before,
+  .nemesis-checkout-summary::before,
+  .nemesis-basket-checkout::before,
+  .nemesis-basket-whatsapp::before,
+  .nemesis-checkout-submit::before,
+  .nemesis-checkout-whatsapp::before
+) {
+  display: none;
+}
+
+#root :is(
+  .nemesis-basket-card__image,
+  .nemesis-basket-card__content,
+  .nemesis-basket-card__select,
+  .nemesis-checkout-product,
+  .nemesis-checkout-product__image,
+  .nemesis-checkout-hero > *
+) {
+  transform: none;
+  box-shadow: none;
+}
+
+#root :is(
+  .nemesis-basket-select-all,
+  .nemesis-basket-card__select,
+  .nemesis-checkout-steps > div
+) {
+  backdrop-filter: none;
+}
+
+#root :is(
+  .nemesis-basket-card__image,
+  .nemesis-checkout-product__image
+) {
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+#root :is(
+  .nemesis-basket-page,
+  .nemesis-checkout-product
+) img {
+  object-fit: contain;
+}
+
+#root .nemesis-basket-card__meta > span {
+  border-radius: 6px;
+}
+
+#root .nemesis-basket-card__footer {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#root .nemesis-basket-card__price {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+#root .nemesis-basket-quantity {
+  height: 40px;
+  border-radius: 8px;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+#root .nemesis-basket-quantity button {
+  width: 40px;
+  min-width: 40px;
+  height: 100%;
+  border-radius: 0;
+}
+
+#root .nemesis-basket-quantity__value {
+  width: 36px;
+  animation: none;
+  font-variant-numeric: tabular-nums;
+}
+
+#root :is(
+  .nemesis-basket-quantity button,
+  .nemesis-basket-card__content > div:first-child > button,
+  .nemesis-checkout-topbar button
+) {
+  background: #fff;
+  border-color: #e4e4e7;
+  box-shadow: none;
+}
+
+#root .nemesis-basket-summary__body {
+  padding: 24px;
+}
+
+#root :is(
+  .nemesis-basket-summary__body,
+  .nemesis-checkout-summary
+) > h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #ededf0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+#root :is(
+  .nemesis-basket-summary,
+  .nemesis-checkout-summary
+) h2 svg {
+  width: 23px;
+  height: 23px;
+  color: #71717a;
+  flex-shrink: 0;
+}
+
+#root :is(
+  .nemesis-basket-summary,
+  .nemesis-checkout-summary
+) {
+  font-variant-numeric: tabular-nums;
+}
+
+#root :is(
+  .nemesis-basket-summary,
+  .nemesis-checkout-summary
+) p {
+  overflow-wrap: anywhere;
+}
+
+#root :is(
+  .nemesis-basket-checkout,
+  .nemesis-checkout-submit
+) {
+  height: 48px;
+  background: #18181b;
+  color: white;
+  box-shadow: none;
+  transform: none;
+}
+
+#root :is(
+  .nemesis-basket-whatsapp,
+  .nemesis-checkout-whatsapp
+) {
+  height: 46px;
+  background: #fff;
+  color: #267549;
+  border: 1px solid #dce7df;
+  box-shadow: none;
+  transform: none;
+}
+
+#root .nemesis-checkout-hero {
+  background: #fff;
+  color: #27272a;
+}
+
+#root .nemesis-checkout-hero :is(h1, p) {
+  color: #27272a;
+}
+
+#root .nemesis-checkout-steps > div {
+  border: 1px solid #e6e6e9;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+#root .nemesis-checkout-steps span {
+  color: #71717a;
+  font-weight: 600;
+}
+
+#root .nemesis-checkout-card__heading > span {
+  border-radius: 6px;
+  background: #f4f4f5;
+  color: #52525b;
+  font-weight: 600;
+}
+
+#root .nemesis-checkout-control {
+  border: 1px solid #e4e4e7;
+  background: #fafafa;
+  box-shadow: none;
+}
+
+#root .nemesis-checkout-control:focus {
+  border-color: #a1a1aa !important;
+  background: #fff;
+  box-shadow: 0 0 0 3px #18181b08;
+}
+
+#root .nemesis-checkout-address[data-selected="true"] {
+  border-color: #52525b;
+}
+
+#root .nb-order-success {
+  min-height: 70svh;
+  padding: 40px 16px;
+}
+
+#root .nb-order-success > section {
+  max-width: 600px;
+  padding: 32px;
+  animation: nbReceiptIn 240ms ease both;
+}
+
+#root .nb-order-success > section > div:first-child {
+  width: 68px;
+  height: 68px;
+  font-size: 42px;
+  animation: none;
+}
+
+#root .nb-order-success h1 {
+  font-size: clamp(26px, 4vw, 36px);
+  line-height: 1.2;
+  letter-spacing: -.035em;
+  margin-top: 20px;
+}
+
+#root .nb-order-success .text-left {
+  border-radius: 8px;
+  border: 1px solid #ededf0;
+  background: #fafafa;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+#root .nb-order-success .text-left p:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+#root .nb-order-success button {
+  height: 46px;
+  transform: none;
+}
+
+@media (hover: hover) {
+  #root :is(
+    .nemesis-basket-quantity button,
+    .nemesis-basket-card__content > div:first-child > button,
+    .nemesis-checkout-topbar button,
+    .nb-order-success button:last-child
+  ):hover:not(:disabled) {
+    background: #e9e9eb;
+  }
+
+  #root :is(
+    .nemesis-basket-checkout,
+    .nemesis-checkout-submit,
+    .nb-order-success button:first-child
+  ):hover:not(:disabled) {
+    background: #343438;
+  }
+
+  #root :is(
+    .nemesis-basket-whatsapp,
+    .nemesis-checkout-whatsapp
+  ):hover {
+    background: #eef3ef;
+    opacity: 1;
+  }
+
+  #root .nemesis-basket-card:hover {
+    border-color: #d4d4d8;
+  }
+}
+
+@media (min-width: 1024px) {
+  #root :is(
+    .nemesis-basket-summary,
+    .nemesis-checkout-summary
+  ) {
+    position: sticky;
+    top: 96px;
+  }
+}
+
+@media (max-width: 767px) {
+  #root :is(
+    .nemesis-basket-page,
+    .nemesis-checkout-page
+  ) {
+    padding-inline: 14px;
+  }
+
+  #root .nemesis-basket-card__layout {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  #root .nemesis-basket-card__image {
+    width: 92px !important;
+    height: 120px !important;
+  }
+
+  #root .nemesis-basket-card__footer {
+    gap: 8px;
+  }
+
+  #root :is(
+    .nemesis-basket-summary__body,
+    .nemesis-checkout-summary
+  ) {
+    padding: 18px;
+  }
+
+  #root .nemesis-checkout-product__price {
+    margin-top: 0;
+    flex-wrap: wrap;
+  }
+
+  #root .nb-order-success > section {
+    padding: 24px 18px;
+  }
+}
+
+@keyframes nbReceiptIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #root :is(
+    .nemesis-basket-page,
+    .nemesis-checkout-page,
+    .nb-order-success
+  ) * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

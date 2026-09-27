@@ -1,3 +1,4 @@
+import "../profile/accountUI.css";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -106,30 +107,35 @@ export default function MyOrdersPage() {
       const data = unwrap(res);
       const list = Array.isArray(data) ? data : [];
 
-      const detailedOrders = await Promise.all(
-        list.map(async (order) => {
-          try {
-            const detailRes = await ordersApi.detail(order.id);
-            const detail = unwrap(detailRes);
+      setOrders(list);
+      setLoading(false);
 
-            return {
-              ...order,
-              ...detail,
-              items:
-                detail?.items ||
-                detail?.orderItems ||
-                order?.items ||
-                order?.orderItems ||
-                [],
-            };
-          } catch {
-            return order;
-          }
-        }),
-      );
+      const hydrated = [...list];
 
-      setOrders(detailedOrders);
-      await loadProductsForOrders(detailedOrders);
+      const pending = list
+        .map((order, index) => ({ order, index }))
+        .filter(({ order }) =>
+          !Array.isArray(order.items) && !Array.isArray(order.orderItems)
+        );
+
+      for (let offset = 0; offset < pending.length; offset += 4) {
+        await Promise.all(
+          pending.slice(offset, offset + 4).map(async ({ order, index }) => {
+            try {
+              hydrated[index] = {
+                ...order,
+                ...unwrap(await ordersApi.detail(order.id))
+              };
+            } catch {
+              // Keep the available list data.
+            }
+          })
+        );
+
+        setOrders([...hydrated]);
+      }
+
+      await loadProductsForOrders(hydrated);
     } catch (err) {
       setError(err.message || text.ordersLoadError);
     } finally {
@@ -142,6 +148,7 @@ export default function MyOrdersPage() {
       ...new Set(
         nextOrders
           .flatMap((order) => getOrderItems(order))
+          .filter(item => !getDirectItemImage(item))
           .map((item) => getProductId(item))
           .filter(Boolean),
       ),
@@ -149,8 +156,9 @@ export default function MyOrdersPage() {
 
     const loaded = {};
 
+    for (let offset = 0; offset < productIds.length; offset += 4) {
     await Promise.all(
-      productIds.map(async (productId) => {
+      productIds.slice(offset, offset + 4).map(async (productId) => {
         try {
           const res = await apiFetch(`/api/Products/${productId}`);
           loaded[productId] = unwrap(res);
@@ -160,6 +168,7 @@ export default function MyOrdersPage() {
       }),
     );
 
+    }
     setProductDetails(loaded);
   }
 
@@ -180,20 +189,18 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <main className="orders-page min-h-dvh w-full overflow-x-clip bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
+    <main className="nb-account orders-page min-h-dvh w-full overflow-x-clip bg-[#fafafa] px-3 py-5 sm:px-5 sm:py-7 md:px-8 md:py-10">
       <div className="orders-page__shell mx-auto w-full min-w-0 max-w-[1180px]">
         <button
           type="button"
           onClick={() => navigate("/profile")}
           className="orders-page__back mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl text-zinc-950 shadow-[0_12px_35px_rgba(0,0,0,0.06)] transition active:scale-95"
         >
-          <FiChevronLeft />
+          <FiChevronLeft aria-label={text.back || "Geri"} />
         </button>
 
         <div className="orders-page__header mb-7 text-center">
-          <p className="text-[15px] font-medium tracking-[0.17em] text-zinc-400">
-            nemesisbaku
-          </p>
+          
 
           <h1 className="mt-2 text-[34px] font-medium tracking-[-0.045em] text-zinc-950 md:text-[46px]">
             {text.myOrders}
@@ -214,16 +221,16 @@ export default function MyOrdersPage() {
         {error && (
           <div
             role="alert"
-            className="orders-page__error rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+            className="orders-page__error rounded-[8px] bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
           >
             {error}
           </div>
         )}
 
         {orders.length === 0 ? (
-          <div className="orders-page__empty grid min-h-[380px] place-items-center rounded-[18px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
+          <div className="orders-page__empty grid min-h-[380px] place-items-center rounded-[8px] bg-white px-5 text-center shadow-[0_18px_55px_rgba(0,0,0,0.04)]">
             <div>
-              <div className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-zinc-50 text-3xl text-zinc-400">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-[8px] bg-zinc-50 text-3xl text-zinc-400">
                 <FiPackage />
               </div>
 
@@ -265,8 +272,13 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
 
   return (
     <article
+      role="link"
+      tabIndex={0}
+      onKeyDown={event => {
+        if (event.key === "Enter") onOpen();
+      }}
       onClick={onOpen}
-      className="order-card group w-full min-w-0 cursor-pointer overflow-hidden rounded-[18px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] sm:p-4"
+      className="order-card group w-full min-w-0 cursor-pointer overflow-hidden rounded-[8px] bg-white p-3 shadow-[0_14px_40px_rgba(0,0,0,0.04)] sm:p-4"
       style={{ "--order-delay": `${Math.min(index * 45, 360)}ms` }}
     >
       <div className="grid min-w-0 gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-4">
@@ -278,14 +290,14 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
               return (
                 <div
                   key={item.id || getProductId(item) || itemIndex}
-                  className="order-card__image relative h-14 w-14 shrink-0 overflow-hidden rounded-[14px] bg-zinc-100 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px]"
+                  className="order-card__image relative h-14 w-14 shrink-0 overflow-hidden rounded-[8px] bg-zinc-100 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[8px]"
                   title={getItemName(item)}
                 >
                   {image ? (
                     <img
                       src={image}
                       alt={getItemName(item)}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      loading="lazy" decoding="async" className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
                       draggable="false"
                     />
                   ) : (
@@ -297,13 +309,13 @@ function OrderCard({ order, index, text, productDetails, onOpen }) {
               );
             })
           ) : (
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[14px] bg-zinc-100 text-zinc-300 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px]">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[8px] bg-zinc-100 text-zinc-300 ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[8px]">
               <FiPackage />
             </div>
           )}
 
           {extraCount > 0 && (
-            <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-[14px] bg-zinc-950 text-xs font-medium text-white ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[16px] sm:text-sm">
+            <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-[8px] bg-zinc-950 text-xs font-medium text-white ring-2 ring-white sm:h-16 sm:w-16 sm:rounded-[8px] sm:text-sm">
               +{extraCount}
             </div>
           )}

@@ -490,3 +490,25 @@
     transition:none;
   }
 }
+
+
+/* Shared home and related product sections */
+#root .nemesis-home-product-section {
+  margin-inline:auto; padding-block:13px 22px;
+}
+#root .nemesis-home-product-section__surface {
+  position:relative; border:1px solid #1f19180f;
+}
+#root .nemesis-home-product-section__surface h2 {
+  font-weight:600;
+}
+#root .nemesis-home-product-section__card {
+  scroll-snap-align:start;
+}
+#root .nemesis-product-card .nb-image img {
+  object-fit:contain;
+}
+
+body:has(.nb-product-buy-dock.is-floating[data-visible="true"]) .nb-user-toast-host {
+  bottom:calc(env(safe-area-inset-bottom) + 112px);
+}

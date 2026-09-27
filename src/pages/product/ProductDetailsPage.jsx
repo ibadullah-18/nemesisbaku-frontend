@@ -17,7 +17,9 @@ import {
 } from "react-icons/fi";
 import { FaHeart, FaWhatsapp } from "react-icons/fa";
 import ProductDetailsSkeleton from "../../components/product/ProductDetailsSkeleton";
-import ProductCard from "../../components/product/ProductCard";
+import ProductSection from "../../components/home/ProductSection";
+import ProductPhoto from "../../components/product/ProductPhoto";
+import { detailImageUrl } from "../../utils/detailImageUrl";
 import { apiFetch, getAccessToken } from "../../api/apiFetch";
 import { getProducts, getStoreInfo } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -27,7 +29,7 @@ import { showUserToast } from "../../utils/userToast";
 import "./productDetails.css";
 
 const LOW_STOCK_LIMIT = 3;
-const RELATED_DESKTOP_BATCH = 12;
+const RELATED_DESKTOP_BATCH = 6;
 const RELATED_PHONE_BATCH = 6;
 const STORE_WHATSAPP_NUMBER = "994514349829";
 
@@ -131,11 +133,12 @@ export default function ProductDetailsPage() {
   const location = useLocation();
   const { text, lang } = useLanguage();
 
-  const relatedRef = useRef(null);
+  const pageRequestRef = useRef(0);
+  const relatedRequestRef = useRef(null);
+  const buySlotRef = useRef(null);
   const galleryStageRef = useRef(null);
   const productInfoRef = useRef(null);
   const basketSuccessTimerRef = useRef(null);
-  const galleryFrameRef = useRef(null);
 
   const [product, setProduct] = useState(null);
   const [storeInfo, setStoreInfo] = useState(null);
@@ -143,7 +146,9 @@ export default function ProductDetailsPage() {
 
   const [activeImage, setActiveImage] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
-  const [zoom, setZoom] = useState({ active: false, x: 50, y: 50 });
+  const [modalClosing, setModalClosing] = useState(false);
+  const modalCloseTimer = useRef(null);
+  const modalReturnFocus = useRef(null);
 
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState("");
@@ -170,12 +175,13 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     loadPage();
+    return () => { pageRequestRef.current += 1; };
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => {
       window.clearTimeout(basketSuccessTimerRef.current);
-      window.cancelAnimationFrame(galleryFrameRef.current);
+      window.clearTimeout(modalCloseTimer.current);
     };
   }, []);
 
@@ -199,11 +205,15 @@ export default function ProductDetailsPage() {
   }
 
   async function loadPage() {
+    const request = ++pageRequestRef.current;
+    window.clearTimeout(basketSuccessTimerRef.current);
     try {
       setLoading(true);
       setDockFloating(false);
       setError("");
       setBasketSuccess(false);
+      window.clearTimeout(modalCloseTimer.current);
+      setModalClosing(false);
       setModalOpen(false);
       setActiveImage(0);
       setDescriptionOpen(false);
@@ -213,6 +223,7 @@ export default function ProductDetailsPage() {
 
       const res = await apiFetch(`/api/Products/${id}`);
       const data = unwrap(res);
+      if (request !== pageRequestRef.current) return;
 
       setProduct(data);
       void loadFavoriteStatus();
@@ -224,9 +235,13 @@ export default function ProductDetailsPage() {
 
       void loadRelated(data, 1);
     } catch (err) {
-      setError(err.message || text.productLoadError);
+      if (request === pageRequestRef.current) {
+        setProduct(null);
+        setError(err.message || text.productLoadError);
+        showToast(err.message || text.productLoadError);
+      }
     } finally {
-      setLoading(false);
+      if (request === pageRequestRef.current) setLoading(false);
     }
   }
 
@@ -265,7 +280,9 @@ export default function ProductDetailsPage() {
     currentProduct = product,
     batchPage = relatedPage + 1,
   ) {
-    if (relatedLoading) return;
+    const request = pageRequestRef.current;
+    if (relatedRequestRef.current === request) return;
+    relatedRequestRef.current = request;
 
     try {
       setRelatedLoading(true);
@@ -281,6 +298,7 @@ export default function ProductDetailsPage() {
         pageSize: targetCount + 2,
       });
 
+      if (request !== pageRequestRef.current) return;
       const sortedList = normalizeList(res)
         .filter((x) => x.id !== id)
         .sort((a, b) => {
@@ -303,11 +321,24 @@ export default function ProductDetailsPage() {
 
       const uniqueList = [...uniqueMap.values()];
 
-      setRelatedProducts(uniqueList.slice(0, targetCount));
+      setRelatedProducts(previous => {
+        const merged = new Map(
+          (batchPage === 1 ? [] : previous).map(item => [item.id, item])
+        );
+
+        uniqueList.forEach(item => {
+          if (!merged.has(item.id)) merged.set(item.id, item);
+        });
+
+        return [...merged.values()].slice(0, targetCount);
+      });
       setRelatedHasMore(uniqueList.length > targetCount);
       setRelatedPage(batchPage);
+    } catch (err) {
+      if (request === pageRequestRef.current) showToast(err.message || "Məhsullar yüklənmədi.");
     } finally {
-      setRelatedLoading(false);
+      if (relatedRequestRef.current === request) relatedRequestRef.current = null;
+      if (request === pageRequestRef.current) setRelatedLoading(false);
     }
   }
 
@@ -405,67 +436,39 @@ export default function ProductDetailsPage() {
     setQuantity(1);
   }
 
-  function handleZoomMove(e) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    window.cancelAnimationFrame(galleryFrameRef.current);
-    galleryFrameRef.current = window.requestAnimationFrame(() => {
-      setZoom({ active: true, x, y });
-
-      const stage = galleryStageRef.current;
-      if (!stage) return;
-
-      stage.style.setProperty("--gallery-rx", `${(50 - y) * 0.055}deg`);
-      stage.style.setProperty("--gallery-ry", `${(x - 50) * 0.065}deg`);
-      stage.style.setProperty("--gallery-light-x", `${x}%`);
-      stage.style.setProperty("--gallery-light-y", `${y}%`);
-    });
-  }
-
-  function resetGalleryMotion() {
-    setZoom((current) => ({ ...current, active: false }));
-
-    const stage = galleryStageRef.current;
-    if (!stage) return;
-
-    stage.style.setProperty("--gallery-rx", "0deg");
-    stage.style.setProperty("--gallery-ry", "0deg");
-    stage.style.setProperty("--gallery-light-x", "50%");
-    stage.style.setProperty("--gallery-light-y", "42%");
-  }
-
-  // nemesisbaku: smart product buy dock
   useEffect(() => {
-    let frameId = 0;
+    if (loading) return;
+    let frame = 0;
 
-    const syncDockPosition = () => {
-      window.cancelAnimationFrame(frameId);
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const slot = buySlotRef.current;
+        if (!slot) return;
 
-      frameId = window.requestAnimationFrame(() => {
-        const info = productInfoRef.current;
-        if (!info) return;
+        const top = slot.getBoundingClientRect().top;
+        const line = window.innerWidth <= 820 ? 112 : 168;
 
-        const activationLine = window.innerWidth <= 820 ? 76 : 112;
-        const shouldFloat =
-          info.getBoundingClientRect().bottom <= activationLine;
-
-        setDockFloating((current) =>
-          current === shouldFloat ? current : shouldFloat,
+        setDockFloating(current =>
+          current ? top < line + 24 : top < line
         );
       });
     };
 
-    syncDockPosition();
+    const observer = new ResizeObserver(update);
+    if (productInfoRef.current) {
+      observer.observe(productInfoRef.current);
+    }
 
-    window.addEventListener("scroll", syncDockPosition, { passive: true });
-    window.addEventListener("resize", syncDockPosition);
+    update();
+    window.addEventListener("scroll", update, {passive:true});
+    window.addEventListener("resize", update);
 
     return () => {
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener("scroll", syncDockPosition);
-      window.removeEventListener("resize", syncDockPosition);
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
     };
   }, [id, loading]);
 
@@ -484,6 +487,54 @@ export default function ProductDetailsPage() {
     navigate(returnTo || "/", { replace: true });
   }
 
+  function openImageModal() {
+    if (!images.length) return;
+    modalReturnFocus.current = document.activeElement;
+    clearTimeout(modalCloseTimer.current);
+    setModalClosing(false);
+    setModalOpen(true);
+  }
+
+  function closeImageModal() {
+    setModalClosing(true);
+    clearTimeout(modalCloseTimer.current);
+    modalCloseTimer.current = setTimeout(() => {
+      setModalOpen(false);
+      setModalClosing(false);
+      modalReturnFocus.current?.focus?.({preventScroll:true});
+    }, 180);
+  }
+
+  function modalKeys(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeImageModal();
+    }
+    if (images.length > 1 && e.key === "ArrowLeft") {
+      e.preventDefault();
+      modalPrev();
+    }
+    if (images.length > 1 && e.key === "ArrowRight") {
+      e.preventDefault();
+      modalNext();
+    }
+    if (e.key === "Tab") {
+      const buttons = [
+        ...e.currentTarget.querySelectorAll("button:not(:disabled)")
+      ];
+      const first = buttons[0];
+      const last = buttons[buttons.length-1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    }
+  }
+
   function modalPrev() {
     setActiveImage((prev) => (prev <= 0 ? images.length - 1 : prev - 1));
   }
@@ -493,6 +544,7 @@ export default function ProductDetailsPage() {
   }
 
   async function toggleFavorite() {
+    if (actionLoading) return;
     if (!getAccessToken()) {
       navigate("/login");
       return;
@@ -519,12 +571,15 @@ export default function ProductDetailsPage() {
         }),
       );
       window.dispatchEvent(new Event("nemesis_auth_changed"));
+    } catch (err) {
+      showToast(err.message || "Əməliyyat alınmadı. Yenidən yoxlayın.");
     } finally {
       setActionLoading(false);
     }
   }
 
   async function addBasket() {
+    if (actionLoading) return;
     if (!getAccessToken()) {
       navigate("/login");
       return;
@@ -570,11 +625,12 @@ export default function ProductDetailsPage() {
         body: JSON.stringify({
           productId: freshProduct.id,
           productVariantId: freshVariant.id,
-          quantity: Math.max(1, quantity),
+          quantity: Math.min(Number(freshVariant.stockCount), Math.max(1, quantity)),
         }),
       });
 
       setBasketSuccess(true);
+      showUserToast(text.addedToBasket || "Səbətə əlavə edildi", "success");
       window.dispatchEvent(new Event("nemesis_auth_changed"));
 
       window.clearTimeout(basketSuccessTimerRef.current);
@@ -625,6 +681,7 @@ export default function ProductDetailsPage() {
   }
 
   function handleModalPointerDown(e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     modalStartXRef.current = e.clientX;
     modalStartYRef.current = e.clientY;
     setModalDragging(true);
@@ -648,8 +705,9 @@ export default function ProductDetailsPage() {
     if (!modalDragging) return;
 
     const diffX = e.clientX - modalStartXRef.current;
+    const diffY = e.clientY - modalStartYRef.current;
 
-    if (Math.abs(diffX) > 55) {
+    if (Math.abs(diffX) > 55 && Math.abs(diffX) > Math.abs(diffY)) {
       if (diffX < 0) modalNext();
       if (diffX > 0) modalPrev();
     }
@@ -664,6 +722,9 @@ export default function ProductDetailsPage() {
     return (
       <div
         className={`nb-product-buy-dock ${mode}`}
+        aria-hidden={mode === "is-floating" && (!dockFloating || modalOpen)}
+        inert={mode === "is-floating" && (!dockFloating || modalOpen)}
+        data-visible={mode !== "is-floating" || (dockFloating && !modalOpen)}
         aria-label={text.addToBasket || "Səbət idarəsi"}
       >
         <div
@@ -754,12 +815,6 @@ export default function ProductDetailsPage() {
           <section className="nb-product-detail__layout">
             <div className="nb-product-gallery">
               <div ref={galleryStageRef} className="nb-product-gallery__stage">
-                <span className="nb-product-gallery__orb nb-product-gallery__orb--one" />
-                <span className="nb-product-gallery__orb nb-product-gallery__orb--two" />
-                <span className="nb-product-gallery__word" aria-hidden="true">
-                  nemesisbaku
-                </span>
-
                 {hasDiscount && (
                   <span className="nb-product-gallery__sale">
                     −{discountPercent}%
@@ -768,25 +823,15 @@ export default function ProductDetailsPage() {
 
                 <button
                   type="button"
-                  onClick={() => images.length && setModalOpen(true)}
-                  onMouseMove={handleZoomMove}
-                  onMouseEnter={() =>
-                    setZoom((current) => ({ ...current, active: true }))
-                  }
-                  onMouseLeave={resetGalleryMotion}
+                  onClick={openImageModal}
                   className="nb-product-gallery__image-button"
                   aria-label="Şəkli böyüt"
                 >
                   {images[activeImage] ? (
-                    <img
-                      key={images[activeImage]}
-                      src={images[activeImage]}
+                    <ProductPhoto
+                      src={detailImageUrl(images[activeImage])}
                       alt={product.name}
                       className="nb-product-gallery__image"
-                      style={{
-                        transform: zoom.active ? "translateZ(28px) scale(1.2)" : "translateZ(0) scale(1)",
-                        transformOrigin: `${zoom.x}% ${zoom.y}%`,
-                      }}
                     />
                   ) : (
                     <span className="nb-product-gallery__empty">
@@ -801,7 +846,7 @@ export default function ProductDetailsPage() {
                     {String(Math.max(images.length, 1)).padStart(2, "0")}
                   </span>
                   {images.length > 0 && (
-                    <button type="button" onClick={() => setModalOpen(true)}>
+                    <button type="button" onClick={openImageModal}>
                       <FiMaximize2 />
                       <span>Yaxından bax</span>
                     </button>
@@ -820,12 +865,12 @@ export default function ProductDetailsPage() {
                       type="button"
                       onClick={() => {
                         setActiveImage(index);
-                        resetGalleryMotion();
                       }}
                       className={activeImage === index ? "is-active" : ""}
+                      aria-pressed={activeImage === index}
                       aria-label={`${index + 1}-ci şəkil`}
                     >
-                      <img src={img} alt="" />
+                      <img src={detailImageUrl(img,160)} alt="" loading="lazy" decoding="async" />
                       <span>{String(index + 1).padStart(2, "0")}</span>
                     </button>
                   ))}
@@ -910,6 +955,7 @@ export default function ProductDetailsPage() {
                           onClick={() => chooseColor(color.name)}
                           title={color.name}
                           className={active ? "is-active" : ""}
+                          aria-pressed={active}
                           aria-label={color.name}
                         >
                           <span style={{ backgroundColor: color.hex }} />
@@ -940,6 +986,7 @@ export default function ProductDetailsPage() {
                       <button
                         key={item.variantId}
                         type="button"
+                        aria-pressed={active}
                         onClick={() => chooseSize(item)}
                         className={active ? "is-active" : ""}
                       >
@@ -974,7 +1021,7 @@ export default function ProductDetailsPage() {
                   {product.categoryName || product.brandName || "nemesisbaku"}
                 </small>
               </div>
-              <div className="nb-product-buy-slot">
+              <div ref={buySlotRef} className="nb-product-buy-slot">
                 {!dockFloating && renderBuyDock("is-inline")}
               </div>
             </aside>
@@ -1021,53 +1068,37 @@ export default function ProductDetailsPage() {
             </button>
           </section>
 
-          {dockFloating &&
-            createPortal(renderBuyDock("is-floating"), document.body)}
+          {createPortal(renderBuyDock("is-floating"), document.body)}
           {relatedProducts.length > 0 && (
-            <section className="nb-product-related">
-              <div className="nb-product-related__head">
-                <div>
-                  <span>nemesisbaku</span>
-                  <h2>{text.selectedForYou}</h2>
-                </div>
-                <p>{text.swipe}</p>
-              </div>
-
-              <div ref={relatedRef} className="nb-product-related__track">
-                {relatedProducts.map((item) => (
-                  <div
-                    key={item.id}
-                    data-related-card
-                    className="nb-product-related__card"
+            <div className="nb-detail-related">
+              <ProductSection
+                title={text.selectedForYou}
+                products={relatedProducts}
+              />
+              {relatedHasMore && (
+                <div className="nb-detail-related__more">
+                  <button
+                    type="button"
+                    className="nemesis-home-load-more"
+                    onClick={() => loadRelated(product, relatedPage + 1)}
+                    disabled={relatedLoading}
                   >
-                    <ProductCard product={item} />
-                  </div>
-                ))}
-
-                {relatedHasMore && (
-                  <div className="nb-product-related__more-wrap">
-                    <button
-                      type="button"
-                      onClick={() => loadRelated(product, relatedPage + 1)}
-                      disabled={relatedLoading}
-                    >
-                      {relatedLoading ? text.loading : text.more}
-                      <FiArrowUpRight />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </section>
+                    {relatedLoading ? text.loading : (text.loadMore || text.more)}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </main>
 
       {modalOpen &&
         createPortal(
-          <div className="nb-product-modal">
+          <div className="nb-product-modal" data-closing={modalClosing} onKeyDown={modalKeys} role="dialog" aria-modal="true" aria-label="Məhsul şəkli">
             <button
               type="button"
-              onClick={() => setModalOpen(false)}
+              autoFocus
+              onClick={closeImageModal}
               className="nb-product-modal__close"
               aria-label="Bağla"
             >
@@ -1085,9 +1116,8 @@ export default function ProductDetailsPage() {
               </button>
             )}
 
-            <img
-              key={images[activeImage]}
-              src={images[activeImage]}
+            <ProductPhoto
+              src={detailImageUrl(images[activeImage],1600)}
               alt={product.name}
               draggable="false"
               onPointerDown={handleModalPointerDown}
