@@ -1,0 +1,36 @@
+.nb-showcase-admin { max-width: 1280px; margin: auto; padding-bottom: 30px; }
+.nb-showcase-admin__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.nb-showcase-admin h1 { margin: 0 0 8px; font-size: 28px; font-weight: 750; letter-spacing: -.6px; color: #172e4f; }
+.nb-showcase-admin h2 { font-size: 18px; font-weight: 700; margin: 0; }
+.nb-showcase-admin h3 { font-size: 15px; font-weight: 700; margin: 16px 0; }
+.nb-showcase-admin p, .nb-showcase-admin small { color: #67768a; line-height: 1.6; }
+.nb-showcase-admin small { display: block; font-weight: 400; font-size: 12px; overflow-wrap: anywhere; }
+.nb-showcase-admin fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.nb-showcase-admin fieldset:disabled { opacity: .65; }
+.nb-showcase-admin__card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin: 20px 0; min-width: 0; }
+.nb-showcase-admin__fields, .nb-showcase-admin__uploads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.nb-showcase-admin label { display: grid; gap: 8px; font-size: 13px; font-weight: 650; color: #263a56; margin-block: 14px; min-width: 0; }
+.nb-showcase-admin input:not([type=checkbox]), .nb-showcase-admin select, .nb-showcase-admin textarea { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #ced7e3; border-radius: 8px; background: #fff; color: #253853; font: inherit; }
+.nb-showcase-admin input:focus-visible, .nb-showcase-admin select:focus-visible, .nb-showcase-admin textarea:focus-visible { outline: 2px solid #244989; outline-offset: 2px; }
+.nb-showcase-admin textarea { resize: vertical; }
+.nb-showcase-admin__check { display: flex !important; align-items: center; gap: 10px !important; }
+.nb-showcase-admin__check input { width: 17px; height: 17px; flex-shrink: 0; }
+.nb-showcase-admin__upload { border: 1px dashed #b7c6d9; border-radius: 12px; padding: 18px; background: #f8fafd; }
+.nb-showcase-admin__upload img { display: block; height: 180px; width: 100%; object-fit: contain; background: #edf1f6; }
+.nb-showcase-admin__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.nb-showcase-admin__content { border-top: 1px solid #e4eaf2; margin-top: 24px; padding-top: 6px; }
+.nb-showcase-admin__products { max-height: 260px; overflow-y: auto; padding: 4px 12px; border: 1px solid #e4eaf2; border-radius: 8px; }
+.nb-showcase-admin__products img { width: 42px; height: 48px; object-fit: contain; }
+.nb-showcase-admin__selected { padding: 0; list-style: none; }
+.nb-showcase-admin__selected li { display: flex; gap: 8px; align-items: center; padding: 7px 0; }
+.nb-showcase-admin__selected span { flex: 1; overflow-wrap: anywhere; }
+.nb-showcase-admin__selected button { width: 34px; height: 34px; border: 1px solid #d9e1ed; border-radius: 6px; }
+.nb-showcase-admin button:disabled { opacity: .45; cursor: not-allowed; }
+.nb-showcase-admin__error { padding: 14px 18px; border: 1px solid #edc3c3; border-radius: 10px; background: #fff4f4; color: #943b3b; }
+.nb-showcase-admin__empty { padding: 60px 20px; text-align: center; background: #fff; border-radius: 14px; margin-top: 20px; }
+.nb-showcase-admin__save { position: sticky; bottom: 12px; z-index: 10; display: flex; align-items: center; justify-content: flex-end; gap: 18px; padding: 14px 18px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 6px 22px #172e4f14; }
+.nb-showcase-admin__save span { font-size: 12px; color: #67768a; }
+.nb-showcase-admin__preview--mobile { max-width: 390px; margin: auto; }
+.nb-showcase-admin__preview--mobile .nb-showcase-group { grid-template-columns: 1fr; }
+.nb-showcase-admin .nb-showcase-discover { min-height: 44px; font-size: 14px; bottom: 20px; }
+@media (max-width: 767px) { .nb-showcase-admin__fields, .nb-showcase-admin__uploads { grid-template-columns: 1fr; gap: 0; } .nb-showcase-admin__card { padding: 16px; } .nb-showcase-admin h1 { font-size: 23px; } }

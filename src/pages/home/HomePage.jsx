@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import HomeSearchResults from "../../components/search/HomeSearchResults";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,12 +17,15 @@ import ProductCard from "../../components/product/ProductCard";
 import ProductCardSkeleton from "../../components/product/ProductCardSkeleton";
 import ProductSection from "../../components/home/ProductSection";
 import HomePromoSlider from "../../components/home/HomePromoSlider";
+import ShowcaseGroup from "../../components/home/ShowcaseGroup";
+import { HOME_PAGE_SIZE, hasNextHomePage, showcaseAfterProduct } from "../../utils/showcase";
 import HomeQuickDiscovery from "../../components/home/HomeQuickDiscovery";
 import HomePageSkeleton from "../../components/home/HomePageSkeleton";
 import {
   getActiveBanners,
   getActiveCampaigns,
   getActiveHomeSections,
+  getActiveShowcaseGroups,
   getProducts,
   getPromoPage,
   trackVisit,
@@ -31,7 +34,7 @@ import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
 import "./homePage.css";
 
-const HOME_VIEW_STATE_KEY = "nemesis_home_view_state_v2";
+const HOME_VIEW_STATE_KEY = "nemesis_home_view_state_v3";
 const HOME_RETURN_PRODUCT_KEY = "nemesis_return_product_id";
 const HOME_RETURN_SCROLL_KEY = "nemesis_return_scroll_y";
 const HOME_VIEW_MAX_AGE = 30 * 60 * 1000;
@@ -193,6 +196,7 @@ function HomeLandingPage() {
 
   const allProductsRef = useRef(null);
   const homeRequestIdRef = useRef(0);
+  const morePendingRef = useRef(false);
   const latestHomeStateRef = useRef(null);
   const productNavigationSavedRef = useRef(false);
 
@@ -203,6 +207,7 @@ function HomeLandingPage() {
     () => restoredHomeState?.banners || [],
   );
   const [bannerDetail, setBannerDetail] = useState(null);
+  const [showcaseGroups, setShowcaseGroups] = useState(() => restoredHomeState?.showcaseGroups || []);
   const [homeSections, setHomeSections] = useState(
     () => restoredHomeState?.homeSections || [],
   );
@@ -245,6 +250,7 @@ function HomeLandingPage() {
   const noProductsText =
     text.noProducts || noProductsFallback[lang] || noProductsFallback.az;
   latestHomeStateRef.current = {
+    showcaseGroups,
     campaigns,
     banners,
     homeSections,
@@ -459,10 +465,7 @@ function HomeLandingPage() {
     const requestId = ++homeRequestIdRef.current;
     const shouldShowLoader = showInitialLoader && products.length === 0;
     const standardPageSize = getProductPageSize();
-    const restoringProduct = Boolean(
-      sessionStorage.getItem("nemesis_return_product_id"),
-    );
-    const initialPageSize = restoringProduct ? 60 : standardPageSize;
+    const initialPageSize = standardPageSize;
 
     try {
       if (shouldShowLoader) {
@@ -471,7 +474,7 @@ function HomeLandingPage() {
 
       setFilterActive(false);
 
-      const [campaignResult, bannerResult, homeSectionsResult, productsResult] =
+      const [campaignResult, bannerResult, homeSectionsResult, productsResult, showcaseResult] =
         await Promise.allSettled([
           requestWithRetry(() => getActiveCampaigns()),
           requestWithRetry(() => getActiveBanners()),
@@ -482,9 +485,13 @@ function HomeLandingPage() {
               pageSize: initialPageSize,
             }),
           ),
+          requestWithRetry(() => getActiveShowcaseGroups()),
         ]);
 
       if (requestId !== homeRequestIdRef.current) return;
+      if (showcaseResult.status === "fulfilled") {
+        setShowcaseGroups(normalizeList(showcaseResult.value));
+      }
 
       if (campaignResult.status === "fulfilled") {
         setCampaigns(uniqueById(normalizeList(campaignResult.value)));
@@ -504,12 +511,8 @@ function HomeLandingPage() {
         setAllProductsVisible(false);
         setProducts(initialProducts);
         setProductsAnimationVersion((prev) => prev + 1);
-        setPage(
-          restoringProduct
-            ? Math.max(1, Math.ceil(initialProducts.length / standardPageSize))
-            : 1,
-        );
-        setHasMore(initialProducts.length >= initialPageSize);
+        setPage(1);
+        setHasMore(hasNextHomePage(productsResult.value, initialProducts.length, 1));
       }
 
       const failedResult = [
@@ -537,7 +540,9 @@ function HomeLandingPage() {
   }
 
   async function loadMore() {
-    if (moreLoading) return;
+    if (morePendingRef.current || moreLoading || filterActive || !hasMore) return;
+    morePendingRef.current = true;
+    const requestId = homeRequestIdRef.current;
 
     try {
       setMoreLoading(true);
@@ -549,17 +554,19 @@ function HomeLandingPage() {
         pageSize,
       });
       const newProducts = normalizeList(res);
+      if (requestId !== homeRequestIdRef.current) return;
 
       setProducts((prev) => uniqueById([...prev, ...newProducts]));
       setPage(nextPage);
-      setHasMore(newProducts.length >= pageSize);
+      setHasMore(hasNextHomePage(res, newProducts.length, nextPage));
 
       setTimeout(() => {
         setAllProductsVisible(true);
       }, 40);
     } catch (err) {
-      showError(getErrorMessage(err, "Məhsullar yüklənmədi."));
+      if (requestId === homeRequestIdRef.current) showError(getErrorMessage(err, "Məhsullar yüklənmədi."));
     } finally {
+      morePendingRef.current = false;
       setMoreLoading(false);
     }
   }
@@ -607,11 +614,7 @@ function HomeLandingPage() {
   }
 
   function getProductPageSize() {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      return 6; // telefon: 3 sıra x 2 məhsul
-    }
-
-    return 12; // komputer/planset: 3 sıra x 4 məhsul
+    return HOME_PAGE_SIZE;
   }
 
   function releaseBannerScroll() {
@@ -871,9 +874,10 @@ function HomeLandingPage() {
                     ),
                   )
                 : products.map((product, index) => {
+                    const showcase = !filterActive && showcaseAfterProduct(showcaseGroups, index + 1);
                     return (
+                      <Fragment key={product.id || `product-wrap-${index}`}>
                       <div
-                        key={product.id || `product-wrap-${index}`}
                         data-home-product-id={product.id}
                         style={{
                           opacity: 1,
@@ -888,6 +892,8 @@ function HomeLandingPage() {
                       >
                         <ProductCard product={product} />
                       </div>
+                      {showcase && <div className="nb-showcase-slot"><ShowcaseGroup group={showcase} /></div>}
+                      </Fragment>
                     );
                   })}
 

@@ -46,6 +46,10 @@ export function getProducts(params = {}) {
   return apiFetch(`/api/Products${buildQuery(params)}`);
 }
 
+export function getActiveShowcaseGroups() {
+  return apiFetch("/api/Showcase/active");
+}
+
 export function getStoreInfo() {
   return apiFetch("/api/StoreInfo");
 }

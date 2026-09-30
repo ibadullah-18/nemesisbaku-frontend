@@ -26,6 +26,7 @@ const GROUPS = [
   { name: "Mağaza", items: [
     { path: "store-info", label: "Mağaza məlumatları", icon: FiMapPin },
     { path: "campaigns", label: "Kampaniyalar", icon: FiImage },
+    { path: "showcase", label: "Tanıtım blokları", icon: FiLayers },
     { path: "home-sections", label: "Ana səhifə bölmələri", icon: FiBox },
     { path: "promo-codes", label: "Promo kodlar", icon: FiPercent },
     { path: "email-announcements", label: "Email göndərişləri", icon: FiMail },

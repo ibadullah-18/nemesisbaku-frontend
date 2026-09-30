@@ -23,6 +23,8 @@ const AdminProductDetails = lazy(() => import("../pages/admin/AdminProductDetail
 const AdminAddProduct = lazy(() => import("../pages/admin/AdminAddProduct"));
 const AdminEditProduct = lazy(() => import("../pages/admin/AdminEditProduct"));
 const AdminCampaigns = lazy(() => import("../pages/admin/AdminCampaigns"));
+const AdminShowcase = lazy(() => import("../pages/admin/AdminShowcase"));
+const ShowcasePage = lazy(() => import("../pages/promo/ShowcasePage"));
 const AdminPromoForm = lazy(() => import("../pages/admin/AdminPromoForm"));
 const AdminOrders = lazy(() => import("../pages/admin/AdminOrders"));
 const AdminOrderDetails = lazy(() => import("../pages/admin/AdminOrderDetails"));
@@ -396,6 +398,9 @@ export default function AppRoutes() {
         <Route path="products/:id" element={<AdminEditProduct />} />
 
         <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route path="showcase" element={<AdminShowcase />} />
+        <Route path="showcase/create" element={<AdminShowcase mode="create" />} />
+        <Route path="showcase/:id" element={<AdminShowcase mode="edit" />} />
         <Route
           path="campaigns/create"
           element={<AdminPromoForm mode="create" />}
@@ -476,6 +481,9 @@ export default function AppRoutes() {
         <Route path="colors" element={<AdminColors />} />
 
         <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route path="showcase" element={<AdminShowcase />} />
+        <Route path="showcase/create" element={<AdminShowcase mode="create" />} />
+        <Route path="showcase/:id" element={<AdminShowcase mode="edit" />} />
         <Route
           path="campaigns/create"
           element={<AdminPromoForm mode="create" />}
@@ -504,6 +512,7 @@ export default function AppRoutes() {
         <Route path="*" element={<NotFoundRedirect />} />
       </Route>
 
+      <Route path="/:slug" element={<Layout><ShowcasePage /></Layout>} />
       <Route path="*" element={<NotFoundRedirect />} />
       </Routes>
     </Suspense>

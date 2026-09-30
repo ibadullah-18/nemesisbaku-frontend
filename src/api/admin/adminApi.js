@@ -664,6 +664,18 @@ export const adminCampaignsApi = {
   delete: (id) => adminPromoPagesApi.delete(id),
 };
 
+export const adminShowcaseApi = {
+  reorder: (groups) => adminFetch("/api/AdminShowcaseGroups/order", {
+    method: "PUT", body: JSON.stringify(groups.map(({ id, version }) => ({ id, version }))),
+  }),
+  list: () => adminFetch("/api/AdminShowcaseGroups"),
+  detail: (id) => adminFetch(`/api/AdminShowcaseGroups/${id}`),
+  save: (id, body) => adminFetch(`/api/AdminShowcaseGroups${id ? `/${id}` : ""}`, {
+    method: id ? "PUT" : "POST", body,
+  }),
+  delete: (id, version) => adminFetch(`/api/AdminShowcaseGroups/${id}?version=${encodeURIComponent(version)}`, { method: "DELETE" }),
+};
+
 export const adminPromoCodesApi = {
   list: () => adminFetch("/api/AdminPromoCodes"),
 
