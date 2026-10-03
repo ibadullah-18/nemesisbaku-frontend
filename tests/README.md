@@ -30,3 +30,19 @@ Yayımlama sırası: əvvəl `AddMetroDelivery` migration-ını ehtiva edən API
 sonra frontend. Sifarişin yaradılması cavabı artıq yalnız ID əvəzinə serverdə
 hesablanan qiymətləri də qaytarır. Metro məlumatları migration ilə bir dəfə
 yüklənir; sonrakı admin dəyişiklikləri qorunur. Canlı bazada tətbiq edilməyib.
+
+## Baxış statistikası və mobil görünüş
+
+- `node --test tests/traffic.test.mjs`: 30 dəqiqəlik sessiya sərhədi, daxili
+  yolların çıxarılması, Bakı vaxtı ilə tarix aralığı.
+- `/tests/storefront-preview.html`: çox və tək şəkilli kart, kampaniya,
+  nöqtə keçidləri; `?view=login` və `?view=register`: mövcud giriş/qeydiyyat formaları.
+  Bütün API sorğuları bu fixture-də saxtadır; real hesab və statistika yaradılmır.
+- Mobil 390px görünüşdə oxların gizlənməsi, nöqtə ilə şəkil keçidi,
+  tək şəkildə nöqtə olmaması və üfüqi daşmanın olmaması yoxlanılıb.
+- API-də `AddTrafficStatisticsPeriods`, sonra `AddPageViewEvents` migration-ları
+  tələb olunur. API frontend-dən əvvəl yayımlanmalıdır. Köhnə yalnız-ana-səhifə
+  qeydləri yeni baxış saylarına daxil edilmir. Yeni məlumatlar silinmədən
+  hesablama başlanğıcı dəyişdirilir; mövcud saxlanma/təmizləmə siyasəti qüvvədədir.
+- Unikal ziyarətçi brauzer identifikatorudur; cihazlararası insan tanıma və
+  bütün botları aşkarlama zəmanəti yoxdur. Yerli/dev rejimində tracking sönükdür.

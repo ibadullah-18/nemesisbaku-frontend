@@ -200,18 +200,12 @@ export default function AdminDashboard() {
             <div><FiActivity aria-hidden="true" /><span>WhatsApp klikləri</span><strong>{number(stats.totalWhatsAppClicks)}</strong></div>
           </section>
           <section className="nb-dashboard__panel nb-dashboard__traffic-settings" aria-label="Ziyarət statistikasının hesablanması">
-            <h2>Ziyarətlər necə sayılır?</h2>
-            <p>Müştəri səhifələrinin hər açılışı, yenilənməsi və səhifələrarası keçid ayrıca baxışdır. Eyni sorğunun texniki təkrarı ikinci dəfə sayılmır. Şəkil sürüşdürmək səhifə baxışı deyil.</p>
-            <p>30 dəqiqə fəaliyyətsizlikdən sonra yeni sessiya başlayır. Tarix seçimi bu üç ziyarət göstəricisinə aiddir; tarixlər Bakı vaxtı ilədir. WhatsApp klikləri və satış göstəriciləri ümumi olaraq qalır.</p>
-            <p>Admin səhifələri, bu brauzerdə admin girişi, yerli sınaqlar və müəyyən edilən botlar sayılmır. Yeni üsuldan əvvəlki ana səhifə qeydləri saxlanılır, amma bu saylara qarışdırılmır.</p>
-            <p>Unikal brauzer təxmini ziyarətçi göstəricisidir. Eyni insan başqa cihazdan və ya brauzerdən daxil olduqda, yaxud brauzer məlumatlarını sildikdə ayrıca sayıla bilər. Bu, dəqiq insan sayı deyil.</p>
             <p>{stats.trafficStatisticsStartsAtUtc
               ? `Hesablama başlanğıcı: ${new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Baku" }).format(new Date(stats.trafficStatisticsStartsAtUtc))} (Bakı vaxtı).`
               : "Hesablama: bazada saxlanmış bütün ziyarət qeydləri."}</p>
             {trafficNotice && <p role="status">{trafficNotice}</p>}
-            {stats.trafficRetentionDays != null && <p>Ziyarət qeydləri {number(stats.trafficRetentionDays)} gün saxlanılır. Hesablama başlanğıcından əvvəlki və avtomatik təmizlənmiş qeydlər saya daxil deyil.</p>}
             {confirmRestart ? <div className="nb-dashboard__traffic-confirm">
-              <p>Ziyarət və unikal brauzer sayları bu andan yenidən hesablansın? Köhnə qeydlər silinməyəcək. Sifarişlər, satışlar və WhatsApp klikləri dəyişməyəcək.</p>
+              <p>Ziyarət statistikası bu andan yenidən başlasın?</p>
               <button type="button" className="nb-dashboard__refresh" disabled={restarting || refreshing} onClick={restartTraffic}>{restarting ? "Başladılır…" : "Bəli, bu andan başlat"}</button>
               <button type="button" className="nb-dashboard__refresh" disabled={restarting} onClick={() => setConfirmRestart(false)}>Ləğv et</button>
             </div> : <button type="button" className="nb-dashboard__refresh" disabled={refreshing || restarting} onClick={() => setConfirmRestart(true)}>Ziyarət statistikasını bu andan başlat</button>}

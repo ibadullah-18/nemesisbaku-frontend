@@ -897,6 +897,7 @@ export default function CheckoutPage() {
               {deliveryCalc.available && deliveryCalc.metroStationName && <SummaryRow
                 label={Number(form.deliveryType) === 3 ? deliveryText.station : deliveryText.nearest}
                 value={deliveryCalc.metroStationName} />}
+              {deliveryCalc.available && deliveryCalc.pricingRule?.endsWith("-road") && <p translate="no" className="mt-2 text-xs font-normal text-[#5e5e5e] whitespace-nowrap"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>}
 
               <SummaryRow
                 label={text.delivery}

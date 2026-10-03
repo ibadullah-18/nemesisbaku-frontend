@@ -754,6 +754,7 @@ export default function RegisterPage() {
                           {form.email}
                         </span>
                       </div>
+                        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{text.otpSpamHint}</div>
 
                       <button
                         type="button"

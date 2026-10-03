@@ -113,7 +113,7 @@ export default function ProductCard({ product }) {
   }, [productId, product?.isFavorite]);
 
   const loadDetailOnce = useCallback(async () => {
-    if (detailLoadedRef.current || !productId || images.length > 1) return;
+    if (detailLoadedRef.current || !productId || images.length > 1 || product?.images?.length) return;
 
     try {
       detailLoadedRef.current = true;
@@ -123,7 +123,7 @@ export default function ProductCard({ product }) {
     } catch {
       detailLoadedRef.current = false;
     }
-  }, [productId, images.length]);
+  }, [productId, images.length, product?.images?.length]);
 
 
   function handleCardClick(event) {

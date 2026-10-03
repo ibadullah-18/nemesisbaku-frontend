@@ -19,7 +19,25 @@ import { useLanguage } from "../../i18n/LanguageContext";
 import AppLoader from "../../components/common/AppLoader";
 import AnimatedInput from "../../components/common/AnimatedInput";
 
-export default function ForgotPasswordPage() {
+  function BrandLogo({ store, brandName }) {
+    return (
+      <div className="flex h-[82px] w-[290px] max-w-full items-center justify-center overflow-hidden rounded-[18px] bg-white px-6">
+        {store?.logoUrl ? (
+          <img
+            src={cloudinaryResize(store.logoUrl, 160)}
+            alt={brandName}
+            className="block h-full w-full object-contain"
+            draggable={false}
+          />
+        ) : (
+          <span className="text-[34px] font-black tracking-[-0.06em] text-zinc-950">
+            nemesisbaku
+          </span>
+        )}
+      </div>
+    );
+  }
+export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const { text } = useLanguage();
 
@@ -48,9 +66,13 @@ export default function ForgotPasswordPage() {
   const toastStartTimerRef = useRef(null);
 
   useEffect(() => {
-    loadStoreInfo();
+    let alive = true;
+    apiFetch("/api/StoreInfo").then(res => { if (alive) setStore(res?.data || null); })
+      .catch(() => { if (alive) setStore(null); })
+      .finally(() => { if (alive) setStoreLoading(false); });
 
     return () => {
+      alive = false;
       clearTimeout(toastTimerRef.current);
       clearTimeout(toastCloseTimerRef.current);
       clearTimeout(toastStartTimerRef.current);
@@ -66,18 +88,6 @@ export default function ForgotPasswordPage() {
 
     return () => clearInterval(timer);
   }, [resendSeconds]);
-
-  async function loadStoreInfo() {
-    try {
-      setStoreLoading(true);
-      const res = await apiFetch("/api/StoreInfo");
-      setStore(res?.data || null);
-    } catch {
-      setStore(null);
-    } finally {
-      setStoreLoading(false);
-    }
-  }
 
   function showToast(message) {
     clearTimeout(toastTimerRef.current);
@@ -241,24 +251,6 @@ export default function ForgotPasswordPage() {
 
   const brandName = store?.storeName || "nemesisbaku";
 
-  function BrandLogo() {
-    return (
-      <div className="flex h-[82px] w-[290px] max-w-full items-center justify-center overflow-hidden rounded-[18px] bg-white px-6">
-        {store?.logoUrl ? (
-          <img
-            src={cloudinaryResize(store.logoUrl, 160)}
-            alt={brandName}
-            className="block h-full w-full object-contain"
-            draggable={false}
-          />
-        ) : (
-          <span className="text-[34px] font-black tracking-[-0.06em] text-zinc-950">
-            nemesisbaku
-          </span>
-        )}
-      </div>
-    );
-  }
 
   return (
     <>
@@ -342,7 +334,7 @@ export default function ForgotPasswordPage() {
           <div className="flex w-full flex-col justify-between bg-white md:w-[560px] lg:w-[610px]">
             <div className="px-5 pb-8 pt-8 sm:px-8 md:px-10 lg:px-12">
               <div className="mb-9 flex justify-center rounded-[24px]">
-                <BrandLogo />
+                <BrandLogo store={store} brandName={brandName} />
               </div>
 
               <form onSubmit={handleSubmit}>
@@ -413,6 +405,7 @@ export default function ForgotPasswordPage() {
                             {email}
                           </span>
                         </div>
+                        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{text.otpSpamHint}</div>
 
                         <button
                           type="button"

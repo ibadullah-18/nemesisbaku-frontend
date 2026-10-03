@@ -1,5 +1,6 @@
 export const translations = {
   az: {
+    otpSpamHint: "Kod gəlməyibsə, Spam / Lazımsız məktublar qovluğunu da yoxlayın.",
     loading: "Yüklənir",
     saving: "Yadda saxlanılır",
     login: "Daxil ol",
@@ -315,6 +316,7 @@ export const translations = {
   },
 
   ru: {
+    otpSpamHint: "Если код не пришёл, проверьте также папку «Спам».",
     loading: "Загрузка",
     saving: "Сохраняется",
     login: "Войти",
@@ -633,6 +635,7 @@ export const translations = {
   },
 
   en: {
+    otpSpamHint: "If the code has not arrived, please check your Spam / Junk folder too.",
     loading: "Loading",
     saving: "Saving",
     login: "Sign in",
