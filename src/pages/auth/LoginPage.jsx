@@ -7,6 +7,7 @@ import { apiFetch, saveTokens } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
 import AppLoader from "../../components/common/AppLoader";
 import AnimatedInput from "../../components/common/AnimatedInput";
+import "./authPages.css";
 
 function BrandLogo({ logoUrl, brandName }) {
   if (!logoUrl) {
@@ -74,26 +75,20 @@ export default function LoginPage() {
   const toastStartTimerRef = useRef(null);
 
   useEffect(() => {
-    loadStoreInfo();
+    let alive = true;
+    apiFetch("/api/StoreInfo").then(res => { if (alive) setStore(res?.data || null); })
+      .catch(() => { if (alive) setStore(null); })
+      .finally(() => { if (alive) setStoreLoading(false); });
 
     return () => {
+      alive = false;
       clearTimeout(toastTimerRef.current);
       clearTimeout(toastCloseTimerRef.current);
       clearTimeout(toastStartTimerRef.current);
     };
   }, []);
 
-  async function loadStoreInfo() {
-    try {
-      setStoreLoading(true);
-      const res = await apiFetch("/api/StoreInfo");
-      setStore(res?.data || null);
-    } catch {
-      setStore(null);
-    } finally {
-      setStoreLoading(false);
-    }
-  }
+
 
   function showToast(message) {
     clearTimeout(toastTimerRef.current);
@@ -190,7 +185,7 @@ export default function LoginPage() {
   const slogan = store?.slogan || "Addımlarınızda premium stil";
 
   return (
-    <main className="min-h-screen bg-[#f5f3f5] px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
+    <main className="nb-auth min-h-screen px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
       {(loading || storeLoading) && (
         <AppLoader text={loading ? text.loggingIn : text.loading} />
       )}
@@ -209,8 +204,8 @@ export default function LoginPage() {
           document.body,
         )}
 
-      <section className="mx-auto flex w-full max-w-[1120px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px]">
-        <div className="hidden flex-1 bg-[#f5f3f5] p-8 md:flex md:flex-col md:justify-between lg:p-11">
+      <section className="nb-auth__shell mx-auto flex w-full max-w-[1120px] overflow-hidden rounded-[8px] bg-white lg:min-h-[650px]">
+        <div className="nb-auth__aside hidden flex-1 p-8 md:flex md:flex-col md:justify-between lg:p-11">
           <div>
             <div className="mb-10 flex items-center gap-4">
               <Link

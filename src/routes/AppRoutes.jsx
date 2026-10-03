@@ -1,4 +1,5 @@
 import PageTransition from "../components/common/PageTransition";
+import TrafficTracker from "../components/common/TrafficTracker";
 import { lazy, Suspense, useLayoutEffect } from "react";
 import {
   Navigate,
@@ -129,6 +130,7 @@ function NotFoundRedirect() {
 export default function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
+      <TrafficTracker />
       <Routes>
       <Route
         path="/"

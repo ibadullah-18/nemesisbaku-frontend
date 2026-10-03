@@ -24,6 +24,33 @@ import { apiFetch } from "../../api/apiFetch";
 import { useLanguage } from "../../i18n/LanguageContext";
 import AppLoader from "../../components/common/AppLoader";
 import AnimatedInput from "../../components/common/AnimatedInput";
+import "./authPages.css";
+
+  function BrandLogo({ store, brandName, variant = "main" }) {
+    const sizes =
+      variant === "left"
+        ? "h-[108px] w-[365px] max-w-full px-8 rounded-[20px] shadow-[0_18px_50px_rgba(0,0,0,0.08)]"
+        : "h-[82px] w-[290px] max-w-full px-6 rounded-[18px]";
+
+    return (
+      <div
+        className={`flex items-center justify-center overflow-hidden bg-white ${sizes}`}
+      >
+        {store?.logoUrl ? (
+          <img
+            src={cloudinaryResize(store.logoUrl, 160)}
+            alt={brandName}
+            className="block h-full w-full object-contain"
+            draggable={false}
+          />
+        ) : (
+          <span className="text-[34px] font-black tracking-[-0.06em] text-zinc-950">
+            nemesisbaku
+          </span>
+        )}
+      </div>
+    );
+  }
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -64,9 +91,13 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    loadStoreInfo();
+    let alive = true;
+    apiFetch("/api/StoreInfo").then(res => { if (alive) setStore(res?.data || null); })
+      .catch(() => { if (alive) setStore(null); })
+      .finally(() => { if (alive) setStoreLoading(false); });
 
     return () => {
+      alive = false;
       clearTimeout(toastTimerRef.current);
       clearTimeout(toastCloseTimerRef.current);
       clearTimeout(toastStartTimerRef.current);
@@ -83,17 +114,7 @@ export default function RegisterPage() {
     return () => clearInterval(timer);
   }, [resendSeconds]);
 
-  async function loadStoreInfo() {
-    try {
-      setStoreLoading(true);
-      const res = await apiFetch("/api/StoreInfo");
-      setStore(res?.data || null);
-    } catch {
-      setStore(null);
-    } finally {
-      setStoreLoading(false);
-    }
-  }
+
 
   const brandName = store?.storeName || "nemesisbaku";
 
@@ -151,32 +172,6 @@ export default function RegisterPage() {
     ],
     [text],
   );
-
-  function BrandLogo({ variant = "main" }) {
-    const sizes =
-      variant === "left"
-        ? "h-[108px] w-[365px] max-w-full px-8 rounded-[20px] shadow-[0_18px_50px_rgba(0,0,0,0.08)]"
-        : "h-[82px] w-[290px] max-w-full px-6 rounded-[18px]";
-
-    return (
-      <div
-        className={`flex items-center justify-center overflow-hidden bg-white ${sizes}`}
-      >
-        {store?.logoUrl ? (
-          <img
-            src={cloudinaryResize(store.logoUrl, 160)}
-            alt={brandName}
-            className="block h-full w-full object-contain"
-            draggable={false}
-          />
-        ) : (
-          <span className="text-[34px] font-black tracking-[-0.06em] text-zinc-950">
-            nemesisbaku
-          </span>
-        )}
-      </div>
-    );
-  }
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -401,13 +396,13 @@ export default function RegisterPage() {
       <style>
         {`
           @keyframes registerStepNext {
-            from { opacity: 0; transform: translateX(24px) scale(.985); filter: blur(4px); }
-            to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+            from { opacity: 0; transform: translateX(24px) scale(.985);  }
+            to { opacity: 1; transform: translateX(0) scale(1);  }
           }
 
           @keyframes registerStepPrev {
-            from { opacity: 0; transform: translateX(-24px) scale(.985); filter: blur(4px); }
-            to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+            from { opacity: 0; transform: translateX(-24px) scale(.985);  }
+            to { opacity: 1; transform: translateX(0) scale(1);  }
           }
 
           @keyframes registerCardIn {
@@ -416,13 +411,13 @@ export default function RegisterPage() {
           }
 
           @keyframes registerHeroIn {
-            from { opacity: 0; transform: translateY(18px); filter: blur(4px); }
-            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+            from { opacity: 0; transform: translateY(18px);  }
+            to { opacity: 1; transform: translateY(0);  }
           }
         `}
       </style>
 
-      <main className="min-h-screen bg-[#f5f3f5] px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
+      <main className="nb-auth min-h-screen px-4 py-6 md:px-6 lg:flex lg:items-center lg:justify-center">
         {(loading || storeLoading || otpLoading) && (
           <AppLoader
             text={
@@ -449,8 +444,8 @@ export default function RegisterPage() {
             document.body,
           )}
 
-        <section className="mx-auto flex w-full max-w-[1180px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.07)] sm:rounded-[30px] lg:min-h-[650px] animate-[registerCardIn_.45s_cubic-bezier(.22,1,.36,1)_both]">
-          <div className="hidden flex-1 bg-[#f5f3f5] p-8 md:flex md:flex-col md:justify-between lg:p-11">
+        <section className="nb-auth__shell mx-auto flex w-full max-w-[1180px] overflow-hidden rounded-[8px] bg-white lg:min-h-[650px]">
+          <div className="nb-auth__aside hidden flex-1 p-8 md:flex md:flex-col md:justify-between lg:p-11">
             <div>
               <div className="animate-[registerHeroIn_.45s_cubic-bezier(.22,1,.36,1)_both]">
                 <h1 className="max-w-[470px] text-[42px] font-extrabold leading-[1.05] tracking-[-0.045em] text-zinc-950 lg:text-[56px]">
@@ -482,7 +477,7 @@ export default function RegisterPage() {
           <div className="flex w-full flex-col justify-between bg-white md:w-[560px] lg:w-[610px]">
             <div className="px-5 pb-8 pt-8 sm:px-8 md:px-10 lg:px-12">
               <div className="mb-9 flex justify-center rounded-[24px]">
-                <BrandLogo />
+                <BrandLogo store={store} brandName={brandName} />
               </div>
 
               <div className="mb-9">

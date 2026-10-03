@@ -261,7 +261,11 @@ export function getCreatedEntityId(res) {
 }
 
 export const adminDashboardApi = {
-  getStats: () => adminFetch("/api/Stats/dashboard"),
+  getStats: (range = {}) => {
+    const query = new URLSearchParams(Object.entries(range).filter(([, value]) => value));
+    return adminFetch(`/api/Stats/dashboard${query.size ? `?${query}` : ""}`);
+  },
+  restartTraffic: () => adminFetch("/api/Stats/traffic/restart", { method: "POST" }),
 };
 
 export const adminStoreInfoApi = {

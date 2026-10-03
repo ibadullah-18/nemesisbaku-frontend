@@ -5,13 +5,12 @@ import "./storefront.css";
 
 export default function StoreCarousel({ items, hero = false, discover, onIntent }) {
   const root = useRef(null), rail = useRef(null), gesture = useRef(null);
-  const request = useRef(0), frame = useRef(0), activeRef = useRef(0);
+  const frame = useRef(0), activeRef = useRef(0);
   const [active, setActive] = useState(0), [near, setNear] = useState(hero);
   const [paused, setPaused] = useState(false);
   const [visited, setVisited] = useState(() => new Set([0]));
 
   useEffect(() => {
-    request.current = 0;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setNear(true);
@@ -21,7 +20,6 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     observer.observe(root.current);
     return () => {
       observer.disconnect();
-      request.current = -1;
       cancelAnimationFrame(frame.current);
     };
   }, []);
@@ -38,21 +36,10 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     return () => observer.disconnect();
   }, []);
 
-  async function go(index) {
-    const next = (index + items.length) % items.length;
+  function go(index) {
     if (!items.length || !rail.current) return;
-    const ticket = ++request.current;
+    const next = (index + items.length) % items.length;
     setVisited(old => new Set([...old, next]));
-    const item = items[next];
-    const image = new Image();
-    image.src = window.matchMedia("(max-width: 767px)").matches
-      ? item.mobileSrc || item.src : item.src;
-    try {
-      await image.decode();
-    } catch {
-      // Şəkil yüklənməzsə həmin slaydda xəta mətni görünür.
-    }
-    if (ticket !== request.current || !rail.current) return;
     rail.current.scrollTo({
       left: next * rail.current.clientWidth,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -61,7 +48,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
   }
 
   useEffect(() => {
-    if (!hero || paused || items.length < 2 ||
+    if (!hero || paused || items.length < 2 || window.matchMedia("(hover: none), (pointer: coarse)").matches ||
         window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = setInterval(() => {
       const bounds = root.current?.getBoundingClientRect();
@@ -90,7 +77,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
 
   return <div ref={root} data-nemesis-no-rubber="true"
     className={hero ? "nb-carousel nb-carousel--hero" : "nb-carousel"}
-    onMouseEnter={() => { setPaused(true); onIntent?.(); }}
+    onMouseEnter={() => { if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) { setPaused(true); onIntent?.(); } }}
     onMouseLeave={() => setPaused(false)}
     onFocusCapture={() => { setPaused(true); onIntent?.(); }}
     onBlurCapture={e => {
@@ -98,7 +85,6 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     }}>
     <div ref={rail} className="nb-carousel__rail" onScroll={scroll}
       onPointerDown={e => {
-        request.current++;
         gesture.current = { x: e.clientX, y: e.clientY, moved: false };
         setPaused(true);
         onIntent?.();
@@ -116,6 +102,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
         if (gesture.current?.moved) {
           e.preventDefault();
           e.stopPropagation();
+          gesture.current = null;
         }
       }}>
       {items.map((item, index) => {
@@ -131,7 +118,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
         </>;
         return item.to
           ? <NavLink className="nb-carousel__slide"
-              key={item.key || item.src} to={item.to} draggable={false}
+              key={item.key || item.src} to={item.to} state={item.state} onClick={item.onClick} draggable={false}
               tabIndex={index === active ? 0 : -1}
               aria-hidden={index !== active}>{content}</NavLink>
           : <div className="nb-carousel__slide"

@@ -6,6 +6,7 @@
   display:flex; height:100%; overflow-x:auto; overflow-y:hidden;
   scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
   scrollbar-width:none; touch-action:pan-x pan-y pinch-zoom;
+  -webkit-overflow-scrolling:touch;
 }
 .nb-carousel__rail::-webkit-scrollbar { display:none; }
 .nb-carousel__slide {
@@ -806,3 +807,14 @@ body:has(.nb-product-buy-dock.is-floating[data-visible="true"]) .nb-user-toast-h
 }
 
 /* NB_SEARCH_CRISP_END */
+
+/* Touch devices use native swipe and small, tappable pagination only. */
+@media(max-width:767px), (hover:none), (pointer:coarse) {
+  .nb-carousel .nb-carousel__arrow { display:none!important; }
+  .nemesis-product-card__open { display:none!important; }
+  .nemesis-product-card:hover { transform:none!important; }
+  .nb-carousel__dots { bottom:6px; max-width:90%; background:rgb(255 255 255 / 80%); }
+  .nb-carousel__dots button { width:24px; height:28px; }
+  .nb-carousel__dots button::after { width:6px; height:6px; }
+  .nb-carousel__dots button[aria-current]::after { width:12px; }
+}

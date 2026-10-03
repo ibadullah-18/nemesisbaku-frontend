@@ -7,6 +7,7 @@ import {
 import { adminDashboardApi, adminProductsApi, unwrapAdmin, listAdmin } from "../../api/admin/adminApi";
 import { getPanelBasePath } from "../../api/admin/adminAuth";
 import "./adminDashboard.css";
+import { trafficDateRange } from "../../utils/traffic";
 
 const ORDER_STATES = [
   { label: "Yeni sifariş", key: "pendingOrders" },
@@ -25,11 +26,17 @@ const money = (value) => new Intl.NumberFormat("az-AZ", {
 export default function AdminDashboard() {
   const basePath = getPanelBasePath();
   const [stats, setStats] = useState(null);
+  const [dates, setDates] = useState({ start: "", end: "" });
+  const [trafficRange, setTrafficRange] = useState({});
   const [lowStock, setLowStock] = useState([]);
   const [stockError, setStockError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [confirmRestart, setConfirmRestart] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [trafficNotice, setTrafficNotice] = useState("");
+  const restartLock = useRef(false);
   const requestRunning = useRef(false);
   const mounted = useRef(true);
 
@@ -40,7 +47,7 @@ export default function AdminDashboard() {
     setError("");
     try {
       const [statsResult, stockResult] = await Promise.allSettled([
-        adminDashboardApi.getStats(), adminProductsApi.lowStock(2),
+        adminDashboardApi.getStats(trafficRange), adminProductsApi.lowStock(2),
       ]);
       if (!mounted.current) return;
       if (statsResult.status === "rejected") throw statsResult.reason;
@@ -53,7 +60,27 @@ export default function AdminDashboard() {
       requestRunning.current = false;
       if (mounted.current) { setLoading(false); setRefreshing(false); }
     }
-  }, []);
+  }, [trafficRange]);
+
+  async function restartTraffic() {
+    if (restartLock.current || requestRunning.current) return;
+    restartLock.current = true;
+    setRestarting(true); setError(""); setTrafficNotice("");
+    try {
+      const result = await adminDashboardApi.restartTraffic();
+      if (!mounted.current) return;
+      setStats(previous => ({ ...previous, totalPageViews: 0, uniqueVisitors: 0, visitSessions: 0,
+        trafficStatisticsStartsAtUtc: unwrapAdmin(result) }));
+      setConfirmRestart(false);
+      setTrafficNotice("Ziyarət statistikası yeni tarixdən başladıldı. Köhnə qeydlər silinmədi.");
+      await loadDashboard();
+    } catch (err) {
+      if (mounted.current) setError(err?.message || "Statistikanı yenidən başlatmaq mümkün olmadı.");
+    } finally {
+      restartLock.current = false;
+      if (mounted.current) setRestarting(false);
+    }
+  }
 
   useEffect(() => {
     mounted.current = true;
@@ -84,7 +111,7 @@ export default function AdminDashboard() {
           <p className="nb-dashboard__subtitle">Mağazanın ümumi göstəriciləri</p>
         </div>
         <button type="button" className="nb-dashboard__refresh"
-          disabled={loading || refreshing} onClick={() => loadDashboard()}>
+          disabled={loading || refreshing || restarting} onClick={() => loadDashboard()}>
           <FiRefreshCw className={refreshing ? "is-spinning" : ""} aria-hidden="true" />
           {refreshing ? "Yenilənir..." : "Yenilə"}
         </button>
@@ -156,10 +183,38 @@ export default function AdminDashboard() {
             </section>
           </div>
 
+          <form className="nb-dashboard__traffic-filter" onSubmit={event => {
+            event.preventDefault();
+            if (dates.start && dates.end && dates.start > dates.end) { setError("Başlanğıc tarixi bitmə tarixindən sonra ola bilməz."); return; }
+            setTrafficRange(trafficDateRange(dates.start, dates.end));
+          }}>
+            <label>Başlanğıc tarixi<input type="date" value={dates.start} onChange={e => setDates(v => ({ ...v, start: e.target.value }))} /></label>
+            <label>Bitmə tarixi<input type="date" min={dates.start || undefined} value={dates.end} onChange={e => setDates(v => ({ ...v, end: e.target.value }))} /></label>
+            <button className="nb-dashboard__refresh" disabled={loading || refreshing || restarting}>Ziyarətləri göstər</button>
+            <button type="button" className="nb-dashboard__refresh" disabled={loading || refreshing || restarting} onClick={() => { setDates({ start: "", end: "" }); setTrafficRange({}); }}>Bütün saxlanmış dövr</button>
+          </form>
           <section className="nb-dashboard__traffic" aria-label="Mağaza fəaliyyəti">
-            <div><FiEye aria-hidden="true" /><span>Səhifə baxışı</span><strong>{number(stats.totalPageViews)}</strong></div>
-            <div><FiUsers aria-hidden="true" /><span>Unikal ziyarətçi</span><strong>{number(stats.uniqueVisitors)}</strong></div>
+            <div><FiEye aria-hidden="true" /><span>Səhifə baxışları</span><strong>{number(stats.totalPageViews)}</strong></div>
+            <div><FiUsers aria-hidden="true" /><span>Unikal ziyarətçi (brauzer)</span><strong>{number(stats.uniqueVisitors)}</strong></div>
+            <div><FiActivity aria-hidden="true" /><span>Ziyarət sessiyaları</span><strong>{number(stats.visitSessions)}</strong></div>
             <div><FiActivity aria-hidden="true" /><span>WhatsApp klikləri</span><strong>{number(stats.totalWhatsAppClicks)}</strong></div>
+          </section>
+          <section className="nb-dashboard__panel nb-dashboard__traffic-settings" aria-label="Ziyarət statistikasının hesablanması">
+            <h2>Ziyarətlər necə sayılır?</h2>
+            <p>Müştəri səhifələrinin hər açılışı, yenilənməsi və səhifələrarası keçid ayrıca baxışdır. Eyni sorğunun texniki təkrarı ikinci dəfə sayılmır. Şəkil sürüşdürmək səhifə baxışı deyil.</p>
+            <p>30 dəqiqə fəaliyyətsizlikdən sonra yeni sessiya başlayır. Tarix seçimi bu üç ziyarət göstəricisinə aiddir; tarixlər Bakı vaxtı ilədir. WhatsApp klikləri və satış göstəriciləri ümumi olaraq qalır.</p>
+            <p>Admin səhifələri, bu brauzerdə admin girişi, yerli sınaqlar və müəyyən edilən botlar sayılmır. Yeni üsuldan əvvəlki ana səhifə qeydləri saxlanılır, amma bu saylara qarışdırılmır.</p>
+            <p>Unikal brauzer təxmini ziyarətçi göstəricisidir. Eyni insan başqa cihazdan və ya brauzerdən daxil olduqda, yaxud brauzer məlumatlarını sildikdə ayrıca sayıla bilər. Bu, dəqiq insan sayı deyil.</p>
+            <p>{stats.trafficStatisticsStartsAtUtc
+              ? `Hesablama başlanğıcı: ${new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Baku" }).format(new Date(stats.trafficStatisticsStartsAtUtc))} (Bakı vaxtı).`
+              : "Hesablama: bazada saxlanmış bütün ziyarət qeydləri."}</p>
+            {trafficNotice && <p role="status">{trafficNotice}</p>}
+            {stats.trafficRetentionDays != null && <p>Ziyarət qeydləri {number(stats.trafficRetentionDays)} gün saxlanılır. Hesablama başlanğıcından əvvəlki və avtomatik təmizlənmiş qeydlər saya daxil deyil.</p>}
+            {confirmRestart ? <div className="nb-dashboard__traffic-confirm">
+              <p>Ziyarət və unikal brauzer sayları bu andan yenidən hesablansın? Köhnə qeydlər silinməyəcək. Sifarişlər, satışlar və WhatsApp klikləri dəyişməyəcək.</p>
+              <button type="button" className="nb-dashboard__refresh" disabled={restarting || refreshing} onClick={restartTraffic}>{restarting ? "Başladılır…" : "Bəli, bu andan başlat"}</button>
+              <button type="button" className="nb-dashboard__refresh" disabled={restarting} onClick={() => setConfirmRestart(false)}>Ləğv et</button>
+            </div> : <button type="button" className="nb-dashboard__refresh" disabled={refreshing || restarting} onClick={() => setConfirmRestart(true)}>Ziyarət statistikasını bu andan başlat</button>}
           </section>
         </>
       ) : null}

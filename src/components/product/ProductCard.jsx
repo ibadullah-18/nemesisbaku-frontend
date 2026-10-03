@@ -191,16 +191,15 @@ export default function ProductCard({ product }) {
     }
   }
 
-  return (
-    <NavLink
-      to={productId ? `/products/${productId}` : "#"}
-      state={{
+  const linkState = {
         fromProductList: true,
         fromHome: location.pathname === "/",
         fromSearch: location.pathname === "/search",
         returnTo: `${location.pathname}${location.search}`,
-      }}
-      onClick={handleCardClick}
+  };
+  const detailUrl = productId ? `/products/${productId}` : "#";
+  return (
+    <article
       className="nemesis-product-card group block overflow-hidden rounded-[18px] border border-zinc-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.035)]"
     >
       <div className="nemesis-product-card__media relative aspect-[5/6] overflow-hidden bg-[#f5f5f5]">
@@ -235,11 +234,12 @@ export default function ProductCard({ product }) {
         </button>
 
         {images.length ? <StoreCarousel key={productId} onIntent={loadDetailOnce}
-          items={images.map(src => ({ src, alt: mergedProduct?.name || mergedProduct?.productName }))} />
+          items={images.map(src => ({ src, alt: mergedProduct?.name || mergedProduct?.productName,
+            to: detailUrl, state: linkState, onClick: handleCardClick }))} />
           : <div className="nb-image__error">Şəkil əlçatan deyil</div>}
       </div>
 
-      <div className="nemesis-product-card__body p-3 pt-3.5 sm:p-4 sm:pt-3.5">
+      <NavLink to={detailUrl} state={linkState} onClick={handleCardClick} className="nemesis-product-card__body block p-3 pt-3.5 sm:p-4 sm:pt-3.5">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400 sm:text-[11px]">
             {brandName}
@@ -269,7 +269,7 @@ export default function ProductCard({ product }) {
             </span>
           )}
         </div>
-      </div>
-    </NavLink>
+      </NavLink>
+    </article>
   );
 }

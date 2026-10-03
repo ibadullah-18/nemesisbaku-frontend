@@ -70,3 +70,12 @@ a.nb-dashboard__stat:hover, a.nb-dashboard__stat:focus-visible { transform: pers
   .nb-dashboard__refresh, .nb-dashboard__stat, .nb-dashboard__track span { transition: none; }
   .nb-dashboard__refresh:hover:not(:disabled), a.nb-dashboard__stat:hover, a.nb-dashboard__stat:focus-visible { transform: none; }
 }
+.nb-dashboard__traffic-settings { margin-top: 20px; }
+.nb-dashboard__traffic-settings p { color: #596a80; line-height: 1.65; margin: 12px 0; }
+.nb-dashboard__traffic-confirm { padding: 16px; border: 1px solid #dce3ed; border-radius: 12px; }
+.nb-dashboard__traffic-confirm button { display: inline-flex; margin: 4px 10px 4px 0; }
+.nb-dashboard__traffic-filter { display:flex; flex-wrap:wrap; align-items:end; gap:12px; margin:20px 0 12px; }
+.nb-dashboard__traffic-filter label { display:grid; gap:6px; font-size:13px; }
+.nb-dashboard__traffic-filter input { background:white; border:1px solid #dce3ed; border-radius:8px; padding:10px; font:inherit; }
+.nb-dashboard__traffic { grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media(max-width:767px) { .nb-dashboard__traffic { grid-template-columns:repeat(2,minmax(0,1fr)); } }

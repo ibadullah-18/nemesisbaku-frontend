@@ -28,7 +28,6 @@ import {
   getActiveShowcaseGroups,
   getProducts,
   getPromoPage,
-  trackVisit,
 } from "../../api/homeApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import { showUserToast } from "../../utils/userToast";
@@ -275,7 +274,6 @@ function HomeLandingPage() {
       loadHome();
     }
 
-    trackVisit("/").catch(() => {});
   }, []);
 
   useEffect(() => {

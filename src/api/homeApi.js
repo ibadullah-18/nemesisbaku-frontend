@@ -1,5 +1,5 @@
 import { apiFetch } from "./apiFetch";
-import { generateId } from "../utils/generateId";
+
 
 function buildQuery(params = {}) {
   const query = new URLSearchParams();
@@ -54,19 +54,4 @@ export function getStoreInfo() {
   return apiFetch("/api/StoreInfo");
 }
 
-export function trackVisit(pageUrl = "/") {
-  let visitorId = localStorage.getItem("nemesis_visitor_id");
 
-  if (!visitorId) {
-    visitorId = generateId();
-    localStorage.setItem("nemesis_visitor_id", visitorId);
-  }
-
-  return apiFetch("/api/Stats/track-visit", {
-    method: "POST",
-    body: JSON.stringify({
-      visitorId,
-      pageUrl,
-    }),
-  });
-}
