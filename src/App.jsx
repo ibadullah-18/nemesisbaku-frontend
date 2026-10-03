@@ -1,3 +1,4 @@
+import KeyboardViewport from "./components/common/KeyboardViewport";
 import { LanguageProvider } from "./i18n/LanguageContext";
 import AppRoutes from "./routes/AppRoutes";
 import UserToastHost from "./components/common/UserToastHost";
@@ -34,6 +35,7 @@ export default function App() {
         `}
       </style>
 
+      <KeyboardViewport />
       <UserToastHost />
       <AppRoutes />
     </LanguageProvider>

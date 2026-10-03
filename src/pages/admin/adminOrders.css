@@ -93,8 +93,8 @@
 .nb-orders__total-row strong { color: #fff; }
 .nb-orders__total-row.is-final { margin-top: 10px; padding-top: 17px; border-top: 1px solid #434b57; font-size: 18px; font-weight: 800; }
 .nb-orders__field { display: block; margin: 16px 0; color: #425064; font-size: 14px; font-weight: 700; }
-.nb-orders__field select, .nb-orders__field textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 11px 12px; border: 1px solid #dce2eb; border-radius: 10px; outline: 0; background: #fff; color: #17191e; font-family: inherit; font-size: 14px; font-weight: 500; }
-.nb-orders__field select:focus, .nb-orders__field textarea:focus { border-color: #244989; }
+.nb-orders__field :is(select, .nb-select-trigger), .nb-orders__field textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 11px 12px; border: 1px solid #dce2eb; border-radius: 10px; outline: 0; background: #fff; color: #17191e; font-family: inherit; font-size: 14px; font-weight: 500; }
+.nb-orders__field :is(select, .nb-select-trigger):focus, .nb-orders__field textarea:focus { border-color: #244989; }
 .nb-orders__field textarea { resize: vertical; }
 .nb-orders__primary, .nb-orders__secondary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin-top: 10px; border: 0; border-radius: 10px; background: #244989; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .nb-orders__heading h1 { overflow-wrap: anywhere; }

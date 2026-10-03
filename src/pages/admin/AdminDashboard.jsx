@@ -1,3 +1,4 @@
+import SiteInput from "../../components/common/SiteInput";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -188,8 +189,8 @@ export default function AdminDashboard() {
             if (dates.start && dates.end && dates.start > dates.end) { setError("Başlanğıc tarixi bitmə tarixindən sonra ola bilməz."); return; }
             setTrafficRange(trafficDateRange(dates.start, dates.end));
           }}>
-            <label>Başlanğıc tarixi<input type="date" value={dates.start} onChange={e => setDates(v => ({ ...v, start: e.target.value }))} /></label>
-            <label>Bitmə tarixi<input type="date" min={dates.start || undefined} value={dates.end} onChange={e => setDates(v => ({ ...v, end: e.target.value }))} /></label>
+            <label>Başlanğıc tarixi<SiteInput type="date" value={dates.start} onChange={e => setDates(v => ({ ...v, start: e.target.value }))} /></label>
+            <label>Bitmə tarixi<SiteInput type="date" min={dates.start || undefined} value={dates.end} onChange={e => setDates(v => ({ ...v, end: e.target.value }))} /></label>
             <button className="nb-dashboard__refresh" disabled={loading || refreshing || restarting}>Ziyarətləri göstər</button>
             <button type="button" className="nb-dashboard__refresh" disabled={loading || refreshing || restarting} onClick={() => { setDates({ start: "", end: "" }); setTrafficRange({}); }}>Bütün saxlanmış dövr</button>
           </form>

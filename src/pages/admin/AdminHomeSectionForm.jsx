@@ -1,3 +1,4 @@
+import SiteInput from "../../components/common/SiteInput";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -367,7 +368,7 @@ export default function AdminHomeSectionForm({ mode }) {
               <div className="flex h-12 items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 md:w-[320px]">
                 <FiSearch className="text-zinc-400" />
 
-                <input
+                <SiteInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Məhsul axtar"
@@ -526,8 +527,8 @@ function AdminInput({
         {label}
       </span>
 
-      <input
-        type={type}
+      <SiteInput
+        type={type} noPast={type === "date" || type === "datetime-local"}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}

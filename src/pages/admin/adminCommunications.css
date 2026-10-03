@@ -160,7 +160,7 @@
   color: #8490a1;
 }
 .nb-comm-field input,
-.nb-comm-field select,
+.nb-comm-field :is(select, .nb-select-trigger),
 .nb-comm-field textarea {
   width: 100%;
   min-width: 0;
@@ -178,7 +178,7 @@
 .nb-comm-field > div input { min-height: 42px; border: 0; padding: 0; background: transparent; }
 .nb-comm-field textarea { min-height: 128px; padding-block: 11px; resize: vertical; }
 .nb-comm-field input:focus,
-.nb-comm-field select:focus,
+.nb-comm-field :is(select, .nb-select-trigger):focus,
 .nb-comm-field textarea:focus,
 .nb-comm-field > div:focus-within { border-color: #244989; box-shadow: 0 0 0 3px rgba(36, 73, 137, .09); }
 .nb-switch-row {

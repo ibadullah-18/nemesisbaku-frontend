@@ -1,3 +1,5 @@
+import SiteInput from "../../components/common/SiteInput";
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useMemo, useState } from "react";
 import {
   FiActivity,
@@ -146,11 +148,11 @@ export default function AdminAuditLogs() {
 
       <section className="nb-list-card">
         <div className="nb-audit-filters">
-          <label className="nb-search-field"><FiSearch /><input value={filters.search} onChange={(event) => setFilters((old) => ({ ...old, search: event.target.value }))} onKeyDown={(event) => event.key === "Enter" && loadLogs(1)} placeholder="İstifadəçi, açıqlama və ya IP axtar" /></label>
-          <select value={filters.action} onChange={(event) => setFilters((old) => ({ ...old, action: event.target.value }))}><option value="">Bütün əməliyyatlar</option>{actionOptions.map((action) => <option key={action} value={action}>{action}</option>)}</select>
-          <select value={filters.entityName} onChange={(event) => setFilters((old) => ({ ...old, entityName: event.target.value }))}>{entityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-          <label className="nb-date-field"><span>Başlanğıc</span><input type="date" value={filters.fromDate} onChange={(event) => setFilters((old) => ({ ...old, fromDate: event.target.value }))} /></label>
-          <label className="nb-date-field"><span>Son</span><input type="date" value={filters.toDate} onChange={(event) => setFilters((old) => ({ ...old, toDate: event.target.value }))} /></label>
+          <label className="nb-search-field"><FiSearch /><SiteInput value={filters.search} onChange={(event) => setFilters((old) => ({ ...old, search: event.target.value }))} onKeyDown={(event) => event.key === "Enter" && loadLogs(1)} placeholder="İstifadəçi, açıqlama və ya IP axtar" /></label>
+          <SiteSelect value={filters.action} onChange={(event) => setFilters((old) => ({ ...old, action: event.target.value }))}><option value="">Bütün əməliyyatlar</option>{actionOptions.map((action) => <option key={action} value={action}>{action}</option>)}</SiteSelect>
+          <SiteSelect value={filters.entityName} onChange={(event) => setFilters((old) => ({ ...old, entityName: event.target.value }))}>{entityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</SiteSelect>
+          <label className="nb-date-field"><span>Başlanğıc</span><SiteInput type="date" value={filters.fromDate} onChange={(event) => setFilters((old) => ({ ...old, fromDate: event.target.value }))} /></label>
+          <label className="nb-date-field"><span>Son</span><SiteInput type="date" value={filters.toDate} onChange={(event) => setFilters((old) => ({ ...old, toDate: event.target.value }))} /></label>
           <button type="button" onClick={() => loadLogs(1)}><FiFilter /> Tətbiq et</button>
         </div>
 

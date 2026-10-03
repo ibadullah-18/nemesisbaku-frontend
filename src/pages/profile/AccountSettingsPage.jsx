@@ -1,3 +1,4 @@
+import SiteInput from "../../components/common/SiteInput";
 import { showUserToast as showToast } from "../../utils/userToast";
 import "../profile/accountUI.css";
 import { useEffect, useRef, useState } from "react";
@@ -264,7 +265,7 @@ export default function AccountSettingsPage() {
                 <FiCamera />
               </button>
 
-              <input
+              <SiteInput
                 ref={fileRef}
                 type="file"
                 accept="image/*"
@@ -361,7 +362,7 @@ function Input({ label, value, onChange, type = "text" }) {
       <span className="mb-2 block text-sm font-medium text-zinc-800">
         {label}
       </span>
-      <input
+      <SiteInput
         type={type}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
@@ -381,7 +382,7 @@ function PhoneInput({ label, value, onChange }) {
         <span className="border-r border-zinc-200 px-4 text-sm font-bold text-zinc-950">
           +994
         </span>
-        <input
+        <SiteInput
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           inputMode="numeric"
@@ -400,7 +401,7 @@ function ReadOnlyInput({ label, value, hint }) {
       <span className="mb-2 block text-sm font-medium text-zinc-800">
         {label}
       </span>
-      <input
+      <SiteInput
         value={value || ""}
         readOnly
         className="h-12 w-full cursor-not-allowed rounded-[8px] border border-zinc-100 bg-zinc-100 px-4 text-sm font-medium text-zinc-500 outline-none"
@@ -454,7 +455,7 @@ function LoyaltyCardField({
             {copy.codeLabel}
           </span>
 
-          <input
+          <SiteInput
             type="text"
             value={value || ""}
             onChange={(event) => onChange(event.target.value)}

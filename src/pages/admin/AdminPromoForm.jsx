@@ -1,3 +1,5 @@
+import SiteInput from "../../components/common/SiteInput";
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -440,7 +442,7 @@ export default function AdminPromoForm({ mode }) {
               <div className="flex h-12 items-center gap-3 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 md:w-[320px]">
                 <FiSearch className="text-zinc-400" />
 
-                <input
+                <SiteInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Məhsul axtar"
@@ -606,7 +608,7 @@ function PromoImageField({
           Şəkil yüklənməzdən əvvəl 9 MB limitinə uyğun hazırlanır.
         </p>
 
-        <input
+        <SiteInput
           type="file"
           accept={IMAGE_ACCEPT}
           onChange={onChange}
@@ -638,8 +640,8 @@ function AdminInput({
         {label}
       </span>
 
-      <input
-        type={type}
+      <SiteInput
+        type={type} noPast={type === "date" || type === "datetime-local"}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
@@ -656,14 +658,14 @@ function AdminSelect({ label, value, onChange, children, disabled = false }) {
         {label}
       </span>
 
-      <select
+      <SiteSelect
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {children}
-      </select>
+      </SiteSelect>
     </label>
   );
 }

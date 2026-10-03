@@ -1,3 +1,4 @@
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FiArrowDown, FiArrowUp, FiPlus, FiSave, FiTrash2 } from "react-icons/fi";
@@ -171,7 +172,7 @@ export default function AdminShowcase({ mode = "list" }) {
             <button type="button" className="nb-merch__button" disabled={form.blocks.length === 1} onClick={() => { if (window.confirm("Bu blok qrupdan çıxarılsın? Saxladıqdan sonra onun səhifəsi də silinəcək.")) update("blocks", form.blocks.filter(b => b.key !== block.key)); }}><FiTrash2 /> Çıxar</button>
           </div></div>
           <div className="nb-showcase-admin__fields">
-            <label>Şəklin forması<select value={block.shape} onChange={e => updateBlock(block.key, "shape", e.target.value)}>{Object.entries(SHOWCASE_SHAPES).map(([value, option]) => <option value={value} key={value}>{option.label}</option>)}</select></label>
+            <label>Şəklin forması<SiteSelect value={block.shape} onChange={e => updateBlock(block.key, "shape", e.target.value)}>{Object.entries(SHOWCASE_SHAPES).map(([value, option]) => <option value={value} key={value}>{option.label}</option>)}</SiteSelect></label>
             <label>Şəklin təsviri (istəyə bağlı)<input maxLength={200} value={block.imageAlt || ""} onChange={e => updateBlock(block.key, "imageAlt", e.target.value)} /><small>Ekran oxuyucusu üçün. Şəkil üzərində mətn kimi göstərilmir.</small></label>
           </div>
           <div className="nb-showcase-admin__uploads">{[false, true].map(mobile => <label key={String(mobile)} className="nb-showcase-admin__upload">
@@ -180,7 +181,7 @@ export default function AdminShowcase({ mode = "list" }) {
             <input type="file" accept={IMAGE_ACCEPT} onChange={e => selectImage(e, block, mobile)} />
             <small>JPG, PNG, WebP, HEIC/HEIF. Fərqli piksel ölçüləri qəbul edilir; seçilən formaya sığdırmaq üçün kənarlar kəsilə bilər. Yükləmə üçün 9 MB-a qədər optimallaşdırılır.</small>
           </label>)}</div>
-          <label>Klik zamanı<select value={block.targetType} onChange={e => updateBlock(block.key, "targetType", e.target.value)}><option value="none">Heç nə — yalnız şəkil</option><option value="internal">Daxili məzmun səhifəsi</option><option value="external">Xarici keçid</option></select></label>
+          <label>Klik zamanı<SiteSelect value={block.targetType} onChange={e => updateBlock(block.key, "targetType", e.target.value)}><option value="none">Heç nə — yalnız şəkil</option><option value="internal">Daxili məzmun səhifəsi</option><option value="external">Xarici keçid</option></SiteSelect></label>
           {block.targetType === "external" && <label>Keçid ünvanı<input required type="url" maxLength={2048} value={block.externalUrl || ""} placeholder="https://…" onChange={e => updateBlock(block.key, "externalUrl", e.target.value)} /></label>}
           {block.targetType === "internal" && <div className="nb-showcase-admin__content">
             <h3>Daxili səhifənin məzmunu</h3>

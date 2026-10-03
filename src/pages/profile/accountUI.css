@@ -6,13 +6,13 @@
   min-height:75svh;
 }
 
-#root .nb-account :is(button,input,textarea,select) {
+#root .nb-account :is(button,input,textarea,:is(select, .nb-select-trigger)) {
   font:inherit;
   border-radius:8px;
   transition:background-color 180ms ease,border-color 180ms ease,color 180ms ease;
 }
 
-#root .nb-account :is(button,input,textarea,select):focus-visible {
+#root .nb-account :is(button,input,textarea,:is(select, .nb-select-trigger)):focus-visible {
   outline:2px solid #71717a;
   outline-offset:3px;
 }
@@ -85,13 +85,13 @@
   color:#71717a;
 }
 
-#root .nb-account :is(input,textarea,select) {
+#root .nb-account :is(input,textarea,:is(select, .nb-select-trigger)) {
   border:1px solid #dedee2;
   background:#fafafa;
   box-shadow:none;
 }
 
-#root .nb-account :is(input,textarea,select):focus {
+#root .nb-account :is(input,textarea,:is(select, .nb-select-trigger)):focus {
   background:#fff;
   border-color:#a1a1aa;
 }

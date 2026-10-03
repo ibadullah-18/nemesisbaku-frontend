@@ -1,0 +1,29 @@
+.nb-date-trigger { display:inline-flex; width:100%; min-height:48px; align-items:center; justify-content:space-between; gap:12px; text-align:left; cursor:pointer; }
+.nb-date-trigger span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nb-date-trigger svg { width:18px; height:18px; flex:none; }
+.nb-date-validation { position:absolute!important; width:1px!important; height:1px!important; opacity:0!important; padding:0!important; border:0!important; pointer-events:none; clip-path:inset(50%); }
+.nb-date-layer { position:fixed; inset:0; z-index:1100; display:grid; place-items:center; }
+.nb-date-backdrop { position:absolute; inset:0; background:rgb(0 0 0 / 18%); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); touch-action:none; }
+.nb-date-panel { position:relative; width:min(440px,calc(100% - 32px)); max-height:90dvh; overflow:auto; background:#fff; color:#18181b; border:1px solid #e4e4e7; border-radius:20px; padding:16px; box-shadow:0 20px 60px #0002; overscroll-behavior:contain; }
+.nb-date-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; margin-bottom:16px; }
+.nb-date-heading strong { font-weight:600; }
+.nb-date-heading button { min-height:40px; cursor:pointer; }
+.nb-date-heading button:last-child { font-weight:700; }
+.nb-date-heading button:disabled { opacity:.3; cursor:default; }
+.nb-date-wheels { display:grid; grid-template-columns:1fr 1.7fr 1.1fr; gap:4px; }
+.nb-date-wheels--time { grid-template-columns:1fr 1fr; margin:12px auto 0; max-width:240px; }
+.nb-date-label { display:block; text-align:center; font-size:12px; color:#71717a; margin-bottom:6px; }
+.nb-date-window { position:relative; }
+.nb-date-highlight { position:absolute; top:88px; left:0; right:0; height:44px; background:#f2f2f2; border-block:1px solid #e7e7e7; pointer-events:none; }
+.nb-date-rail { position:relative; height:220px; overflow-y:auto; padding-block:88px; scroll-snap-type:y mandatory; scrollbar-width:none; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent); }
+.nb-date-rail::-webkit-scrollbar { display:none; }
+.nb-date-tick { height:44px; display:flex; align-items:center; justify-content:center; scroll-snap-align:center; font-size:17px; color:#a1a1aa; user-select:none; cursor:pointer; white-space:nowrap; }
+.nb-date-tick[data-active=true] { color:#18181b; font-weight:600; }
+.nb-date-rail:focus-visible { outline:2px solid #71717a; outline-offset:-2px; border-radius:6px; }
+.nb-date-clear { display:block; margin:12px auto 0; padding:10px; font-size:13px; color:#71717a; cursor:pointer; }
+@media(max-width:767px) { .nb-date-panel { width:calc(100% - 32px); max-height:calc(100dvh - 48px); border-radius:20px; padding:12px; } }
+.nb-date-trigger { padding:10px 14px; border:1px solid #e4e4e7; border-radius:8px; background:#fafafa; font:inherit; }
+.nb-date-trigger:disabled { opacity:.5; cursor:default; }
+
+.nb-date-tick { transform:perspective(280px) rotateX(calc(var(--wheel-offset, 0) * -16deg)); transform-origin:center; }
+.nb-date-highlight { border-radius:7px; background:linear-gradient(#ececec,#f6f6f6,#ececec); }

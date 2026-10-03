@@ -1,3 +1,5 @@
+import SiteInput from "../../components/common/SiteInput";
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useMemo, useState } from "react";
 import {
   FiCalendar,
@@ -189,7 +191,7 @@ export default function AdminPromoCodes() {
           <form id="admin-promo-form" className="nb-comm-form" onSubmit={createPromoCode}>
             <Field label="Promo kod" placeholder="NEMESIS20" value={form.code} onChange={(value) => setForm((old) => ({ ...old, code: value.toUpperCase().replace(/\s/g, "") }))} />
             <div className="nb-two-fields">
-              <label className="nb-comm-field"><span>Endirim tipi</span><select value={form.discountType} onChange={(event) => setForm((old) => ({ ...old, discountType: event.target.value }))}><option value="1">Faizlə endirim</option><option value="2">Məbləğlə endirim</option></select></label>
+              <label className="nb-comm-field"><span>Endirim tipi</span><SiteSelect value={form.discountType} onChange={(event) => setForm((old) => ({ ...old, discountType: event.target.value }))}><option value="1">Faizlə endirim</option><option value="2">Məbləğlə endirim</option></SiteSelect></label>
               <Field type="number" label={Number(form.discountType) === 1 ? "Endirim faizi" : "Endirim məbləği"} placeholder={Number(form.discountType) === 1 ? "20" : "10"} value={form.discountValue} onChange={(value) => setForm((old) => ({ ...old, discountValue: value }))} />
             </div>
             <div className="nb-two-fields">
@@ -216,7 +218,7 @@ export default function AdminPromoCodes() {
         <section className="nb-comm-card">
           <div className="nb-comm-list-head">
             <div><h2>Promo kod siyahısı</h2><p>{promoCodes.length} kod · {totalUsed} istifadə</p></div>
-            <label className="nb-comm-search"><FiSearch /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Promo kod axtar" /></label>
+            <label className="nb-comm-search"><FiSearch /><SiteInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Promo kod axtar" /></label>
           </div>
 
           <div className="nb-promo-grid">
@@ -260,5 +262,5 @@ function Stat({ icon, label, value, accent = false }) {
 }
 
 function Field({ label, placeholder = "", value, onChange, type = "text" }) {
-  return <label className="nb-comm-field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>;
+  return <label className="nb-comm-field"><span>{label}</span><SiteInput type={type} noPast={type === "date" || type === "datetime-local"} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>;
 }

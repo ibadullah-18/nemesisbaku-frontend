@@ -1,3 +1,4 @@
+import { FiArrowUpRight } from "react-icons/fi";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
@@ -113,7 +114,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
               && (near || index === 0)}
             priority={hero && index === 0} />
           {hero && <span className="nb-hero-cta">
-            {discover}<span aria-hidden="true">↗</span>
+            {discover}<FiArrowUpRight aria-hidden="true" size={19} />
           </span>}
         </>;
         return item.to

@@ -45,7 +45,7 @@
 .nb-merch__section-mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: #eff3f9; color: #244989; font: 700 21px Georgia, serif; }
 .nb-merch__form .rounded-\[28px\], .nb-merch__form .rounded-\[24px\] { border: 1px solid #e5eaf1; box-shadow: 0 8px 24px rgba(20,44,79,.035); }
 .nb-merch__form h2 { font-family: Georgia, serif; font-weight: 700; }
-.nb-merch__form input:focus, .nb-merch__form select:focus, .nb-merch__form textarea:focus { border-color: #244989; outline: 3px solid rgba(36,73,137,.1); }
+.nb-merch__form input:focus, .nb-merch__form :is(select, .nb-select-trigger):focus, .nb-merch__form textarea:focus { border-color: #244989; outline: 3px solid rgba(36,73,137,.1); }
 @media (max-width: 1160px) { .nb-merch__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .nb-merch__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nb-merch__grid { grid-template-columns: minmax(0, 1fr); } .nb-merch__card-images { grid-template-columns: minmax(0, 1fr) 64px; } }
 @media (prefers-reduced-motion: reduce) { .nb-merch__card, .nb-merch__button { transition: none; } .nb-merch__card:hover, .nb-merch__button:hover:not(:disabled) { transform: none; } }

@@ -1,3 +1,4 @@
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -214,9 +215,9 @@ export default function AdminUsers() {
               placeholder="Ad, telefon və ya email ilə axtar"
             />
           </label>
-          <select value={role} onChange={(event) => setRole(event.target.value)}>
+          <SiteSelect value={role} onChange={(event) => setRole(event.target.value)}>
             {roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
+          </SiteSelect>
           <button type="button" onClick={() => loadUsers(1)}><FiSearch /> Axtar</button>
         </div>
 

@@ -76,6 +76,8 @@ export default function PageRubberEffect() {
   const activeSurfaceRef = useRef(null);
 
   useEffect(() => {
+    // Let Safari own touch scrolling, including nested carousels and lists.
+    if (window.matchMedia("(pointer: coarse)").matches) return;
     const html = document.documentElement;
     const body = document.body;
     const previous = {

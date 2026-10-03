@@ -10,8 +10,8 @@
 .nb-showcase-admin__card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin: 20px 0; min-width: 0; }
 .nb-showcase-admin__fields, .nb-showcase-admin__uploads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
 .nb-showcase-admin label { display: grid; gap: 8px; font-size: 13px; font-weight: 650; color: #263a56; margin-block: 14px; min-width: 0; }
-.nb-showcase-admin input:not([type=checkbox]), .nb-showcase-admin select, .nb-showcase-admin textarea { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #ced7e3; border-radius: 8px; background: #fff; color: #253853; font: inherit; }
-.nb-showcase-admin input:focus-visible, .nb-showcase-admin select:focus-visible, .nb-showcase-admin textarea:focus-visible { outline: 2px solid #244989; outline-offset: 2px; }
+.nb-showcase-admin input:not([type=checkbox]), .nb-showcase-admin :is(select, .nb-select-trigger), .nb-showcase-admin textarea { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #ced7e3; border-radius: 8px; background: #fff; color: #253853; font: inherit; }
+.nb-showcase-admin input:focus-visible, .nb-showcase-admin :is(select, .nb-select-trigger):focus-visible, .nb-showcase-admin textarea:focus-visible { outline: 2px solid #244989; outline-offset: 2px; }
 .nb-showcase-admin textarea { resize: vertical; }
 .nb-showcase-admin__check { display: flex !important; align-items: center; gap: 10px !important; }
 .nb-showcase-admin__check input { width: 17px; height: 17px; flex-shrink: 0; }

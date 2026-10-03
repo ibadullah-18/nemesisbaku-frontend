@@ -1,3 +1,4 @@
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -1178,13 +1179,13 @@ function AdminSelect({ label, value, onChange, children }) {
       <span className="mb-2 block text-sm font-bold text-zinc-800">
         {label}
       </span>
-      <select
+      <SiteSelect
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
       >
         {children}
-      </select>
+      </SiteSelect>
     </label>
   );
 }

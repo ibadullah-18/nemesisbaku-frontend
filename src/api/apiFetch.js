@@ -154,5 +154,8 @@ export async function apiFetch(endpoint, options = {}, retry = true) {
     throw error;
   }
 
+  if (/^\/api\/Basket(?:\/|$)/i.test(endpoint) && (options.method || "GET").toUpperCase() !== "GET") {
+    window.dispatchEvent(new Event("nemesis_basket_changed"));
+  }
   return result;
 }

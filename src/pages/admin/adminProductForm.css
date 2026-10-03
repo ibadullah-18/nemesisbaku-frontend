@@ -24,14 +24,14 @@
   font-weight: 700;
 }
 .nb-product-form input,
-.nb-product-form select,
+.nb-product-form :is(select, .nb-select-trigger),
 .nb-product-form textarea {
   border-color: #dfe5ed;
   border-radius: 10px;
   background: #fbfcfd;
 }
 .nb-product-form input:focus,
-.nb-product-form select:focus,
+.nb-product-form :is(select, .nb-select-trigger):focus,
 .nb-product-form textarea:focus {
   border-color: #244989;
   box-shadow: 0 0 0 3px rgba(36, 73, 137, .09);

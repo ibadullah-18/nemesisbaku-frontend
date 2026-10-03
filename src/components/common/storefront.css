@@ -142,7 +142,7 @@
 }
 
 .nb-storefront,
-.nb-storefront :where(h1,h2,h3,h4,p,a,button,input,select,textarea,label,span,strong,small),
+.nb-storefront :where(h1,h2,h3,h4,p,a,button,input,:is(select, .nb-select-trigger),textarea,label,span,strong,small),
 .nb-filter-dialog,
 .nemesis-user-toast {
   font-family: "Nunito Sans", Arial, sans-serif !important;
@@ -150,7 +150,7 @@
 .nb-storefront :is(.font-extrabold,.font-black,.font-bold) {
   font-weight:600;
 }
-.nb-storefront :is(input,select,textarea,button) {
+.nb-storefront :is(input,:is(select, .nb-select-trigger),textarea,button) {
   font-family:inherit;
 }
 
@@ -290,7 +290,7 @@
   position:relative;
 }
 
-.nb-sort-choice select,
+.nb-sort-choice :is(select, .nb-select-trigger),
 .nb-catalog-filter {
   min-height:40px;
   border:1px solid #dedee2;
@@ -302,7 +302,7 @@
   cursor:pointer;
 }
 
-.nb-sort-choice select {
+.nb-sort-choice :is(select, .nb-select-trigger) {
   appearance:none;
   padding:0 34px 0 12px;
   max-width:210px;
@@ -311,7 +311,7 @@
     border-color 180ms var(--nb-ease);
 }
 
-.nb-sort-choice select:hover {
+.nb-sort-choice :is(select, .nb-select-trigger):hover {
   background:var(--nb-hover);
   border-color:#d4d4d8;
 }
@@ -338,7 +338,7 @@
   height:16px;
 }
 
-.nb-catalog-tools :is(button,select,input):focus-visible,
+.nb-catalog-tools :is(button,:is(select, .nb-select-trigger),input):focus-visible,
 .nb-back-top:focus-visible,
 .nb-hero-cta:focus-visible {
   outline:2px solid #71717a;
@@ -465,7 +465,7 @@
     min-width:0;
   }
 
-  .nb-sort-choice select {
+  .nb-sort-choice :is(select, .nb-select-trigger) {
     width:100%;
     max-width:none;
   }
@@ -817,4 +817,16 @@ body:has(.nb-product-buy-dock.is-floating[data-visible="true"]) .nb-user-toast-h
   .nb-carousel__dots button { width:24px; height:28px; }
   .nb-carousel__dots button::after { width:6px; height:6px; }
   .nb-carousel__dots button[aria-current]::after { width:12px; }
+}
+/* Fine indicators keep a comfortable invisible touch target. */
+.nb-carousel:not(.nb-carousel--hero) .nb-carousel__dots { background:#ffffff9e; }
+.nb-carousel:not(.nb-carousel--hero) .nb-carousel__dots button::after { width:3px; height:3px; }
+.nb-carousel:not(.nb-carousel--hero) .nb-carousel__dots button[aria-current]::after { width:8px; height:2px; }
+@media (pointer:coarse) {
+  input:not([type=checkbox]):not([type=radio]), textarea { font-size:16px!important; scroll-margin-block:100px; }
+}
+.nb-filter-dialog { height:var(--nb-viewport-height,100dvh); bottom:auto; }
+@media(max-width:767px) {
+ .nb-filter-dialog { align-items:flex-end; padding:12px; }
+ .nb-filter-dialog [data-filter-scroll-area] { overscroll-behavior:contain; touch-action:pan-y; }
 }

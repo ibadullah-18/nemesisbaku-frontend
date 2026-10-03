@@ -1,3 +1,4 @@
+import SiteSelect from "../common/SiteSelect";
 import { useEffect, useRef, useState } from "react";
 import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { showUserToast } from "../../utils/userToast";
@@ -868,7 +869,7 @@ export default function ProductDiscoveryBar({
                 WebkitOverflowScrolling: "touch",
                 overscrollBehaviorY: "contain",
               }}
-              className={`relative z-[91] max-h-[calc(100vh-40px)] w-full max-w-[430px] overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] ${
+              className={`relative z-[91] max-h-[calc(var(--nb-viewport-height,100dvh)-40px)] w-full max-w-[430px] overflow-y-auto rounded-[8px] bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] ${
                 filterClosing
                   ? "animate-[filterClose_0.30s_ease_both]"
                   : "animate-[filterOpen_0.42s_cubic-bezier(0.22,1,0.36,1)_both]"
@@ -876,7 +877,7 @@ export default function ProductDiscoveryBar({
             >
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-[26px] font-extrabold tracking-[-0.035em] text-zinc-950">
+                  <h2 className="text-[26px] font-semibold tracking-[-0.035em] text-zinc-950">
                     {text.filters}
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-zinc-500">
@@ -922,7 +923,7 @@ export default function ProductDiscoveryBar({
                 />
 
                 <div>
-                  <p className="mb-2 text-sm font-bold text-zinc-800">
+                  <p className="mb-2 text-sm font-medium text-zinc-800">
                     {text.price}
                   </p>
 
@@ -937,7 +938,7 @@ export default function ProductDiscoveryBar({
                       }
                       placeholder={text.minPrice}
                       inputMode="decimal"
-                      className="h-12 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
+                      className="h-12 rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
                     />
 
                     <input
@@ -950,7 +951,7 @@ export default function ProductDiscoveryBar({
                       }
                       placeholder={text.maxPrice}
                       inputMode="decimal"
-                      className="h-12 rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
+                      className="h-12 rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-300"
                     />
                   </div>
                 </div>
@@ -963,7 +964,7 @@ export default function ProductDiscoveryBar({
                       isDiscounted: !prev.isDiscounted,
                     }))
                   }
-                  className={`flex h-12 w-full items-center justify-between rounded-[16px] border px-4 text-sm font-bold transition ${
+                  className={`flex h-12 w-full items-center justify-between rounded-[8px] border px-4 text-sm font-medium transition ${
                     draftFilters.isDiscounted
                       ? "border-black bg-black/8 text-black"
                       : "border-zinc-100 bg-zinc-50 text-zinc-700"
@@ -978,7 +979,7 @@ export default function ProductDiscoveryBar({
                 <button
                   type="button"
                   onClick={resetFilter}
-                  className="h-[52px] rounded-[16px] border border-zinc-100 bg-zinc-50 text-sm font-extrabold text-zinc-800 transition hover:bg-zinc-100"
+                  className="h-[52px] rounded-[8px] border border-zinc-100 bg-zinc-50 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
                 >
                   {text.resetFilter}
                 </button>
@@ -987,7 +988,7 @@ export default function ProductDiscoveryBar({
                   type="button"
                   onClick={applyFilter}
                   disabled={loading}
-                  className="h-[52px] rounded-[16px] bg-black text-sm font-extrabold text-white transition hover:opacity-95 active:scale-[0.98] disabled:cursor-wait disabled:opacity-65"
+                  className="h-[52px] rounded-[8px] bg-black text-sm font-semibold text-white transition hover:opacity-95 active:scale-[0.98] disabled:cursor-wait disabled:opacity-65"
                 >
                   {loading ? text.loading : text.applyFilter}
                 </button>
@@ -1170,7 +1171,7 @@ export default function ProductDiscoveryBar({
             <div className="nemesis-brand-shelf-content relative py-3">
                   <div
                     ref={brandRowRef}
-                    className="flex touch-pan-x gap-3 overflow-x-auto overscroll-x-contain px-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 md:px-8 [&::-webkit-scrollbar]:hidden"
+                    className="flex touch-auto gap-3 overflow-x-auto overscroll-x-contain px-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] md:gap-4 md:px-8 [&::-webkit-scrollbar]:hidden"
                   >
                     {brands.map((brand) => (
                       <BrandButton
@@ -1276,14 +1277,15 @@ function BrandButton({ active, name, image, onClick }) {
 function FilterSelect({ label, value, items, onChange }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-bold text-zinc-800">
+      <span className="mb-2 block text-sm font-medium text-zinc-800">
         {label}
       </span>
 
-      <select
+      <SiteSelect
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-12 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold text-zinc-800 outline-none transition focus:border-zinc-300"
+        className="h-12 w-full rounded-[8px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold text-zinc-800 outline-none transition focus:border-zinc-300"
       >
         <option value="">—</option>
 
@@ -1292,7 +1294,7 @@ function FilterSelect({ label, value, items, onChange }) {
             {item.name}
           </option>
         ))}
-      </select>
+      </SiteSelect>
     </label>
   );
 }

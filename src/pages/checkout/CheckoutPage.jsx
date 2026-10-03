@@ -1,3 +1,6 @@
+import { localToday } from "../../components/common/dateWheelUtils";
+import SiteInput from "../../components/common/SiteInput";
+import SiteSelect from "../../components/common/SiteSelect";
 import MobileOrderAction from "../../components/common/MobileOrderAction";
 import { showUserToast } from "../../utils/userToast";
 import { cleanCard, noteWithCard } from "../../utils/loyaltyOrder";
@@ -349,6 +352,7 @@ export default function CheckoutPage() {
     }
 
     if (!form.deliveryDate) return text.deliveryDateRequired;
+    if (form.deliveryDate < localToday()) return lang === "en" ? "Choose today or a later date." : lang === "ru" ? "Выберите сегодняшнюю или более позднюю дату." : "Bu gün və ya daha sonrakı tarixi seçin.";
 
     return "";
   }
@@ -1026,9 +1030,9 @@ function Input({ label, value, onChange, type = "text", placeholder = "", id }) 
         {label}
       </span>
 
-      <input
+      <SiteInput
         id={id}
-        type={type}
+        type={type} noPast={type === "date" || type === "datetime-local"}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -1045,7 +1049,8 @@ function Select({ label, value, onChange, items }) {
         {label}
       </span>
 
-      <select
+      <SiteSelect
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="nemesis-checkout-control h-12 w-full rounded-[15px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium text-zinc-950 outline-none transition focus:border-zinc-400"
@@ -1055,7 +1060,7 @@ function Select({ label, value, onChange, items }) {
             {item.label}
           </option>
         ))}
-      </select>
+      </SiteSelect>
     </label>
   );
 }

@@ -1,5 +1,5 @@
 .nb-auth { --nb-radius:8px; background:#fafafa; font-family:"Nunito Sans",Arial,sans-serif; }
-.nb-auth :is(input,button,select,textarea) { font-family:inherit; }
+.nb-auth :is(input,button,:is(select, .nb-select-trigger),textarea) { font-family:inherit; }
 .nb-auth :is(.font-bold,.font-extrabold,.font-black) { font-weight:600; }
 .nb-auth [class*="rounded-"]:not(.rounded-full) { border-radius:var(--nb-radius); }
 .nb-auth__shell { border:1px solid #e4e4e7; box-shadow:none; }

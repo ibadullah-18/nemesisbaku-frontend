@@ -1,3 +1,4 @@
+import SiteSelect from "../common/SiteSelect";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cloudinaryResize } from "../../utils/cloudinaryUrl";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -9,7 +10,7 @@ import {
   FiX,
   FiMenu,
   FiLogIn,
-  FiChevronDown,
+
   FiRefreshCw,
 } from "react-icons/fi";
 import { FaHeart, FaShoppingBag, FaUser } from "react-icons/fa";
@@ -51,6 +52,7 @@ export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(getAccessToken()));
   const [basketCount, setBasketCount] = useState(0);
 
+  const basketRequest = useRef(0);
   const lastScrollY = useRef(0);
   const navbarRef = useRef(null);
   const menuMountedRef = useRef(false);
@@ -64,9 +66,38 @@ export default function Navbar() {
     distance: 0,
   });
 
+  function checkAuth() {
+    setIsLoggedIn(Boolean(getAccessToken()));
+  }
+
+  async function loadBasketCount() {
+    const request = ++basketRequest.current;
+    const token = getAccessToken();
+    try {
+      const res = await apiFetch("/api/Basket");
+      const data = res?.data || res;
+
+      const items =
+        data?.items ||
+        data?.basketItems ||
+        data?.products ||
+        (Array.isArray(data) ? data : []);
+
+      const count = Array.isArray(items)
+        ? items.reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 1) || 0), 0)
+        : 0;
+
+      if (request === basketRequest.current && token === getAccessToken()) setBasketCount(count);
+    } catch {
+      if (request === basketRequest.current) setBasketCount(0);
+    }
+  }
+
+
   useEffect(() => {
-    loadStoreInfo();
-    checkAuth();
+    let active = true;
+    apiFetch("/api/StoreInfo").then(res => { if (active) setStore(res?.data || null); }).catch(() => {});
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -226,62 +257,33 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      loadBasketCount();
-    } else {
-      setBasketCount(0);
-    }
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      if (isLoggedIn) loadBasketCount();
+      else { basketRequest.current++; setBasketCount(0); }
+    });
+    return () => { active = false; };
   }, [isLoggedIn]);
 
   useEffect(() => {
-    const onFocus = () => checkAuth();
+    const onBasket = () => { if (getAccessToken()) loadBasketCount(); else { basketRequest.current++; setBasketCount(0); } };
+    window.addEventListener("nemesis_basket_changed", onBasket);
+    const onFocus = () => { checkAuth(); onBasket(); };
     const onStorage = () => checkAuth();
-    const onAuthChanged = () => checkAuth();
+    const onAuthChanged = () => { checkAuth(); onBasket(); };
 
     window.addEventListener("focus", onFocus);
     window.addEventListener("storage", onStorage);
     window.addEventListener("nemesis_auth_changed", onAuthChanged);
 
     return () => {
+      window.removeEventListener("nemesis_basket_changed", onBasket);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("nemesis_auth_changed", onAuthChanged);
     };
   }, []);
-
-  function checkAuth() {
-    setIsLoggedIn(Boolean(getAccessToken()));
-  }
-
-  async function loadStoreInfo() {
-    try {
-      const res = await apiFetch("/api/StoreInfo");
-      setStore(res?.data || null);
-    } catch {
-      setStore(null);
-    }
-  }
-
-  async function loadBasketCount() {
-    try {
-      const res = await apiFetch("/api/Basket");
-      const data = res?.data || res;
-
-      const items =
-        data?.items ||
-        data?.basketItems ||
-        data?.products ||
-        (Array.isArray(data) ? data : []);
-
-      const count = Array.isArray(items)
-        ? items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-        : 0;
-
-      setBasketCount(count);
-    } catch {
-      setBasketCount(0);
-    }
-  }
 
   function openMenu() {
     setMenuClosing(false);
@@ -545,7 +547,7 @@ export default function Navbar() {
             ))}
 
             <div className="relative hidden md:block">
-              <select
+              <SiteSelect
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
                 className="h-10 appearance-none rounded-full border border-zinc-100 bg-white px-3.5 pr-8 text-xs font-bold text-zinc-700 outline-none transition hover:bg-zinc-50 focus:border-zinc-300"
@@ -553,9 +555,7 @@ export default function Navbar() {
                 <option value="az">AZ</option>
                 <option value="ru">Русский</option>
                 <option value="en">EN</option>
-              </select>
-
-              <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-zinc-500" />
+              </SiteSelect>
             </div>
           </div>
         </div>
@@ -574,7 +574,7 @@ export default function Navbar() {
           />
 
           <aside
-            className={`absolute left-0 top-0 h-full w-[78%] max-w-[305px] bg-white px-5 py-5 shadow-[20px_0_60px_rgba(0,0,0,0.12)] ${
+            className={`absolute left-0 top-0 h-full overflow-y-auto overscroll-contain w-[78%] max-w-[305px] bg-white px-5 py-5 shadow-[20px_0_60px_rgba(0,0,0,0.12)] ${
               menuClosing
                 ? "animate-[menuClose_0.28s_ease_both]"
                 : "animate-[menuOpen_0.38s_cubic-bezier(0.22,1,0.36,1)_both]"
@@ -613,7 +613,7 @@ export default function Navbar() {
                   className="flex w-full items-center gap-3 rounded-[16px] px-4 py-3 text-left text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50"
                 >
                   <FiLogIn />
-                  Login
+                  {text.login}
                 </button>
               ) : (
                 <NavLink
@@ -638,7 +638,7 @@ export default function Navbar() {
                 </label>
 
                 <div className="relative">
-                  <select
+                  <SiteSelect
                     value={lang}
                     onChange={(e) => setLang(e.target.value)}
                     className="h-12 w-full appearance-none rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 pr-10 text-sm font-bold text-zinc-800 outline-none transition focus:border-zinc-300"
@@ -646,9 +646,7 @@ export default function Navbar() {
                     <option value="az">Azərbaycan</option>
                     <option value="ru">Русский</option>
                     <option value="en">English</option>
-                  </select>
-
-                  <FiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  </SiteSelect>
                 </div>
               </div>
             </div>

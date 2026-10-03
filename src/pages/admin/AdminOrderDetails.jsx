@@ -1,3 +1,4 @@
+import SiteSelect from "../../components/common/SiteSelect";
 import { orderCard, customerNote } from "../../utils/loyaltyOrder";
 import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
@@ -223,9 +224,9 @@ export default function AdminOrderDetails() {
           <p className="nb-orders__note">Hazırkı status: <strong>{state.label}</strong></p>
           {allowed.length ? <>
             <label className="nb-orders__field">Növbəti status
-              <select value={newStatus} onChange={(event) => setNewStatus(event.target.value)} disabled={saving || loading}>
+              <SiteSelect value={newStatus} onChange={(event) => setNewStatus(event.target.value)} disabled={saving || loading}>
                 {allowed.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
+              </SiteSelect>
             </label>
             <label className="nb-orders__field">Qeyd (istəyə bağlı)
               <textarea rows={3} maxLength={500} value={note} onChange={(event) => setNote(event.target.value)}
@@ -245,9 +246,9 @@ export default function AdminOrderDetails() {
           <h2>Kuryerə göndər</h2>
           {couriers.length ? <>
             <label className="nb-orders__field">Kuryer
-              <select value={courierPhone} onChange={(event) => setCourierPhone(event.target.value)} disabled={saving || loading}>
+              <SiteSelect value={courierPhone} onChange={(event) => setCourierPhone(event.target.value)} disabled={saving || loading}>
                 {couriers.map((courier) => <option key={courier.id || courier.phoneNumber} value={courier.phoneNumber}>{courier.title || "Kuryer"} · {courier.phoneNumber}</option>)}
-              </select>
+              </SiteSelect>
             </label>
             <button type="button" className="nb-orders__secondary" disabled={saving || loading || !courierPhone}
               onClick={() => openWhatsapp("courier")}><FiTruck aria-hidden="true" /> Kuryer üçün WhatsApp aç</button>

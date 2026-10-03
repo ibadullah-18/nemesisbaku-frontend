@@ -1,5 +1,6 @@
+import SiteSelect from "../common/SiteSelect";
 import { useEffect, useState } from "react";
-import { FiChevronDown, FiFilter } from "react-icons/fi";
+import { FiFilter } from "react-icons/fi";
 import { preloadProductDiscoveryData } from "../product/ProductDiscoveryBar";
 
 const labels = {
@@ -69,7 +70,7 @@ export default function HomeQuickDiscovery({
       </label>
 
       <div className="nb-sort-choice">
-        <select
+        <SiteSelect
           aria-label={t.sort}
           value={activeFilters.sortOrder || ""}
           onChange={e => change({sortOrder:e.target.value})}
@@ -77,8 +78,8 @@ export default function HomeQuickDiscovery({
           <option value="">{t.sort}: {t.normal}</option>
           <option value="price-asc">{t.cheap}</option>
           <option value="price-desc">{t.expensive}</option>
-        </select>
-        <FiChevronDown aria-hidden="true" />
+        </SiteSelect>
+
       </div>
 
       <button

@@ -1,3 +1,4 @@
+import SiteInput from "./SiteInput";
 export default function AnimatedInput({
   label,
   icon,
@@ -41,7 +42,7 @@ export default function AnimatedInput({
           </span>
         )}
 
-        <input
+        <SiteInput
           type={type}
           value={value}
           onChange={onChange}

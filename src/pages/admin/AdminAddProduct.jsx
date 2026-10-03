@@ -1,3 +1,4 @@
+import SiteSelect from "../../components/common/SiteSelect";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiImage, FiPlus, FiRefreshCw, FiSave, FiTrash2, FiUploadCloud, FiX } from "react-icons/fi";
@@ -750,13 +751,13 @@ function AdminSelect({ label, value, onChange, children }) {
         {label}
       </span>
 
-      <select
+      <SiteSelect
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-13 w-full rounded-[16px] border border-zinc-100 bg-zinc-50 px-4 text-sm font-semibold outline-none transition focus:border-zinc-400"
       >
         {children}
-      </select>
+      </SiteSelect>
     </label>
   );
 }
