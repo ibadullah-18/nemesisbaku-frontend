@@ -23,7 +23,9 @@ jobs:
             git pull origin main
 
             cd ${{ secrets.VPS_PROJECT_PATH }}
-            docker compose build frontend
-            docker compose up -d frontend nginx
+            docker compose -f docker-compose.yml -f docker-compose.osrm.yml config --quiet
+            docker compose -f docker-compose.yml -f docker-compose.osrm.yml build frontend
+            docker compose -f docker-compose.yml -f docker-compose.osrm.yml up -d --no-deps frontend
+            docker compose exec -T nginx nginx -s reload
 
             docker image prune -f

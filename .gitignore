@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .env 
+
+# Private deployment configuration
+.env*
+**/.env*
+secrets.json
+service-account*.json
+*.pem
+*.key
