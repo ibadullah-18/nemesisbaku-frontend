@@ -726,3 +726,10 @@ export const adminCouriersApi = {
       method: "DELETE",
     }),
 };
+
+export const adminMetroStationsApi = {
+  list: () => adminFetch("/api/AdminMetroStations"),
+  save: (id, body) => adminFetch(`/api/AdminMetroStations${id ? `/${id}` : ""}`, {
+    method: id ? "PUT" : "POST", body: JSON.stringify(body),
+  }),
+};

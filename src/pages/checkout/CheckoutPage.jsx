@@ -22,6 +22,8 @@ import "leaflet/dist/leaflet.css";
 import AppLoader from "../../components/common/AppLoader";
 import { basketApi } from "../../api/basketApi";
 import { ordersApi } from "../../api/ordersApi";
+import useDeliveryQuote from "../../hooks/useDeliveryQuote";
+import { deliveryLabels } from "../../utils/delivery";
 import { profileApi } from "../../api/profileApi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import "./checkoutPage.css";
@@ -64,6 +66,10 @@ function validCoordinate(value, fallback) {
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { text, lang } = useLanguage();
+  const deliveryText = deliveryLabels[lang] || deliveryLabels.az;
+  const [metroStations, setMetroStations] = useState([]);
+  const [metroError, setMetroError] = useState(false);
+  const [metroRevision, setMetroRevision] = useState(0);
 
   const ui = {
     az: [
@@ -100,13 +106,6 @@ export default function CheckoutPage() {
     discountAmount: 0,
   });
 
-  const [deliveryCalc, setDeliveryCalc] = useState({
-    distanceKm: 0,
-    deliveryPrice: 0,
-    available: true,
-    message: "",
-  });
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -115,6 +114,7 @@ export default function CheckoutPage() {
     customerFullName: "",
     customerPhoneNumber: "",
     deliveryType: 1,
+    metroStationId: "",
     paymentMethod: 1,
     addressTitle: "",
     addressText: "",
@@ -129,6 +129,17 @@ export default function CheckoutPage() {
   });
 
   function setError(message) { if (message) showUserToast(message, "error"); }
+  const deliveryCalc = useDeliveryQuote(form);
+
+  useEffect(() => {
+    let alive = true;
+    ordersApi.metroStations().then(res => {
+      if (!alive) return;
+      const data = unwrap(res);
+      setMetroStations(Array.isArray(data) ? data : []); setMetroError(false);
+    }).catch(() => { if (alive) setMetroError(true); });
+    return () => { alive = false; };
+  }, [metroRevision]);
 
   const originalTotal = useMemo(() => {
     return items.reduce((sum, item) => {
@@ -148,7 +159,7 @@ export default function CheckoutPage() {
   const productDiscount = Math.max(0, originalTotal - productTotal);
 
   const deliveryPrice =
-    Number(form.deliveryType) === 1
+    Number(form.deliveryType) !== 2
       ? Number(deliveryCalc.deliveryPrice || 0)
       : 0;
 
@@ -242,37 +253,6 @@ export default function CheckoutPage() {
     }
   }
 
-  async function calculateDelivery(latitude, longitude) {
-    if (Number(form.deliveryType) !== 1) return;
-
-    try {
-      const res = await ordersApi.calculateDelivery({
-        latitude: Number(latitude),
-        longitude: Number(longitude),
-      });
-
-      const data = unwrap(res);
-
-      setDeliveryCalc({
-        distanceKm:
-          Number(data?.distanceKm) ||
-          Number(data?.deliveryDistanceKm) ||
-          Number(data?.distance) ||
-          0,
-        deliveryPrice: Number(data?.deliveryPrice) || Number(data?.price) || 0,
-        available: data?.available ?? data?.isAvailable ?? true,
-        message: data?.message || "",
-      });
-    } catch (err) {
-      setDeliveryCalc({
-        distanceKm: 0,
-        deliveryPrice: 0,
-        available: false,
-        message: err.message || text.deliveryUnavailable,
-      });
-    }
-  }
-
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     // API-dən ilkin checkout məlumatlarını effect daxilində yükləyirik.
@@ -281,16 +261,6 @@ export default function CheckoutPage() {
     // Səhifə məlumatları yalnız checkout ilk dəfə açılanda yüklənir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (Number(form.deliveryType) === 1 && form.latitude && form.longitude) {
-      // Xəritə koordinatı dəyişəndə serverdən çatdırılmanı yenidən hesablayırıq.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      calculateDelivery(form.latitude, form.longitude);
-    }
-    // Hesablama yalnız xəritə nöqtəsi və çatdırılma növü dəyişəndə yenilənir.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.latitude, form.longitude, form.deliveryType]);
 
   function update(key, value) {
     if (
@@ -361,6 +331,10 @@ export default function CheckoutPage() {
     if (!form.customerFullName.trim()) return text.fullNameRequired;
     if (!form.customerPhoneNumber.trim()) return text.phoneRequired;
 
+    if (Number(form.deliveryType) === 3 && !form.metroStationId) return deliveryText.metroRequired;
+    if (deliveryCalc.pending) return deliveryText.pending;
+    if (!deliveryCalc.available) return deliveryCalc.message || deliveryText.unavailable;
+
     if (Number(form.deliveryType) === 1) {
       if (!form.addressText.trim()) return text.addressTextRequired;
       if (!form.latitude || !form.longitude) return text.mapPointRequired;
@@ -408,6 +382,7 @@ export default function CheckoutPage() {
         customerPhoneNumber: form.customerPhoneNumber.trim(),
 
         deliveryType: Number(form.deliveryType),
+        metroStationId: Number(form.deliveryType) === 3 ? form.metroStationId : null,
         paymentMethod: 1,
 
         addressText:
@@ -425,7 +400,7 @@ export default function CheckoutPage() {
         note: noteWithCard(form.note, cardSnapshot),
         promoCode: promo.code || "",
 
-        savedAddressId: selectedAddressId || null,
+        savedAddressId: Number(form.deliveryType) === 1 ? selectedAddressId || null : null,
         saveAddressToProfile:
           Number(form.deliveryType) === 1 && Boolean(saveNewAddress),
         addressTitle:
@@ -442,13 +417,13 @@ export default function CheckoutPage() {
         JSON.stringify({
           ...order,
           items,
-          totalProductPrice: productTotal,
+          totalProductPrice: order.totalProductPrice,
           originalTotalPrice: originalTotal,
           productDiscount,
-          deliveryPrice,
-          deliveryDistanceKm: deliveryCalc.distanceKm,
-          promoDiscountAmount: promo.discountAmount,
-          totalPrice: finalTotal,
+          deliveryPrice: order.deliveryPrice,
+          deliveryDistanceKm: order.deliveryDistanceKm,
+          promoDiscountAmount: order.promoDiscountAmount,
+          totalPrice: order.totalPrice,
           deliveryDate: form.deliveryDate,
           deliveryTimeRange: form.deliveryTimeRange,
         }),
@@ -463,6 +438,10 @@ export default function CheckoutPage() {
   }
 
   function orderWithWhatsapp() {
+    if (deliveryCalc.pending || !deliveryCalc.available) {
+      setError(deliveryCalc.pending ? deliveryText.pending : deliveryCalc.message || deliveryText.unavailable);
+      return;
+    }
     const lines = items
       .map(
         (item, index) =>
@@ -475,7 +454,7 @@ export default function CheckoutPage() {
       .join("\n\n");
 
     const message = `Salam, bu məhsulları sifariş etmək istəyirəm:\n\n${lines}\n\nÜnvan: ${
-      form.addressText || "-"
+      Number(form.deliveryType) === 3 ? `${deliveryCalc.metroStationName} metrosunda təhvil` : Number(form.deliveryType) === 2 ? text.pickupFromStore : form.addressText || "-"
     }\nÇatdırılma: ${money(deliveryPrice)} ₼\nYekun: ${money(finalTotal)} ₼`;
 
     window.open(
@@ -616,6 +595,7 @@ export default function CheckoutPage() {
                   items={[
                     { value: 1, label: text.deliveryToAddress },
                     { value: 2, label: text.pickupFromStore },
+                    { value: 3, label: deliveryText.metroPickup },
                   ]}
                 />
 
@@ -640,6 +620,15 @@ export default function CheckoutPage() {
                 />
               </div>
             </Card>
+
+            {Number(form.deliveryType) === 3 && <Card title={deliveryText.metroPickup}>
+              <Select label={deliveryText.station} value={form.metroStationId}
+                onChange={value => update("metroStationId", value)}
+                items={[{ value: "", label: deliveryText.choose }, ...metroStations.map(s => ({ value: s.id, label: s.name }))]} />
+              {metroError ? <p role="alert">{deliveryText.stationError} <button type="button" onClick={() => setMetroRevision(v => v + 1)}>{deliveryText.retry}</button></p>
+                : !metroStations.length && <p>{deliveryText.noStations}</p>}
+              {form.metroStationId && <p className="mt-3 text-sm text-zinc-500">{metroStations.find(s => s.id === form.metroStationId)?.address}</p>}
+            </Card>}
 
             {Number(form.deliveryType) === 1 && (
               <Card title={text.deliveryAddress} step="03">
@@ -893,13 +882,11 @@ export default function CheckoutPage() {
                 />
               )}
 
-              {Number(form.deliveryType) === 1 && (
+              {Number(form.deliveryType) === 1 && deliveryCalc.available && (
                 <SummaryRow
-                  label={text.deliveryDistance}
+                  label={deliveryCalc.pricingRule?.startsWith("metro-") ? deliveryText.metroDistance : deliveryText.storeDistance}
                   value={
-                    deliveryCalc.available
-                      ? `${money(deliveryCalc.distanceKm)} km`
-                      : text.deliveryUnavailable
+                    `${money(deliveryCalc.pricingRule?.startsWith("metro-") ? deliveryCalc.metroDistanceKm : deliveryCalc.distanceKm)} km`
                   }
                   valueClass={
                     deliveryCalc.available ? "text-zinc-950" : "text-red-500"
@@ -907,28 +894,34 @@ export default function CheckoutPage() {
                 />
               )}
 
+              {deliveryCalc.available && deliveryCalc.metroStationName && <SummaryRow
+                label={Number(form.deliveryType) === 3 ? deliveryText.station : deliveryText.nearest}
+                value={deliveryCalc.metroStationName} />}
+
               <SummaryRow
                 label={text.delivery}
                 value={
-                  Number(form.deliveryType) === 1 && !deliveryCalc.available
-                    ? text.deliveryUnavailable
+                  deliveryCalc.pending ? deliveryText.calculating : !deliveryCalc.available
+                    ? deliveryText.unavailable
                     : `${money(deliveryPrice)} ₼`
                 }
                 valueClass={
-                  Number(form.deliveryType) === 1 && !deliveryCalc.available
+                  !deliveryCalc.available
                     ? "text-red-500"
                     : "text-zinc-950"
                 }
               />
             </div>
 
-            {Number(form.deliveryType) === 1 &&
+            {Number(form.deliveryType) !== 2 &&
               !deliveryCalc.available &&
               deliveryCalc.message && (
                 <div className="mt-4 rounded-[14px] bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-600">
                   {deliveryCalc.message}
+                  <button type="button" onClick={deliveryCalc.retry} className="ml-2 underline">{deliveryText.retry}</button>
                 </div>
               )}
+            {Number(form.deliveryType) === 1 && <p className="mt-3 text-xs leading-5 text-zinc-500">{deliveryText.hint}</p>}
 
             <div className="my-5 h-px bg-zinc-100" />
 
@@ -936,22 +929,23 @@ export default function CheckoutPage() {
               <p className="text-sm font-medium text-zinc-500">{text.total}</p>
 
               <p className="text-[30px] font-medium text-zinc-950">
-                {money(finalTotal)} ₼
+                {deliveryCalc.pending ? deliveryText.calculating : deliveryCalc.available ? `${money(finalTotal)} ₼` : "—"}
               </p>
             </div>
 
             <MobileOrderAction
       total={finalTotal}
       original={originalTotal + deliveryPrice}
-      label={saving ? text.orderSaving : ui[0]}
+      label={saving ? text.orderSaving : deliveryCalc.pending ? deliveryText.calculating : ui[0]}
       onClick={completeOrder}
-      disabled={saving}
+      disabled={saving || deliveryCalc.pending || !deliveryCalc.available}
       className="nemesis-checkout-submit mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-zinc-950 text-sm font-medium text-white"
     />
 
             <button
               type="button"
               onClick={orderWithWhatsapp}
+              disabled={deliveryCalc.pending || !deliveryCalc.available}
               className="nemesis-checkout-whatsapp mt-3 inline-flex h-13 w-full items-center justify-center gap-2 rounded-[14px] bg-[#1fbd5a] text-sm font-medium text-white transition hover:opacity-95 active:scale-[0.98]"
             >
               <FaWhatsapp className="text-xl" />

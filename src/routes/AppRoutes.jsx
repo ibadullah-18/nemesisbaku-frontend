@@ -40,6 +40,7 @@ const AdminHomeSectionForm = lazy(() => import("../pages/admin/AdminHomeSectionF
 const AdminPromoCodes = lazy(() => import("../pages/admin/AdminPromoCodes"));
 const AdminEmailAnnouncements = lazy(() => import("../pages/admin/AdminEmailAnnouncements"));
 const AdminCouriers = lazy(() => import("../pages/admin/AdminCouriers"));
+const AdminMetroStations = lazy(() => import("../pages/admin/AdminMetroStations"));
 const AdminStoreInfo = lazy(() => import("../pages/admin/AdminStoreInfo"));
 const AdminLogin = lazy(() => import("../pages/admin/AdminLogin"));
 
@@ -428,6 +429,7 @@ export default function AppRoutes() {
         />
 
         <Route path="couriers" element={<AdminCouriers />} />
+        <Route path="metro-stations" element={<AdminMetroStations />} />
         <Route path="store-info" element={<AdminStoreInfo />} />
 
         <Route path="home-sections" element={<AdminHomeSections />} />
@@ -468,6 +470,7 @@ export default function AppRoutes() {
         <Route path="orders/:id" element={<AdminOrderDetails />} />
 
         <Route path="couriers" element={<AdminCouriers />} />
+        <Route path="metro-stations" element={<AdminMetroStations />} />
         <Route path="store-info" element={<AdminStoreInfo />} />
 
         <Route path="products" element={<AdminProducts />} />

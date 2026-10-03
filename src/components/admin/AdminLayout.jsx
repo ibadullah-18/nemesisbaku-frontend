@@ -31,6 +31,7 @@ const GROUPS = [
     { path: "promo-codes", label: "Promo kodlar", icon: FiPercent },
     { path: "email-announcements", label: "Email göndərişləri", icon: FiMail },
     { path: "couriers", label: "Kuryerlər", icon: FiTruck },
+    { path: "metro-stations", label: "Metro stansiyaları", icon: FiMapPin },
   ] },
   { name: "Nəzarət", items: [
     { path: "users", label: "İstifadəçilər", icon: FiUsers, panels: ["super"] },

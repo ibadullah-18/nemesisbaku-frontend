@@ -17,3 +17,16 @@ səhifənin açılması, 390px ekranda alt-alta düzülmə və üfüqi daşmanı
 Backend-də `AddShowcaseGroups` migration-ı tələb olunur. Əvvəl yeni API versiyası,
 sonra frontend yayımlanmalıdır. API-nin mövcud başlanğıc prosesi migration-ları
 tətbiq edir. Bu iş zamanı canlı bazaya migration tətbiq edilməyib.
+
+## Metro çatdırılması
+
+`/tests/delivery-preview.html` React hook-u ilə 11 avtomatik brauzer yoxlaması
+işlədir: köhnə cavabın gec gəlməsi, xəritədə nöqtənin dəyişməsi, əvvəlki nöqtəyə
+qayıtma, sorğu xətası və təkrar cəhd, metro seçimi və pulsuz mağazadan götürmə.
+`/tests/delivery-preview.html?view=admin` saxta məlumatlarla metro redaktorudur.
+Bu səhifələr real API-yə sorğu göndərmir və production build-ə daxil deyil.
+
+Yayımlama sırası: əvvəl `AddMetroDelivery` migration-ını ehtiva edən API,
+sonra frontend. Sifarişin yaradılması cavabı artıq yalnız ID əvəzinə serverdə
+hesablanan qiymətləri də qaytarır. Metro məlumatları migration ilə bir dəfə
+yüklənir; sonrakı admin dəyişiklikləri qorunur. Canlı bazada tətbiq edilməyib.

@@ -11,8 +11,11 @@ export const ordersApi = {
 
   detail: (id) => apiFetch(`/api/Orders/${id}`),
 
-  calculateDelivery: (body) =>
+  metroStations: () => apiFetch("/api/MetroStations"),
+
+  calculateDelivery: (body, options = {}) =>
     apiFetch("/api/Orders/calculate-delivery", {
+      ...options,
       method: "POST",
       body: JSON.stringify(body),
     }),

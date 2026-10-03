@@ -142,7 +142,7 @@ export default function AdminOrderDetails() {
 
   const state = getOrderStatus(order.status);
   const allowed = availableOrderStatuses(order.status);
-  const isDelivery = Number(order.deliveryType) === 1;
+  const isDelivery = [1, 3].includes(Number(order.deliveryType));
   const canPrepareMessage = Number(order.status) >= 2 && Number(order.status) <= 7;
 
   return <div className="nb-orders nb-orders-detail" aria-busy={loading || saving}>
@@ -193,6 +193,8 @@ export default function AdminOrderDetails() {
           <h2>Çatdırılma ünvanı</h2>
           <div className="nb-orders__key-values">
             <DetailValue label="Ünvan">{order.addressText || "—"}</DetailValue>
+            {order.metroStationName && <DetailValue label="Metro">{order.metroStationName}</DetailValue>}
+            {order.metroDistanceKm != null && <DetailValue label="Metroya düz xətt məsafəsi">{order.metroDistanceKm} km</DetailValue>}
             <DetailValue label="Bina">{order.buildingNumber || "—"}</DetailValue>
             <DetailValue label="Mərtəbə">{order.floor || "—"}</DetailValue>
             <DetailValue label="Mənzil">{order.apartment || "—"}</DetailValue>

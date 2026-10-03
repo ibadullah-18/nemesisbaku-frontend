@@ -7,6 +7,7 @@ import {
 } from "react-icons/hi2";
 import "./orderPolish.css";
 import { useLanguage } from "../../i18n/LanguageContext";
+import { deliveryLabels } from "../../utils/delivery";
 
 function money(value) {
   return Number(value || 0)
@@ -16,7 +17,8 @@ function money(value) {
 
 export default function OrderSuccessPage() {
   const navigate = useNavigate();
-  const { text } = useLanguage();
+  const { text, lang } = useLanguage();
+  const deliveryText = deliveryLabels[lang] || deliveryLabels.az;
 
   const order = useMemo(() => {
     try {
@@ -52,6 +54,8 @@ export default function OrderSuccessPage() {
         {order && (
           <div className="mt-6 rounded-[18px] bg-zinc-50 p-4 text-left">
             <Row label={text.orderNumber} value={order.orderNumber || "-"} />
+            {order.metroStationName && <Row label={deliveryText.station} value={order.metroStationName} />}
+            {order.metroDistanceKm != null && Number(order.deliveryType) === 1 && <Row label={deliveryText.metroDistance} value={`${order.metroDistanceKm} km`} />}
             <Row
               label={text.productsTotal}
               value={`${money(order.originalTotalPrice ?? order.totalProductPrice)} ₼`}

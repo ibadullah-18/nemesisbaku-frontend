@@ -49,5 +49,6 @@ export function orderMoney(value) {
 export function orderDeliveryType(value) {
   if (Number(value) === 1) return "Ünvana çatdırılma";
   if (Number(value) === 2) return "Mağazadan götürmə";
+  if (Number(value) === 3) return "Metroda təhvil";
   return "—";
 }
