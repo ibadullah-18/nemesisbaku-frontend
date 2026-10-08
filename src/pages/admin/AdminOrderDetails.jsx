@@ -200,7 +200,7 @@ export default function AdminOrderDetails() {
             <DetailValue label="Mərtəbə">{order.floor || "—"}</DetailValue>
             <DetailValue label="Mənzil">{order.apartment || "—"}</DetailValue>
             <DetailValue label="Çatdırılma tarixi">{formatOrderDate(order.deliveryDate)}</DetailValue>
-            <DetailValue label="Saat aralığı">{order.deliveryTimeRange || "—"}</DetailValue>
+            <DetailValue label="Çatdırılma saatı">{order.deliveryTimeRange || "—"}</DetailValue>
             <DetailValue label="Məsafə">{order.deliveryDistanceKm == null ? "—" : `${order.deliveryDistanceKm} km`}</DetailValue>
           </div>
           {customerNote(order.note) && <p className="nb-orders__note nb-orders__note--box">Qeyd: {customerNote(order.note)}</p>}

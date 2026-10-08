@@ -151,6 +151,7 @@ export async function apiFetch(endpoint, options = {}, retry = true) {
 
     const error = new Error(message);
     error.status = res.status;
+    error.retryAfter = Number(res.headers.get("Retry-After")) || 0;
     throw error;
   }
 

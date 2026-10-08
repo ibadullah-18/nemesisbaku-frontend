@@ -61,6 +61,8 @@ export default function RegisterPage() {
   const [storeLoading, setStoreLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const otpRequestLock = useRef(false);
+  const registrationLock = useRef(false);
 
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState("next");
@@ -270,6 +272,7 @@ export default function RegisterPage() {
   }
 
   async function sendRegisterOtp() {
+    if (otpRequestLock.current || resendSeconds > 0) return false;
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
 
     if (!emailOk) {
@@ -278,6 +281,7 @@ export default function RegisterPage() {
     }
 
     try {
+      otpRequestLock.current = true;
       setOtpLoading(true);
 
       await apiFetch(
@@ -295,6 +299,7 @@ export default function RegisterPage() {
       setResendSeconds(60);
       return true;
     } catch (err) {
+      if (err.status === 429) setResendSeconds(Math.max(1, err.retryAfter || 60));
       showToast(
         getCleanError(
           err,
@@ -303,6 +308,7 @@ export default function RegisterPage() {
       );
       return false;
     } finally {
+      otpRequestLock.current = false;
       setOtpLoading(false);
     }
   }
@@ -313,7 +319,7 @@ export default function RegisterPage() {
   }
 
   async function nextStep() {
-    if (!validateCurrentStep()) return;
+    if (otpRequestLock.current || loading || !validateCurrentStep()) return;
 
     if (step === 5 && !otpSent) {
       const sent = await sendRegisterOtp();
@@ -335,7 +341,9 @@ export default function RegisterPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!validateCurrentStep()) return;
+    if (step < steps.length - 1) { await nextStep(); return; }
+    if (registrationLock.current || !validateCurrentStep()) return;
+    registrationLock.current = true;
 
     try {
       setLoading(true);
@@ -371,6 +379,7 @@ export default function RegisterPage() {
         ),
       );
     } finally {
+      registrationLock.current = false;
       setLoading(false);
     }
   }
@@ -789,11 +798,11 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={nextStep}
-                      disabled={loading || otpLoading}
+                      disabled={loading || otpLoading || (step === 5 && resendSeconds > 0 && !otpSent)}
                       className="flex h-14 flex-1 items-center justify-center gap-3 rounded-[14px] bg-black text-[16px] font-bold text-white transition-all duration-300 hover:translate-y-[-1px] hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
                     >
                       {step === 5
-                        ? text.sendOtp || "OTP göndər"
+                        ? resendSeconds > 0 && !otpSent ? `${text.resendOtpIn || "Yenidən göndər"} (${resendSeconds}s)` : text.sendOtp || "OTP göndər"
                         : text.next || "İrəli"}
                       <FiArrowRight className="text-xl" />
                     </button>

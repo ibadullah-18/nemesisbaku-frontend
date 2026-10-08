@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiCalendar } from "react-icons/fi";
+import { FiCalendar, FiClock } from "react-icons/fi";
 import { useLanguage } from "../../i18n/LanguageContext";
 import "./dateWheel.css";
 import { localToday, readDateParts, writeDateParts, clampDateParts, dateWheelBounds } from "./dateWheelUtils";
 
 const labels = {
-  az: { months: ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"], title: "Tarix seçin", day: "Gün", month: "Ay", year: "İl", hour: "Saat", minute: "Dəqiqə", done: "Təsdiqlə", cancel: "Ləğv et", clear: "Təmizlə" },
-  en: { months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], title: "Select date", day: "Day", month: "Month", year: "Year", hour: "Hour", minute: "Minute", done: "Confirm", cancel: "Cancel", clear: "Clear" },
-  ru: { months: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"], title: "Выберите дату", day: "День", month: "Месяц", year: "Год", hour: "Час", minute: "Минута", done: "Подтвердить", cancel: "Отмена", clear: "Очистить" },
+  az: { months: ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"], timeTitle: "Saat seçin", title: "Tarix seçin", day: "Gün", month: "Ay", year: "İl", hour: "Saat", minute: "Dəqiqə", done: "Təsdiqlə", cancel: "Ləğv et", clear: "Təmizlə" },
+  en: { months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], timeTitle: "Select time", title: "Select date", day: "Day", month: "Month", year: "Year", hour: "Hour", minute: "Minute", done: "Confirm", cancel: "Cancel", clear: "Clear" },
+  ru: { months: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"], timeTitle: "Выберите время", title: "Выберите дату", day: "День", month: "Месяц", year: "Год", hour: "Час", minute: "Минута", done: "Подтвердить", cancel: "Отмена", clear: "Очистить" },
 };
 const pad = n => String(n).padStart(2, "0");
 const range = (start, end) => Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
 
 export default function SiteInput({ noPast, ...props }) {
-  return props.type === "date" || props.type === "datetime-local" ? <DateInput {...props} noPast={noPast} /> : <input {...props} />;
+  return props.type === "date" || props.type === "datetime-local" || props.type === "time" ? <DateInput {...props} noPast={noPast} /> : <input {...props} />;
 }
 
 function DateInput({ value = "", onChange, type, min, max, noPast = false, disabled, readOnly, className = "", name, id, required, placeholder, onFocus, onBlur, ...rest }) {
@@ -26,11 +26,11 @@ function DateInput({ value = "", onChange, type, min, max, noPast = false, disab
   const [open, setOpen] = useState(false);
   const trigger = useRef(null);
   const date = value ? new Date(value.length === 10 ? value + "T12:00:00" : value) : null;
-  const display = date && !Number.isNaN(date.getTime()) ? `${pad(date.getDate())} ${t.months[date.getMonth()]} ${date.getFullYear()}${type === "datetime-local" ? ` · ${pad(date.getHours())}:${pad(date.getMinutes())}` : ""}` : placeholder || t.title;
+  const display = type === "time" ? (value || placeholder || t.timeTitle) : date && !Number.isNaN(date.getTime()) ? `${pad(date.getDate())} ${t.months[date.getMonth()]} ${date.getFullYear()}${type === "datetime-local" ? ` · ${pad(date.getHours())}:${pad(date.getMinutes())}` : ""}` : placeholder || t.title;
   const close = () => { setOpen(false); trigger.current?.focus({ preventScroll: true }); };
   return <>
     <button {...rest} id={id} ref={trigger} type="button" className={`nb-date-trigger ${className}`} disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-required={required || undefined}
-      onFocus={onFocus} onBlur={onBlur} onClick={() => { if (!readOnly) setOpen(true); }}><span>{display}</span><FiCalendar aria-hidden="true" /></button>
+      onFocus={onFocus} onBlur={onBlur} onClick={() => { if (!readOnly) setOpen(true); }}><span>{display}</span>{type === "time" ? <FiClock aria-hidden="true" /> : <FiCalendar aria-hidden="true" />}</button>
     <input type={type} className="nb-date-validation" tabIndex={-1} aria-hidden="true" name={name} value={value || ""} min={effectiveMin} max={max} required={required} disabled={disabled} readOnly={readOnly} onChange={onChange}
       onInvalid={event => { event.preventDefault(); trigger.current?.focus(); setOpen(true); }} />
     {open && createPortal(<DatePanel value={value} type={type} min={effectiveMin} max={max} t={t} required={required} close={close}
@@ -38,11 +38,17 @@ function DateInput({ value = "", onChange, type, min, max, noPast = false, disab
   </>;
 }
 
-function DatePanel({ value, type, min, max, t, required, close, commit }) {
+function DatePanel({ value: inputValue, type, min: inputMin, max: inputMax, t, required, close, commit }) {
   const now = new Date();
   const today = localToday(now);
+  const timeOnly = type === "time";
+  const withTime = timeOnly || type === "datetime-local";
+  const value = timeOnly ? today + "T" + (inputValue || "12:00") : inputValue;
+  const min = timeOnly && inputMin ? today + "T" + inputMin : inputMin;
+  const max = timeOnly && inputMax ? today + "T" + inputMax : inputMax;
+  const title = timeOnly ? t.timeTitle : t.title;
   const initial = value || (min && min > today ? min : max && max < today ? max : today);
-  const [parts, setParts] = useState(() => clampDateParts(readDateParts(initial), min, max, type === "datetime-local"));
+  const [parts, setParts] = useState(() => clampDateParts(readDateParts(initial), min, max, withTime));
   const panel = useRef(null);
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -50,10 +56,10 @@ function DatePanel({ value, type, min, max, t, required, close, commit }) {
     panel.current?.querySelector('[role="spinbutton"]')?.focus({ preventScroll: true });
     return () => { document.body.style.overflow = previous; };
   }, []);
-  const result = writeDateParts(parts, type === "datetime-local");
+  const result = writeDateParts(parts, withTime);
   const valid = (!min || result >= min) && (!max || result <= max);
   const bounds = dateWheelBounds(parts, min, max, now.getFullYear());
-  const update = (key, next) => setParts(old => clampDateParts({ ...old, [key]: next }, min, max, type === "datetime-local"));
+  const update = (key, next) => setParts(old => clampDateParts({ ...old, [key]: next }, min, max, withTime));
   function keyDown(event) {
     event.stopPropagation();
     if (event.key === "Escape") { event.preventDefault(); close(); }
@@ -66,14 +72,14 @@ function DatePanel({ value, type, min, max, t, required, close, commit }) {
   }
   return <div className="nb-date-layer" data-nemesis-no-rubber data-filter-scroll-area="true" onKeyDown={keyDown}>
     <div className="nb-date-backdrop" onClick={close} />
-    <section ref={panel} role="dialog" aria-modal="true" aria-label={t.title} className="nb-date-panel">
-      <div className="nb-date-heading"><button type="button" onClick={close}>{t.cancel}</button><strong>{t.title}</strong><button type="button" disabled={!valid} onClick={() => commit(result)}>{t.done}</button></div>
-      <div className="nb-date-wheels">
+    <section ref={panel} role="dialog" aria-modal="true" aria-label={title} className={`nb-date-panel ${timeOnly ? "nb-time-panel" : ""}`}>
+      <div className="nb-date-heading"><button type="button" onClick={close}>{t.cancel}</button><strong>{title}</strong><button type="button" disabled={!valid} onClick={() => commit(timeOnly ? result.slice(11, 16) : result)}>{t.done}</button></div>
+      {!timeOnly && <div className="nb-date-wheels">
         <Wheel label={t.day} values={range(...bounds.day)} value={parts.day} onChange={n => update("day", n)} />
         <Wheel label={t.month} values={range(...bounds.month)} value={parts.month} format={n => t.months[n - 1]} onChange={n => update("month", n)} />
         <Wheel label={t.year} values={range(...bounds.year)} value={parts.year} onChange={n => update("year", n)} />
-      </div>
-      {type === "datetime-local" && <div className="nb-date-wheels nb-date-wheels--time">
+      </div>}
+      {withTime && <div className="nb-date-wheels nb-date-wheels--time">
         <Wheel label={t.hour} values={range(...bounds.hour)} value={parts.hour} format={pad} onChange={n => update("hour", n)} />
         <Wheel label={t.minute} values={range(...bounds.minute)} value={parts.minute} format={pad} onChange={n => update("minute", n)} />
       </div>}

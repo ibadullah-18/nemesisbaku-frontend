@@ -128,11 +128,15 @@ export default function CheckoutPage() {
     apartment: "",
     deliveryDate: "",
     deliveryTimeRange: "12:00-15:00",
+    deliveryExactTime: "12:00",
     note: "",
   });
 
   function setError(message) { if (message) showUserToast(message, "error"); }
   const deliveryCalc = useDeliveryQuote(form);
+  const isMetroDelivery = Number(form.deliveryType) === 3 || (deliveryCalc.available && deliveryCalc.pricingRule?.startsWith("metro-"));
+  const deliveryTime = isMetroDelivery ? form.deliveryExactTime : form.deliveryTimeRange;
+  const timeLabel = lang === "en" ? "Delivery time" : lang === "ru" ? "Время доставки" : "Çatdırılma saatı";
 
   useEffect(() => {
     let alive = true;
@@ -351,6 +355,7 @@ export default function CheckoutPage() {
       }
     }
 
+    if (isMetroDelivery && !/^([01]\d|2[0-3]):[0-5]\d$/.test(deliveryTime)) return timeLabel;
     if (!form.deliveryDate) return text.deliveryDateRequired;
     if (form.deliveryDate < localToday()) return lang === "en" ? "Choose today or a later date." : lang === "ru" ? "Выберите сегодняшнюю или более позднюю дату." : "Bu gün və ya daha sonrakı tarixi seçin.";
 
@@ -400,7 +405,7 @@ export default function CheckoutPage() {
         apartment: form.apartment.trim(),
 
         deliveryDate: new Date(form.deliveryDate).toISOString(),
-        deliveryTimeRange: form.deliveryTimeRange,
+        deliveryTimeRange: deliveryTime,
         note: noteWithCard(form.note, cardSnapshot),
         promoCode: promo.code || "",
 
@@ -429,7 +434,7 @@ export default function CheckoutPage() {
           promoDiscountAmount: order.promoDiscountAmount,
           totalPrice: order.totalPrice,
           deliveryDate: form.deliveryDate,
-          deliveryTimeRange: form.deliveryTimeRange,
+          deliveryTimeRange: deliveryTime,
         }),
       );
 
@@ -603,7 +608,12 @@ export default function CheckoutPage() {
                   ]}
                 />
 
-                <Select
+                {isMetroDelivery ? <Input
+                  label={timeLabel}
+                  type="time"
+                  value={form.deliveryExactTime}
+                  onChange={value => update("deliveryExactTime", value)}
+                /> : <Select
                   label={text.deliveryTimeRange}
                   value={form.deliveryTimeRange}
                   onChange={(value) => update("deliveryTimeRange", value)}
@@ -613,7 +623,7 @@ export default function CheckoutPage() {
                     { value: "15:00-18:00", label: "15:00-18:00" },
                     { value: "18:00-21:00", label: "18:00-21:00" },
                   ]}
-                />
+                />}
 
                 <Input
                   label={text.deliveryDate}
@@ -898,7 +908,7 @@ export default function CheckoutPage() {
                 />
               )}
 
-              {deliveryCalc.available && deliveryCalc.metroStationName && <SummaryRow
+              {deliveryCalc.available && isMetroDelivery && deliveryCalc.metroStationName && <SummaryRow
                 label={Number(form.deliveryType) === 3 ? deliveryText.station : deliveryText.nearest}
                 value={deliveryCalc.metroStationName} />}
               {deliveryCalc.available && deliveryCalc.pricingRule?.endsWith("-road") && <p translate="no" className="mt-2 text-xs font-normal text-[#5e5e5e] whitespace-nowrap"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>}
@@ -1032,7 +1042,7 @@ function Input({ label, value, onChange, type = "text", placeholder = "", id }) 
 
       <SiteInput
         id={id}
-        type={type} noPast={type === "date" || type === "datetime-local"}
+        type={type} required={type === "time"} noPast={type === "date" || type === "datetime-local"}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

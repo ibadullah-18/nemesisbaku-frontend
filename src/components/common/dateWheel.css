@@ -27,3 +27,11 @@
 
 .nb-date-tick { transform:perspective(280px) rotateX(calc(var(--wheel-offset, 0) * -16deg)); transform-origin:center; }
 .nb-date-highlight { border-radius:7px; background:linear-gradient(#ececec,#f6f6f6,#ececec); }
+.nb-time-panel { width:min(360px,calc(100% - 40px)); padding:18px; }
+.nb-time-panel .nb-date-wheels--time { position:relative; max-width:260px; margin:18px auto 8px; gap:30px; }
+.nb-time-panel .nb-date-wheels--time::after { content: ':'; position:absolute; left:50%; top:115px; transform:translateX(-50%); font-size:24px; line-height:44px; font-weight:500; pointer-events:none; }
+.nb-time-panel .nb-date-tick { font-size:25px; font-variant-numeric:tabular-nums; font-weight:400; }
+.nb-time-panel .nb-date-tick[data-active=true] { font-weight:600; }
+.nb-time-panel .nb-date-label { font-size:12px; letter-spacing:.04em; }
+.nb-time-panel .nb-date-highlight { border:0; background:#f3f3f3; }
+@media(max-width:767px) { .nb-time-panel { width:min(360px,calc(100% - 40px)); padding:16px; } }
