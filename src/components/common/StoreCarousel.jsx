@@ -7,6 +7,7 @@ import "./storefront.css";
 export default function StoreCarousel({ items, hero = false, discover, onIntent }) {
   const root = useRef(null), rail = useRef(null), gesture = useRef(null);
   const frame = useRef(0), activeRef = useRef(0);
+  const settleTimer = useRef(0), touching = useRef(false);
   const [active, setActive] = useState(0), [near, setNear] = useState(hero);
   const [paused, setPaused] = useState(false);
   const [visited, setVisited] = useState(() => new Set([0]));
@@ -22,27 +23,50 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame.current);
+      clearTimeout(settleTimer.current);
     };
   }, []);
 
   useEffect(() => {
+    const el = rail.current;
+    let width = el.getBoundingClientRect().width;
     const observer = new ResizeObserver(() => {
-      const el = rail.current;
-      if (el) el.scrollTo({
-        left: activeRef.current * el.clientWidth,
-        behavior: "instant"
-      });
+      const nextWidth = el.getBoundingClientRect().width;
+      // Height-only layout changes must not interrupt a native swipe.
+      if (Math.abs(nextWidth - width) < 0.01) return;
+      width = nextWidth;
+      if (!touching.current) {
+        const slide = el.children[activeRef.current];
+        if (slide) el.scrollTo({ left: slide.offsetLeft, behavior: "instant" });
+      }
     });
-    observer.observe(rail.current);
+    observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  function scheduleSettle() {
+    clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      const el = rail.current;
+      if (!el || touching.current || !el.children.length) return;
+      const slides = Array.from(el.children);
+      const nearest = slides.reduce((best, slide) =>
+        Math.abs(slide.offsetLeft - el.scrollLeft) < Math.abs(best.offsetLeft - el.scrollLeft)
+          ? slide : best
+      );
+      // Safari can leave native snapping between slides after an interrupted swipe.
+      if (Math.abs(el.scrollLeft - nearest.offsetLeft) > 1) {
+        el.scrollTo({ left: nearest.offsetLeft, behavior: "instant" });
+      }
+    }, 180);
+  }
 
   function go(index) {
     if (!items.length || !rail.current) return;
     const next = (index + items.length) % items.length;
     setVisited(old => new Set([...old, next]));
     rail.current.scrollTo({
-      left: next * rail.current.clientWidth,
+      left: rail.current.children[next].offsetLeft,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "instant" : "smooth"
     });
@@ -63,12 +87,13 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
   }, [hero, paused, items]);
 
   function scroll() {
+    scheduleSettle();
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       const el = rail.current;
       if (!el?.clientWidth) return;
       const next = Math.max(0, Math.min(
-        items.length - 1, Math.round(el.scrollLeft / el.clientWidth)
+        items.length - 1, Math.round(el.scrollLeft / el.getBoundingClientRect().width)
       ));
       activeRef.current = next;
       setActive(next);
@@ -85,6 +110,12 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
       if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
     }}>
     <div ref={rail} className="nb-carousel__rail" onScroll={scroll}
+      onTouchStart={() => {
+        touching.current = true;
+        clearTimeout(settleTimer.current);
+      }}
+      onTouchEnd={() => { touching.current = false; scheduleSettle(); }}
+      onTouchCancel={() => { touching.current = false; scheduleSettle(); }}
       onPointerDown={e => {
         gesture.current = { x: e.clientX, y: e.clientY, moved: false };
         setPaused(true);
