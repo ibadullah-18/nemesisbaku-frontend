@@ -7,7 +7,7 @@ import "./storefront.css";
 export default function StoreCarousel({ items, hero = false, discover, onIntent }) {
   const root = useRef(null), rail = useRef(null), gesture = useRef(null);
   const frame = useRef(0), activeRef = useRef(0);
-  const settleTimer = useRef(0), touching = useRef(false);
+
   const [active, setActive] = useState(0), [near, setNear] = useState(hero);
   const [paused, setPaused] = useState(false);
   const [visited, setVisited] = useState(() => new Set([0]));
@@ -23,53 +23,41 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame.current);
-      clearTimeout(settleTimer.current);
+
     };
   }, []);
 
-  useEffect(() => {
+  function paint(index, offset = 0, animate = true) {
     const el = rail.current;
-    let width = el.getBoundingClientRect().width;
-    const observer = new ResizeObserver(() => {
-      const nextWidth = el.getBoundingClientRect().width;
-      // Height-only layout changes must not interrupt a native swipe.
-      if (Math.abs(nextWidth - width) < 0.01) return;
-      width = nextWidth;
-      if (!touching.current) {
-        const slide = el.children[activeRef.current];
-        if (slide) el.scrollTo({ left: slide.offsetLeft, behavior: "instant" });
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  function scheduleSettle() {
-    clearTimeout(settleTimer.current);
-    settleTimer.current = setTimeout(() => {
-      const el = rail.current;
-      if (!el || touching.current || !el.children.length) return;
-      const slides = Array.from(el.children);
-      const nearest = slides.reduce((best, slide) =>
-        Math.abs(slide.offsetLeft - el.scrollLeft) < Math.abs(best.offsetLeft - el.scrollLeft)
-          ? slide : best
-      );
-      // Safari can leave native snapping between slides after an interrupted swipe.
-      if (Math.abs(el.scrollLeft - nearest.offsetLeft) > 1) {
-        el.scrollTo({ left: nearest.offsetLeft, behavior: "instant" });
-      }
-    }, 180);
+    if (!el) return;
+    el.style.transition = animate ? "" : "none";
+    el.style.transform = `translate3d(calc(${-index * 100}% + ${offset}px), 0, 0)`;
   }
 
   function go(index) {
-    if (!items.length || !rail.current) return;
+    if (!items.length) return;
+    cancelAnimationFrame(frame.current);
     const next = (index + items.length) % items.length;
-    setVisited(old => new Set([...old, next]));
-    rail.current.scrollTo({
-      left: rail.current.children[next].offsetLeft,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant" : "smooth"
-    });
+    activeRef.current = next;
+    setActive(next);
+    setVisited(old => old.has(next) ? old : new Set([...old, next]));
+    paint(next);
+  }
+
+  function finish(e, cancelled = false) {
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    cancelAnimationFrame(frame.current);
+    if (g.axis === "x") {
+      const threshold = Math.min(48, g.width * 0.2);
+      const step = !cancelled && Math.abs(g.dx) >= threshold ? (g.dx < 0 ? 1 : -1) : 0;
+      go(Math.max(0, Math.min(items.length - 1, activeRef.current + step)));
+    } else {
+      paint(activeRef.current);
+    }
+    g.ended = true;
+    setPaused(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
   useEffect(() => {
@@ -86,21 +74,6 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hero, paused, items]);
 
-  function scroll() {
-    scheduleSettle();
-    cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => {
-      const el = rail.current;
-      if (!el?.clientWidth) return;
-      const next = Math.max(0, Math.min(
-        items.length - 1, Math.round(el.scrollLeft / el.getBoundingClientRect().width)
-      ));
-      activeRef.current = next;
-      setActive(next);
-      setVisited(old => old.has(next) ? old : new Set([...old, next]));
-    });
-  }
-
   return <div ref={root} data-nemesis-no-rubber="true"
     className={hero ? "nb-carousel nb-carousel--hero" : "nb-carousel"}
     onMouseEnter={() => { if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) { setPaused(true); onIntent?.(); } }}
@@ -109,26 +82,35 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
     onBlurCapture={e => {
       if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
     }}>
-    <div ref={rail} className="nb-carousel__rail" onScroll={scroll}
-      onTouchStart={() => {
-        touching.current = true;
-        clearTimeout(settleTimer.current);
-      }}
-      onTouchEnd={() => { touching.current = false; scheduleSettle(); }}
-      onTouchCancel={() => { touching.current = false; scheduleSettle(); }}
+    <div className="nb-carousel__viewport"
       onPointerDown={e => {
-        gesture.current = { x: e.clientX, y: e.clientY, moved: false };
+        if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+        gesture.current = { id: e.pointerId, x: e.clientX, y: e.clientY,
+          width: e.currentTarget.clientWidth, dx: 0, axis: null, moved: false, ended: false };
         setPaused(true);
         onIntent?.();
       }}
       onPointerMove={e => {
         const g = gesture.current;
-        if (g && Math.hypot(e.clientX-g.x, e.clientY-g.y)>8) g.moved=true;
+        if (!g || g.ended || g.id !== e.pointerId) return;
+        const dx = e.clientX - g.x, dy = e.clientY - g.y;
+        if (!g.axis && Math.hypot(dx, dy) > 8) {
+          g.moved = true;
+          g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+          if (g.axis === "x") e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        if (g.axis !== "x") return;
+        g.dx = dx;
+        const edge = (activeRef.current === 0 && dx > 0) ||
+          (activeRef.current === items.length - 1 && dx < 0);
+        const offset = Math.max(-g.width, Math.min(g.width, edge ? dx * 0.2 : dx));
+        cancelAnimationFrame(frame.current);
+        frame.current = requestAnimationFrame(() => paint(activeRef.current, offset, false));
       }}
-      onPointerUp={() => setPaused(false)}
-      onPointerCancel={() => {
-        if (gesture.current) gesture.current.moved=true;
-        setPaused(false);
+      onPointerUp={e => finish(e)}
+      onPointerCancel={e => finish(e, true)}
+      onLostPointerCapture={e => {
+        if (!gesture.current?.ended) finish(e, true);
       }}
       onClickCapture={e => {
         if (gesture.current?.moved) {
@@ -137,6 +119,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
           gesture.current = null;
         }
       }}>
+    <div ref={rail} className="nb-carousel__rail">
       {items.map((item, index) => {
         const content = <>
           <GalleryImage item={item}
@@ -158,6 +141,7 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
               aria-hidden={index !== active}>{content}</div>;
       })}
     </div>
+    </div>
     {items.length > 1 && <>
       {[-1, 1].map(direction => <button key={direction} type="button"
         className={"nb-carousel__arrow nb-carousel__arrow--" +
@@ -172,7 +156,8 @@ export default function StoreCarousel({ items, hero = false, discover, onIntent 
         {direction < 0 ? <FiChevronLeft /> : <FiChevronRight />}
       </button>)}
       <div className="nb-carousel__dots">
-        {items.map((item, index) => Math.abs(index-active) < 3 &&
+        {items.map((item, index) => index >= Math.max(0, Math.min(active - 1, items.length - 3)) &&
+          index < Math.max(0, Math.min(active - 1, items.length - 3)) + 3 &&
           <button type="button" key={item.key || item.src}
             aria-label={(index+1)+"-ci şəkil"}
             aria-current={index === active ? "true" : undefined}

@@ -2,16 +2,19 @@
 .nb-carousel {
   position:relative; width:100%; height:100%; min-width:0;
 }
-.nb-carousel__rail {
-  position:relative; display:flex; width:100%; height:100%; overflow-x:auto; overflow-y:hidden;
-  scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
-  scrollbar-width:none; touch-action:pan-x pan-y pinch-zoom;
-  -webkit-overflow-scrolling:touch;
+.nb-carousel__viewport {
+  width:100%; height:100%; overflow:hidden; touch-action:pan-y pinch-zoom;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
 }
-.nb-carousel__rail::-webkit-scrollbar { display:none; }
+.nb-carousel__rail {
+  position:relative; display:flex; width:100%; height:100%;
+  transform:translate3d(0,0,0); transition:transform 220ms ease-out;
+}
 .nb-carousel__slide {
-  position:relative; flex:0 0 100%; min-width:0; height:100%;
-  scroll-snap-align:start; scroll-snap-stop:always; overflow:hidden;
+  position:relative; flex:0 0 100%; min-width:0; height:100%; overflow:hidden;
+}
+@media(prefers-reduced-motion:reduce) {
+  .nb-carousel__rail { transition:none; }
 }
 .nb-image { position:relative; height:100%; background:#f3f3f3; }
 .nb-image picture,.nb-image img { display:block; width:100%; height:100%; }
@@ -808,20 +811,26 @@ body:has(.nb-product-buy-dock.is-floating[data-visible="true"]) .nb-user-toast-h
 
 /* NB_SEARCH_CRISP_END */
 
-/* Touch devices use native swipe and small, tappable pagination only. */
+/* Touch devices use swipe and compact pagination only. */
 @media(max-width:767px), (hover:none), (pointer:coarse) {
   .nb-carousel .nb-carousel__arrow { display:none!important; }
   .nemesis-product-card__open { display:none!important; }
   .nemesis-product-card:hover { transform:none!important; }
-  .nb-carousel__dots { bottom:6px; max-width:90%; background:rgb(255 255 255 / 80%); }
-  .nb-carousel__dots button { width:24px; height:28px; }
-  .nb-carousel__dots button::after { width:6px; height:6px; }
-  .nb-carousel__dots button[aria-current]::after { width:12px; }
 }
-/* Fine indicators keep a comfortable invisible touch target. */
-.nb-carousel:not(.nb-carousel--hero) .nb-carousel__dots { background:#ffffff9e; }
-.nb-carousel:not(.nb-carousel--hero) .nb-carousel__dots button::after { width:3px; height:3px; }
-.nb-carousel:not(.nb-carousel--hero) .nb-carousel__dots button[aria-current]::after { width:8px; height:2px; }
+/* At most three subtle indicators, without a panel over the image. */
+.nb-carousel .nb-carousel__dots {
+  bottom:5px; padding:0; gap:0; max-width:none; background:transparent;
+}
+.nb-carousel .nb-carousel__dots button {
+  flex:0 0 16px; width:16px; min-width:0; height:24px; min-height:0;
+  padding:0; border:0; background:transparent; border-radius:0;
+}
+.nb-carousel .nb-carousel__dots button::after {
+  width:4px; height:4px; background:#73737380; box-shadow:0 0 1px #fff;
+}
+.nb-carousel .nb-carousel__dots button[aria-current]::after {
+  width:8px; height:3px; background:#27272a;
+}
 @media (pointer:coarse) {
   input:not([type=checkbox]):not([type=radio]), textarea { font-size:16px!important; scroll-margin-block:100px; }
 }
